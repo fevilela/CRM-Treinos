@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema CRM Treinos MP - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                fontFamily: {
+                    'sans': ['Inter', 'system-ui', 'sans-serif']
+                },
+                colors: {
+                    primary: '#3B82F6',
+                    secondary: '#6B7280',
+                    success: '#10B981',
+                    warning: '#F59E0B',
+                    error: '#EF4444'
+                }
+            }
+        }
+    };
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- @COMPONENT: AppLayout [main application shell] -->
+    <div class="min-h-screen flex">
+        <!-- @COMPONENT: Sidebar [navigation menu] -->
+        <div class="bg-white shadow-lg w-64 fixed h-full z-10">
+            <div class="p-6 border-b">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-primary rounded-lg p-2">
+                        <i class="fas fa-dumbbell text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-900">CRM Treinos</h1>
+                        <p class="text-sm text-gray-500">MP System</p>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="mt-6">
+                <!-- @MAP: menuItems.map(item => ( -->
+                <a href="#" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-primary transition-colors border-r-2 border-primary bg-blue-50 text-primary">
+                    <i class="fas fa-home mr-3"></i>
+                    <span data-bind="item.name">Dashboard</span>
+                </a>
+                <a href="#" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-primary transition-colors">
+                    <i class="fas fa-users mr-3"></i>
+                    <span>Alunos</span>
+                </a>
+                <a href="#" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-primary transition-colors">
+                    <i class="fas fa-clipboard-list mr-3"></i>
+                    <span>Treinos</span>
+                </a>
+                <a href="#" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-primary transition-colors">
+                    <i class="fas fa-chart-line mr-3"></i>
+                    <span>Progresso</span>
+                </a>
+                <a href="#" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-primary transition-colors">
+                    <i class="fas fa-male mr-3"></i>
+                    <span>Evolução Corporal</span>
+                </a>
+                <a href="#" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-primary transition-colors">
+                    <i class="fas fa-cog mr-3"></i>
+                    <span>Configurações</span>
+                </a>
+                <!-- @END_MAP )) -->
+            </nav>
+
+            <!-- @COMPONENT: UserProfile [logged user info] -->
+            <div class="absolute bottom-0 w-64 p-6 border-t bg-gray-50">
+                <div class="flex items-center space-x-3">
+                    <!-- A professional headshot of a fitness trainer in gym attire -->
+                    <img src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=100&h=100" 
+                         alt="Foto do personal trainer" 
+                         class="w-10 h-10 rounded-full object-cover" 
+                         data-mock="true">
+                    <div>
+                        <p class="text-sm font-medium text-gray-900" data-bind="user.name" data-mock="true">Carlos Silva</p>
+                        <p class="text-xs text-gray-500" data-mock="true">Personal Trainer</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: Sidebar -->
+
+        <!-- @COMPONENT: MainContent [main application content area] -->
+        <div class="flex-1 ml-64">
+            <!-- @COMPONENT: Header [top navigation bar] -->
+            <header class="bg-white shadow-sm border-b px-6 py-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">Dashboard</h2>
+                        <p class="text-gray-600 mt-1">Visão geral do seu sistema de treinos</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <!-- @COMPONENT: NotificationBell [notification dropdown] -->
+                        <button class="relative p-2 text-gray-600 hover:text-primary transition-colors" data-event="click:showNotifications">
+                            <i class="fas fa-bell text-lg"></i>
+                            <span class="absolute -top-1 -right-1 bg-error text-white text-xs rounded-full w-5 h-5 flex items-center justify-center" data-bind="notifications.unread.length">3</span>
+                        </button>
+                        <!-- @COMPONENT: QuickActions [action buttons] -->
+                        <button class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-2" data-event="click:createWorkout">
+                            <i class="fas fa-plus"></i>
+                            <span>Novo Treino</span>
+                        </button>
+                    </div>
+                </div>
+            </header>
+            <!-- @END_COMPONENT: Header -->
+
+            <!-- @COMPONENT: DashboardStats [main dashboard content] -->
+            <main class="p-6">
+                <!-- @COMPONENT: StatsCards [key metrics display] -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <!-- @MAP: statsCards.map(card => ( -->
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600" data-mock="true">Total de Alunos</p>
+                                <p class="text-3xl font-bold text-gray-900 mt-2" data-bind="stats.totalStudents" data-mock="true">147</p>
+                                <div class="flex items-center mt-2">
+                                    <span class="text-success text-sm font-medium" data-mock="true">+12%</span>
+                                    <span class="text-gray-500 text-sm ml-1" data-mock="true">vs mês anterior</span>
+                                </div>
+                            </div>
+                            <div class="bg-blue-100 p-3 rounded-lg">
+                                <i class="fas fa-users text-primary text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600" data-mock="true">Treinos Ativos</p>
+                                <p class="text-3xl font-bold text-gray-900 mt-2" data-bind="stats.activeWorkouts" data-mock="true">89</p>
+                                <div class="flex items-center mt-2">
+                                    <span class="text-success text-sm font-medium" data-mock="true">+8%</span>
+                                    <span class="text-gray-500 text-sm ml-1" data-mock="true">vs mês anterior</span>
+                                </div>
+                            </div>
+                            <div class="bg-green-100 p-3 rounded-lg">
+                                <i class="fas fa-clipboard-list text-success text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600" data-mock="true">Taxa de Adesão</p>
+                                <p class="text-3xl font-bold text-gray-900 mt-2" data-bind="stats.adherenceRate" data-mock="true">92%</p>
+                                <div class="flex items-center mt-2">
+                                    <span class="text-success text-sm font-medium" data-mock="true">+5%</span>
+                                    <span class="text-gray-500 text-sm ml-1" data-mock="true">vs mês anterior</span>
+                                </div>
+                            </div>
+                            <div class="bg-amber-100 p-3 rounded-lg">
+                                <i class="fas fa-chart-line text-warning text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600" data-mock="true">Sessões Hoje</p>
+                                <p class="text-3xl font-bold text-gray-900 mt-2" data-bind="stats.todaySessions" data-mock="true">24</p>
+                                <div class="flex items-center mt-2">
+                                    <span class="text-success text-sm font-medium" data-mock="true">+3</span>
+                                    <span class="text-gray-500 text-sm ml-1" data-mock="true">vs ontem</span>
+                                </div>
+                            </div>
+                            <div class="bg-purple-100 p-3 rounded-lg">
+                                <i class="fas fa-calendar-day text-purple-600 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- @END_MAP )) -->
+                </div>
+
+                <!-- @COMPONENT: ChartsSection [progress visualization] -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <!-- @COMPONENT: ProgressChart [workout progress over time] -->
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900">Progresso dos Treinos</h3>
+                            <select class="text-sm border border-gray-300 rounded-md px-3 py-1" data-event="change:updateChartPeriod">
+                                <option value="week" data-mock="true">Última Semana</option>
+                                <option value="month" selected data-mock="true">Último Mês</option>
+                                <option value="quarter" data-mock="true">Último Trimestre</option>
+                            </select>
+                        </div>
+                        <canvas id="progressChart" class="w-full h-64" data-implementation="Chart.js line chart showing workout progress over time"></canvas>
+                    </div>
+
+                    <!-- @COMPONENT: BodyVisualization [body evolution display] -->
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900">Evolução Corporal</h3>
+                            <div class="flex items-center space-x-2">
+                                <button class="text-sm text-gray-600 hover:text-primary transition-colors" data-event="click:switchGender" data-implementation="Toggle between male/female body visualization">
+                                    <i class="fas fa-male mr-1"></i> Masculino
+                                </button>
+                                <span class="text-gray-300">|</span>
+                                <button class="text-sm text-gray-600 hover:text-primary transition-colors" data-event="click:switchGender">
+                                    <i class="fas fa-female mr-1"></i> Feminino
+                                </button>
+                            </div>
+                        </div>
+                        <div class="relative flex justify-center items-center">
+                            <!-- @FUNCTIONALITY: This body visualization should show progress over time with overlays showing muscle development -->
+                            <!-- A silhouette diagram of male body showing muscle groups for fitness tracking -->
+                            <img src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=300&h=400" 
+                                 alt="Visualização corporal masculina" 
+                                 class="w-48 h-64 object-cover rounded-lg opacity-80" 
+                                 data-implementation="Replace with interactive body visualization component">
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <div class="bg-white bg-opacity-90 rounded-lg p-4 text-center">
+                                    <i class="fas fa-chart-area text-primary text-2xl mb-2"></i>
+                                    <p class="text-sm font-medium text-gray-700">Visualização Interativa</p>
+                                    <p class="text-xs text-gray-500">Clique para ver evolução</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- @COMPONENT: RecentActivities [activity feed and student management] -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- @COMPONENT: StudentList [recent students display] -->
+                    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100">
+                        <div class="p-6 border-b border-gray-100">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-lg font-semibold text-gray-900">Alunos Recentes</h3>
+                                <button class="text-primary hover:text-blue-700 text-sm font-medium" data-event="click:viewAllStudents">
+                                    Ver todos <i class="fas fa-arrow-right ml-1"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <!-- @MAP: recentStudents.map(student => ( -->
+                            <div class="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+                                <div class="flex items-center space-x-4">
+                                    <!-- A professional photo of a fitness enthusiast in workout attire -->
+                                    <img src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=80&h=80" 
+                                         alt="Foto do aluno" 
+                                         class="w-12 h-12 rounded-full object-cover" 
+                                         data-mock="true">
+                                    <div>
+                                        <p class="font-medium text-gray-900" data-bind="student.name" data-mock="true">Maria Santos</p>
+                                        <p class="text-sm text-gray-600" data-bind="student.goal" data-mock="true">Hipertrofia</p>
+                                        <p class="text-xs text-gray-500" data-bind="student.lastWorkout" data-mock="true">Último treino: 2 dias atrás</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-3">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-success" data-bind="student.status" data-mock="true">
+                                        Ativo
+                                    </span>
+                                    <button class="text-gray-400 hover:text-primary transition-colors" data-event="click:editStudent" data-implementation="Open student edit modal">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+                                <div class="flex items-center space-x-4">
+                                    <!-- A professional photo of a male fitness enthusiast -->
+                                    <img src="https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=80&h=80" 
+                                         alt="Foto do aluno" 
+                                         class="w-12 h-12 rounded-full object-cover" 
+                                         data-mock="true">
+                                    <div>
+                                        <p class="font-medium text-gray-900" data-mock="true">João Silva</p>
+                                        <p class="text-sm text-gray-600" data-mock="true">Emagrecimento</p>
+                                        <p class="text-xs text-gray-500" data-mock="true">Último treino: 1 dia atrás</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-3">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-success" data-mock="true">
+                                        Ativo
+                                    </span>
+                                    <button class="text-gray-400 hover:text-primary transition-colors" data-event="click:editStudent">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+                                <div class="flex items-center space-x-4">
+                                    <!-- A professional photo of a female fitness enthusiast -->
+                                    <img src="https://pixabay.com/get/g709cc364d20839d154aff748d3325fac4b3cd975c17a7856e367aa8fc1bd192bb3eb2faaeb959e29479e95308721cb5fd6d7cd0c16dd5fb9476d6daf9908fdda_1280.jpg" 
+                                         alt="Foto do aluno" 
+                                         class="w-12 h-12 rounded-full object-cover" 
+                                         data-mock="true">
+                                    <div>
+                                        <p class="font-medium text-gray-900" data-mock="true">Ana Costa</p>
+                                        <p class="text-sm text-gray-600" data-mock="true">Condicionamento</p>
+                                        <p class="text-xs text-gray-500" data-mock="true">Último treino: Hoje</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-3">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-warning" data-mock="true">
+                                        Pendente
+                                    </span>
+                                    <button class="text-gray-400 hover:text-primary transition-colors" data-event="click:editStudent">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- @END_MAP )) -->
+                        </div>
+                    </div>
+
+                    <!-- @COMPONENT: ActivityFeed [recent activities display] -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+                        <div class="p-6 border-b border-gray-100">
+                            <h3 class="text-lg font-semibold text-gray-900">Atividades Recentes</h3>
+                        </div>
+                        <div class="p-6 space-y-4">
+                            <!-- @MAP: recentActivities.map(activity => ( -->
+                            <div class="flex items-start space-x-3">
+                                <div class="bg-blue-100 p-2 rounded-lg">
+                                    <i class="fas fa-user-plus text-primary text-sm"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-900" data-mock="true">Novo aluno cadastrado</p>
+                                    <p class="text-xs text-gray-600" data-mock="true">Pedro Oliveira foi adicionado ao sistema</p>
+                                    <p class="text-xs text-gray-500 mt-1" data-mock="true">2 horas atrás</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start space-x-3">
+                                <div class="bg-green-100 p-2 rounded-lg">
+                                    <i class="fas fa-clipboard-check text-success text-sm"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-900" data-mock="true">Treino completado</p>
+                                    <p class="text-xs text-gray-600" data-mock="true">Maria Santos finalizou treino de Peito/Tríceps</p>
+                                    <p class="text-xs text-gray-500 mt-1" data-mock="true">4 horas atrás</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start space-x-3">
+                                <div class="bg-amber-100 p-2 rounded-lg">
+                                    <i class="fas fa-chart-line text-warning text-sm"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-900" data-mock="true">Progresso registrado</p>
+                                    <p class="text-xs text-gray-600" data-mock="true">João Silva aumentou carga no supino</p>
+                                    <p class="text-xs text-gray-500 mt-1" data-mock="true">6 horas atrás</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start space-x-3">
+                                <div class="bg-purple-100 p-2 rounded-lg">
+                                    <i class="fas fa-dumbbell text-purple-600 text-sm"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-900" data-mock="true">Novo treino criado</p>
+                                    <p class="text-xs text-gray-600" data-mock="true">Treino de Costas/Bíceps para Ana Costa</p>
+                                    <p class="text-xs text-gray-500 mt-1" data-mock="true">1 dia atrás</p>
+                                </div>
+                            </div>
+                            <!-- @END_MAP )) -->
+                        </div>
+                    </div>
+                </div>
+            </main>
+            <!-- @END_COMPONENT: DashboardStats -->
+        </div>
+        <!-- @END_COMPONENT: MainContent -->
+    </div>
+    <!-- @END_COMPONENT: AppLayout -->
+
+    <!-- @COMPONENT: WorkoutModal [workout creation/editing modal] -->
+    <div id="workoutModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50" data-event="click:closeModal">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-screen overflow-y-auto" data-event="click:stopPropagation">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xl font-bold text-gray-900">Criar Novo Treino</h2>
+                        <button class="text-gray-400 hover:text-gray-600 transition-colors" data-event="click:closeModal">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-6">
+                    <form class="space-y-6" data-event="submit:createWorkout" data-implementation="Handle workout creation form submission">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Nome do Treino</label>
+                                <input type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary" placeholder="Ex: Treino A - Peito e Tríceps" data-mock="true">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
+                                <select class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary">
+                                    <option value="" data-mock="true">Selecione uma categoria</option>
+                                    <option value="chest-triceps" data-mock="true">Peito/Tríceps</option>
+                                    <option value="back-biceps" data-mock="true">Costas/Bíceps</option>
+                                    <option value="legs" data-mock="true">Pernas</option>
+                                    <option value="shoulders" data-mock="true">Ombros</option>
+                                    <option value="cardio" data-mock="true">Cardio</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Aluno</label>
+                            <select class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary">
+                                <option value="" data-mock="true">Selecione um aluno</option>
+                                <option value="1" data-mock="true">Maria Santos</option>
+                                <option value="2" data-mock="true">João Silva</option>
+                                <option value="3" data-mock="true">Ana Costa</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-semibold text-gray-900">Exercícios</h3>
+                                <button type="button" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-2" data-event="click:addExercise">
+                                    <i class="fas fa-plus"></i>
+                                    <span>Adicionar Exercício</span>
+                                </button>
+                            </div>
+
+                            <!-- @MAP: exercises.map((exercise, index) => ( -->
+                            <div class="border border-gray-200 rounded-lg p-4 mb-4" data-mock="true">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h4 class="font-medium text-gray-900">Exercício 1</h4>
+                                    <div class="flex items-center space-x-2">
+                                        <button type="button" class="text-gray-400 hover:text-gray-600" data-event="click:moveExerciseUp">
+                                            <i class="fas fa-arrow-up"></i>
+                                        </button>
+                                        <button type="button" class="text-gray-400 hover:text-gray-600" data-event="click:moveExerciseDown">
+                                            <i class="fas fa-arrow-down"></i>
+                                        </button>
+                                        <button type="button" class="text-error hover:text-red-700" data-event="click:removeExercise">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Nome do Exercício</label>
+                                        <input type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary text-sm" placeholder="Supino reto" data-mock="true">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Séries</label>
+                                        <input type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary text-sm" placeholder="3" data-mock="true">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Repetições</label>
+                                        <input type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary text-sm" placeholder="12-15" data-mock="true">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Peso (kg)</label>
+                                        <input type="number" step="0.5" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary text-sm" placeholder="60" data-mock="true">
+                                    </div>
+                                </div>
+
+                                <div class="mt-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Tempo de Descanso (segundos)</label>
+                                    <input type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary text-sm" placeholder="90" data-mock="true">
+                                </div>
+
+                                <div class="mt-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
+                                    <textarea class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary text-sm" rows="2" placeholder="Instruções específicas para o exercício" data-mock="true"></textarea>
+                                </div>
+                            </div>
+                            <!-- @END_MAP )) -->
+                        </div>
+
+                        <div class="flex justify-end space-x-3 pt-6 border-t">
+                            <button type="button" class="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors" data-event="click:closeModal">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 transition-colors">
+                                Criar Treino
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: WorkoutModal -->
+
+    <script>
+        // TODO: Implement business logic, API calls, and state management
+        (function() {
+            // Initialize Chart.js for progress visualization
+            const progressCtx = document.getElementById('progressChart');
+            if (progressCtx) {
+                new Chart(progressCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
+                        datasets: [{
+                            label: 'Progresso Médio (%)',
+                            data: [65, 72, 78, 85],
+                            borderColor: '#3B82F6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Modal functionality
+            const workoutModal = document.getElementById('workoutModal');
+            const createWorkoutBtn = document.querySelector('[data-event="click:createWorkout"]');
+            
+            if (createWorkoutBtn) {
+                createWorkoutBtn.addEventListener('click', function() {
+                    workoutModal.classList.remove('hidden');
+                });
+            }
+
+            // Close modal functionality
+            document.addEventListener('click', function(e) {
+                if (e.target.matches('[data-event="click:closeModal"]') || e.target.closest('[data-event="click:closeModal"]')) {
+                    workoutModal.classList.add('hidden');
+                }
+            });
+
+            // Prevent modal close when clicking inside
+            document.addEventListener('click', function(e) {
+                if (e.target.matches('[data-event="click:stopPropagation"]') || e.target.closest('[data-event="click:stopPropagation"]')) {
+                    e.stopPropagation();
+                }
+            });
+
+            // Add exercise functionality placeholder
+            document.addEventListener('click', function(e) {
+                if (e.target.matches('[data-event="click:addExercise"]') || e.target.closest('[data-event="click:addExercise"]')) {
+                    console.log('Add exercise clicked - implement exercise addition logic');
+                    // TODO: Implement dynamic exercise addition
+                }
+            });
+
+            // Exercise management placeholders
+            document.addEventListener('click', function(e) {
+                if (e.target.matches('[data-event="click:moveExerciseUp"]') || e.target.closest('[data-event="click:moveExerciseUp"]')) {
+                    console.log('Move exercise up - implement reordering logic');
+                }
+                if (e.target.matches('[data-event="click:moveExerciseDown"]') || e.target.closest('[data-event="click:moveExerciseDown"]')) {
+                    console.log('Move exercise down - implement reordering logic');
+                }
+                if (e.target.matches('[data-event="click:removeExercise"]') || e.target.closest('[data-event="click:removeExercise"]')) {
+                    console.log('Remove exercise - implement exercise removal logic');
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
