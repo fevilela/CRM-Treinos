@@ -23,7 +23,7 @@ export const sessions = pgTable(
     sess: jsonb("sess").notNull(),
     expire: timestamp("expire").notNull(),
   },
-  (table) => [index("IDX_session_expire").on(table.expire)],
+  (table) => [index("IDX_session_expire").on(table.expire)]
 );
 
 // Enums - definir antes das tabelas
@@ -31,7 +31,9 @@ export const roleEnum = pgEnum("role", ["teacher", "student"]);
 
 // User storage table
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   email: varchar("email").unique().notNull(),
   password: varchar("password").notNull(),
   firstName: varchar("first_name").notNull(),
@@ -45,17 +47,21 @@ export const genderEnum = pgEnum("gender", ["male", "female"]);
 export const statusEnum = pgEnum("status", ["active", "inactive", "suspended"]);
 export const workoutCategoryEnum = pgEnum("workout_category", [
   "chest-triceps",
-  "back-biceps", 
+  "back-biceps",
   "legs",
   "shoulders",
   "cardio",
-  "full-body"
+  "full-body",
 ]);
 
 // Students table
 export const students = pgTable("students", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  personalTrainerId: varchar("personal_trainer_id").notNull().references(() => users.id),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  personalTrainerId: varchar("personal_trainer_id")
+    .notNull()
+    .references(() => users.id),
   name: varchar("name").notNull(),
   email: varchar("email").unique(),
   password: varchar("password"), // Para login do aluno
@@ -76,9 +82,15 @@ export const students = pgTable("students", {
 
 // Workouts table
 export const workouts = pgTable("workouts", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  studentId: varchar("student_id").notNull().references(() => students.id),
-  personalTrainerId: varchar("personal_trainer_id").notNull().references(() => users.id),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  studentId: varchar("student_id")
+    .notNull()
+    .references(() => students.id),
+  personalTrainerId: varchar("personal_trainer_id")
+    .notNull()
+    .references(() => users.id),
   name: varchar("name").notNull(),
   category: workoutCategoryEnum("category").notNull(),
   description: text("description"),
@@ -89,7 +101,9 @@ export const workouts = pgTable("workouts", {
 
 // Exercise templates (biblioteca de exercícios padrão)
 export const exerciseTemplates = pgTable("exercise_templates", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   name: varchar("name").notNull().unique(),
   description: text("description"),
   videoUrl: varchar("video_url"), // URL do vídeo do exercício
@@ -101,8 +115,12 @@ export const exerciseTemplates = pgTable("exercise_templates", {
 
 // Exercises table
 export const exercises = pgTable("exercises", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workoutId: varchar("workout_id").notNull().references(() => workouts.id, { onDelete: "cascade" }),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  workoutId: varchar("workout_id")
+    .notNull()
+    .references(() => workouts.id, { onDelete: "cascade" }),
   templateId: varchar("template_id").references(() => exerciseTemplates.id), // Referência ao template do exercício
   name: varchar("name").notNull(),
   sets: integer("sets").notNull(),
@@ -117,9 +135,15 @@ export const exercises = pgTable("exercises", {
 
 // Workout sessions (when a workout is performed)
 export const workoutSessions = pgTable("workout_sessions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workoutId: varchar("workout_id").notNull().references(() => workouts.id),
-  studentId: varchar("student_id").notNull().references(() => students.id),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  workoutId: varchar("workout_id")
+    .notNull()
+    .references(() => workouts.id),
+  studentId: varchar("student_id")
+    .notNull()
+    .references(() => students.id),
   completedAt: timestamp("completed_at").defaultNow(),
   duration: integer("duration"), // in minutes
   notes: text("notes"),
@@ -127,9 +151,15 @@ export const workoutSessions = pgTable("workout_sessions", {
 
 // Exercise performances (actual performance data)
 export const exercisePerformances = pgTable("exercise_performances", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workoutSessionId: varchar("workout_session_id").notNull().references(() => workoutSessions.id, { onDelete: "cascade" }),
-  exerciseId: varchar("exercise_id").notNull().references(() => exercises.id),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  workoutSessionId: varchar("workout_session_id")
+    .notNull()
+    .references(() => workoutSessions.id, { onDelete: "cascade" }),
+  exerciseId: varchar("exercise_id")
+    .notNull()
+    .references(() => exercises.id),
   actualSets: integer("actual_sets"),
   actualReps: varchar("actual_reps"),
   actualWeight: decimal("actual_weight", { precision: 5, scale: 2 }),
@@ -141,8 +171,12 @@ export const exercisePerformances = pgTable("exercise_performances", {
 
 // Body measurements
 export const bodyMeasurements = pgTable("body_measurements", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  studentId: varchar("student_id").notNull().references(() => students.id),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  studentId: varchar("student_id")
+    .notNull()
+    .references(() => students.id),
   weight: decimal("weight", { precision: 5, scale: 2 }),
   bodyFat: decimal("body_fat", { precision: 5, scale: 2 }),
   muscleMass: decimal("muscle_mass", { precision: 5, scale: 2 }),
@@ -156,9 +190,15 @@ export const bodyMeasurements = pgTable("body_measurements", {
 
 // Historical workout data - rastrea evolução de cargas ao longo do tempo
 export const workoutHistory = pgTable("workout_history", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  studentId: varchar("student_id").notNull().references(() => students.id),
-  exerciseId: varchar("exercise_id").notNull().references(() => exercises.id),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  studentId: varchar("student_id")
+    .notNull()
+    .references(() => students.id),
+  exerciseId: varchar("exercise_id")
+    .notNull()
+    .references(() => exercises.id),
   exerciseName: varchar("exercise_name").notNull(), // Nome do exercício para referência
   sets: integer("sets").notNull(),
   reps: varchar("reps").notNull(),
@@ -166,17 +206,105 @@ export const workoutHistory = pgTable("workout_history", {
   previousWeight: decimal("previous_weight", { precision: 5, scale: 2 }), // Carga anterior
   comments: text("comments"), // Comentários do aluno
   completedAt: timestamp("completed_at").defaultNow(),
-  workoutSessionId: varchar("workout_session_id").references(() => workoutSessions.id),
+  workoutSessionId: varchar("workout_session_id").references(
+    () => workoutSessions.id
+  ),
 });
 
 // Student workout comments - para comentários específicos dos treinos
 export const workoutComments = pgTable("workout_comments", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  studentId: varchar("student_id").notNull().references(() => students.id),
-  workoutSessionId: varchar("workout_session_id").notNull().references(() => workoutSessions.id),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  studentId: varchar("student_id")
+    .notNull()
+    .references(() => students.id),
+  workoutSessionId: varchar("workout_session_id")
+    .notNull()
+    .references(() => workoutSessions.id),
   comment: text("comment").notNull(),
   rating: integer("rating"), // 1-5 estrelas para o treino
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Physical assessment table
+export const physicalAssessments = pgTable("physical_assessments", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  studentId: varchar("student_id")
+    .notNull()
+    .references(() => students.id),
+  personalTrainerId: varchar("personal_trainer_id")
+    .notNull()
+    .references(() => users.id),
+
+  // 1. Identificação básica
+  profession: varchar("profession"),
+
+  // 2. Histórico de saúde
+  healthDiagnoses: text("health_diagnoses"),
+  medications: text("medications"),
+  injuriesSurgeries: text("injuries_surgeries"),
+  currentPains: text("current_pains"),
+  familyHistory: text("family_history"),
+  medicalClearance: boolean("medical_clearance"),
+
+  // 3. Histórico de atividade física
+  pastActivities: text("past_activities"),
+  currentActivities: text("current_activities"),
+  activityLevel: varchar("activity_level"), // sedentary, moderate, very_active
+  currentResistance: varchar("current_resistance"), // low, medium, high
+  currentStrength: varchar("current_strength"), // low, medium, high
+
+  // 4. Objetivos
+  primaryGoal: text("primary_goal"),
+  specificDeadline: text("specific_deadline"),
+  targetBodyPart: text("target_body_part"),
+  lifestyleChange: boolean("lifestyle_change"),
+
+  // 5. Hábitos de vida
+  dailyNutrition: text("daily_nutrition"),
+  supplements: text("supplements"),
+  sleepQuality: text("sleep_quality"),
+  stressLevel: varchar("stress_level"), // low, moderate, high
+  smoking: varchar("smoking"), // none, occasional, regular
+  alcoholConsumption: varchar("alcohol_consumption"), // none, occasional, regular
+  caffeineConsumption: varchar("caffeine_consumption"), // none, moderate, high
+
+  // 6. Avaliação antropométrica
+  currentWeight: decimal("current_weight", { precision: 5, scale: 2 }),
+  currentHeight: decimal("current_height", { precision: 5, scale: 2 }),
+  bmi: decimal("bmi", { precision: 4, scale: 2 }),
+  waistCirc: decimal("waist_circ", { precision: 5, scale: 2 }),
+  hipCirc: decimal("hip_circ", { precision: 5, scale: 2 }),
+  abdomenCirc: decimal("abdomen_circ", { precision: 5, scale: 2 }),
+  armCirc: decimal("arm_circ", { precision: 5, scale: 2 }),
+  thighCirc: decimal("thigh_circ", { precision: 5, scale: 2 }),
+  calfCirc: decimal("calf_circ", { precision: 5, scale: 2 }),
+  chestCirc: decimal("chest_circ", { precision: 5, scale: 2 }),
+  bodyFatPercentage: decimal("body_fat_percentage", { precision: 4, scale: 2 }),
+  leanMass: decimal("lean_mass", { precision: 5, scale: 2 }),
+  bodyWater: decimal("body_water", { precision: 4, scale: 2 }),
+
+  // 7. Avaliação de desempenho
+  strengthTests: jsonb("strength_tests"), // JSON com diversos testes
+  cardioTests: jsonb("cardio_tests"), // Testes cardiovasculares
+  flexibilityTests: jsonb("flexibility_tests"),
+  postureAnalysis: text("posture_analysis"),
+  balanceCoordination: text("balance_coordination"),
+
+  // 8. Avaliação clínica
+  bloodPressure: varchar("blood_pressure"),
+  restingHeartRate: integer("resting_heart_rate"),
+  oxygenSaturation: decimal("oxygen_saturation", { precision: 4, scale: 2 }),
+  subjectiveEffortPerception: text("subjective_effort_perception"),
+
+  // Observações gerais
+  additionalNotes: text("additional_notes"),
+  assessmentDate: timestamp("assessment_date").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Relations
@@ -195,6 +323,7 @@ export const studentsRelations = relations(students, ({ one, many }) => ({
   bodyMeasurements: many(bodyMeasurements),
   workoutHistory: many(workoutHistory),
   workoutComments: many(workoutComments),
+  physicalAssessments: many(physicalAssessments),
 }));
 
 export const workoutsRelations = relations(workouts, ({ one, many }) => ({
@@ -210,9 +339,12 @@ export const workoutsRelations = relations(workouts, ({ one, many }) => ({
   sessions: many(workoutSessions),
 }));
 
-export const exerciseTemplatesRelations = relations(exerciseTemplates, ({ many }) => ({
-  exercises: many(exercises),
-}));
+export const exerciseTemplatesRelations = relations(
+  exerciseTemplates,
+  ({ many }) => ({
+    exercises: many(exercises),
+  })
+);
 
 export const exercisesRelations = relations(exercises, ({ one, many }) => ({
   workout: one(workouts, {
@@ -226,35 +358,44 @@ export const exercisesRelations = relations(exercises, ({ one, many }) => ({
   performances: many(exercisePerformances),
 }));
 
-export const workoutSessionsRelations = relations(workoutSessions, ({ one, many }) => ({
-  workout: one(workouts, {
-    fields: [workoutSessions.workoutId],
-    references: [workouts.id],
-  }),
-  student: one(students, {
-    fields: [workoutSessions.studentId],
-    references: [students.id],
-  }),
-  performances: many(exercisePerformances),
-}));
+export const workoutSessionsRelations = relations(
+  workoutSessions,
+  ({ one, many }) => ({
+    workout: one(workouts, {
+      fields: [workoutSessions.workoutId],
+      references: [workouts.id],
+    }),
+    student: one(students, {
+      fields: [workoutSessions.studentId],
+      references: [students.id],
+    }),
+    performances: many(exercisePerformances),
+  })
+);
 
-export const exercisePerformancesRelations = relations(exercisePerformances, ({ one }) => ({
-  workoutSession: one(workoutSessions, {
-    fields: [exercisePerformances.workoutSessionId],
-    references: [workoutSessions.id],
-  }),
-  exercise: one(exercises, {
-    fields: [exercisePerformances.exerciseId],
-    references: [exercises.id],
-  }),
-}));
+export const exercisePerformancesRelations = relations(
+  exercisePerformances,
+  ({ one }) => ({
+    workoutSession: one(workoutSessions, {
+      fields: [exercisePerformances.workoutSessionId],
+      references: [workoutSessions.id],
+    }),
+    exercise: one(exercises, {
+      fields: [exercisePerformances.exerciseId],
+      references: [exercises.id],
+    }),
+  })
+);
 
-export const bodyMeasurementsRelations = relations(bodyMeasurements, ({ one }) => ({
-  student: one(students, {
-    fields: [bodyMeasurements.studentId],
-    references: [students.id],
-  }),
-}));
+export const bodyMeasurementsRelations = relations(
+  bodyMeasurements,
+  ({ one }) => ({
+    student: one(students, {
+      fields: [bodyMeasurements.studentId],
+      references: [students.id],
+    }),
+  })
+);
 
 export const workoutHistoryRelations = relations(workoutHistory, ({ one }) => ({
   student: one(students, {
@@ -271,16 +412,33 @@ export const workoutHistoryRelations = relations(workoutHistory, ({ one }) => ({
   }),
 }));
 
-export const workoutCommentsRelations = relations(workoutComments, ({ one }) => ({
-  student: one(students, {
-    fields: [workoutComments.studentId],
-    references: [students.id],
-  }),
-  workoutSession: one(workoutSessions, {
-    fields: [workoutComments.workoutSessionId],
-    references: [workoutSessions.id],
-  }),
-}));
+export const workoutCommentsRelations = relations(
+  workoutComments,
+  ({ one }) => ({
+    student: one(students, {
+      fields: [workoutComments.studentId],
+      references: [students.id],
+    }),
+    workoutSession: one(workoutSessions, {
+      fields: [workoutComments.workoutSessionId],
+      references: [workoutSessions.id],
+    }),
+  })
+);
+
+export const physicalAssessmentsRelations = relations(
+  physicalAssessments,
+  ({ one }) => ({
+    student: one(students, {
+      fields: [physicalAssessments.studentId],
+      references: [students.id],
+    }),
+    personalTrainer: one(users, {
+      fields: [physicalAssessments.personalTrainerId],
+      references: [users.id],
+    }),
+  })
+);
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -306,7 +464,9 @@ export const insertWorkoutSchema = createInsertSchema(workouts).omit({
   updatedAt: true,
 });
 
-export const insertExerciseTemplateSchema = createInsertSchema(exerciseTemplates).omit({
+export const insertExerciseTemplateSchema = createInsertSchema(
+  exerciseTemplates
+).omit({
   id: true,
   createdAt: true,
 });
@@ -320,16 +480,22 @@ export const insertExerciseSchema = createInsertSchema(exercises)
     weight: z.string().optional(),
   });
 
-export const insertWorkoutSessionSchema = createInsertSchema(workoutSessions).omit({
+export const insertWorkoutSessionSchema = createInsertSchema(
+  workoutSessions
+).omit({
   id: true,
 });
 
-export const insertExercisePerformanceSchema = createInsertSchema(exercisePerformances).omit({
+export const insertExercisePerformanceSchema = createInsertSchema(
+  exercisePerformances
+).omit({
   id: true,
   createdAt: true,
 });
 
-export const insertBodyMeasurementSchema = createInsertSchema(bodyMeasurements).omit({
+export const insertBodyMeasurementSchema = createInsertSchema(
+  bodyMeasurements
+).omit({
   id: true,
 });
 
@@ -343,9 +509,19 @@ export const insertWorkoutHistorySchema = createInsertSchema(workoutHistory)
     previousWeight: z.string().optional(),
   });
 
-export const insertWorkoutCommentSchema = createInsertSchema(workoutComments).omit({
+export const insertWorkoutCommentSchema = createInsertSchema(
+  workoutComments
+).omit({
   id: true,
   createdAt: true,
+});
+
+export const insertPhysicalAssessmentSchema = createInsertSchema(
+  physicalAssessments
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 // Types
@@ -356,13 +532,17 @@ export type InsertStudent = z.infer<typeof insertStudentSchema>;
 export type Student = typeof students.$inferSelect;
 export type InsertWorkout = z.infer<typeof insertWorkoutSchema>;
 export type Workout = typeof workouts.$inferSelect;
-export type InsertExerciseTemplate = z.infer<typeof insertExerciseTemplateSchema>;
+export type InsertExerciseTemplate = z.infer<
+  typeof insertExerciseTemplateSchema
+>;
 export type ExerciseTemplate = typeof exerciseTemplates.$inferSelect;
 export type InsertExercise = z.infer<typeof insertExerciseSchema>;
 export type Exercise = typeof exercises.$inferSelect;
 export type InsertWorkoutSession = z.infer<typeof insertWorkoutSessionSchema>;
 export type WorkoutSession = typeof workoutSessions.$inferSelect;
-export type InsertExercisePerformance = z.infer<typeof insertExercisePerformanceSchema>;
+export type InsertExercisePerformance = z.infer<
+  typeof insertExercisePerformanceSchema
+>;
 export type ExercisePerformance = typeof exercisePerformances.$inferSelect;
 export type InsertBodyMeasurement = z.infer<typeof insertBodyMeasurementSchema>;
 export type BodyMeasurement = typeof bodyMeasurements.$inferSelect;
@@ -370,6 +550,10 @@ export type InsertWorkoutHistory = z.infer<typeof insertWorkoutHistorySchema>;
 export type WorkoutHistory = typeof workoutHistory.$inferSelect;
 export type InsertWorkoutComment = z.infer<typeof insertWorkoutCommentSchema>;
 export type WorkoutComment = typeof workoutComments.$inferSelect;
+export type InsertPhysicalAssessment = z.infer<
+  typeof insertPhysicalAssessmentSchema
+>;
+export type PhysicalAssessment = typeof physicalAssessments.$inferSelect;
 
 // Validation schemas
 export const studentSchema = z.object({

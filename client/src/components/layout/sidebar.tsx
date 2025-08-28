@@ -6,12 +6,17 @@ const menuItems = [
   { name: "Dashboard", path: "/", icon: "fas fa-home" },
   { name: "Alunos", path: "/students", icon: "fas fa-users" },
   { name: "Treinos", path: "/workouts", icon: "fas fa-clipboard-list" },
+  {
+    name: "Avaliações Físicas",
+    path: "/physical-assessments",
+    icon: "fas fa-clipboard-check",
+  },
   { name: "Progresso", path: "/progress", icon: "fas fa-chart-line" },
   { name: "Evolução Corporal", path: "/body-evolution", icon: "fas fa-male" },
   { name: "Configurações", path: "/settings", icon: "fas fa-cog" },
 ];
 
-export default function Sidebar() {
+export function Sidebar() {
   const [location] = useLocation();
   const { logout, isLoggingOut } = useAuth();
 
@@ -81,3 +86,5 @@ export default function Sidebar() {
     </div>
   );
 }
+
+export default Sidebar;

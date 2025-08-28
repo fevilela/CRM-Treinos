@@ -9,6 +9,7 @@ import {
   bodyMeasurements,
   workoutHistory,
   workoutComments,
+  physicalAssessments,
   type User,
   type InsertUser,
   type UpsertUser,
@@ -30,6 +31,8 @@ import {
   type InsertWorkoutHistory,
   type WorkoutComment,
   type InsertWorkoutComment,
+  type PhysicalAssessment,
+  type InsertPhysicalAssessment,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, count } from "drizzle-orm";
@@ -129,6 +132,23 @@ export interface IStorage {
     comment: Partial<InsertWorkoutComment>
   ): Promise<WorkoutComment>;
   deleteWorkoutComment(id: string): Promise<void>;
+
+  // Physical assessment operations
+  getPhysicalAssessments(
+    personalTrainerId: string
+  ): Promise<PhysicalAssessment[]>;
+  getStudentPhysicalAssessments(
+    studentId: string
+  ): Promise<PhysicalAssessment[]>;
+  getPhysicalAssessment(id: string): Promise<PhysicalAssessment | undefined>;
+  createPhysicalAssessment(
+    assessment: InsertPhysicalAssessment
+  ): Promise<PhysicalAssessment>;
+  updatePhysicalAssessment(
+    id: string,
+    assessment: Partial<InsertPhysicalAssessment>
+  ): Promise<PhysicalAssessment>;
+  deletePhysicalAssessment(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -678,6 +698,63 @@ export class DatabaseStorage implements IStorage {
 
   async deleteWorkoutComment(id: string): Promise<void> {
     await db.delete(workoutComments).where(eq(workoutComments.id, id));
+  }
+
+  // Physical assessment operations
+  async getPhysicalAssessments(
+    personalTrainerId: string
+  ): Promise<PhysicalAssessment[]> {
+    return await db
+      .select()
+      .from(physicalAssessments)
+      .where(eq(physicalAssessments.personalTrainerId, personalTrainerId))
+      .orderBy(desc(physicalAssessments.assessmentDate));
+  }
+
+  async getStudentPhysicalAssessments(
+    studentId: string
+  ): Promise<PhysicalAssessment[]> {
+    return await db
+      .select()
+      .from(physicalAssessments)
+      .where(eq(physicalAssessments.studentId, studentId))
+      .orderBy(desc(physicalAssessments.assessmentDate));
+  }
+
+  async getPhysicalAssessment(
+    id: string
+  ): Promise<PhysicalAssessment | undefined> {
+    const [assessment] = await db
+      .select()
+      .from(physicalAssessments)
+      .where(eq(physicalAssessments.id, id));
+    return assessment;
+  }
+
+  async createPhysicalAssessment(
+    assessment: InsertPhysicalAssessment
+  ): Promise<PhysicalAssessment> {
+    const [newAssessment] = await db
+      .insert(physicalAssessments)
+      .values(assessment)
+      .returning();
+    return newAssessment;
+  }
+
+  async updatePhysicalAssessment(
+    id: string,
+    assessment: Partial<InsertPhysicalAssessment>
+  ): Promise<PhysicalAssessment> {
+    const [updatedAssessment] = await db
+      .update(physicalAssessments)
+      .set(assessment)
+      .where(eq(physicalAssessments.id, id))
+      .returning();
+    return updatedAssessment;
+  }
+
+  async deletePhysicalAssessment(id: string): Promise<void> {
+    await db.delete(physicalAssessments).where(eq(physicalAssessments.id, id));
   }
 }
 

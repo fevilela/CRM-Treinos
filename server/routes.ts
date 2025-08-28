@@ -17,6 +17,7 @@ import {
   insertBodyMeasurementSchema,
   insertWorkoutHistorySchema,
   insertWorkoutCommentSchema,
+  insertPhysicalAssessmentSchema,
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -635,6 +636,160 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Physical Assessment routes
+  app.get("/api/physical-assessments", isTeacher, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const assessments = await storage.getPhysicalAssessments(userId);
+      res.json(assessments);
+    } catch (error) {
+      console.error("Error fetching physical assessments:", error);
+      res.status(500).json({ message: "Failed to fetch physical assessments" });
+    }
+  });
+
+  app.get(
+    "/api/students/:studentId/physical-assessments",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const assessments = await storage.getStudentPhysicalAssessments(
+          req.params.studentId
+        );
+        res.json(assessments);
+      } catch (error) {
+        console.error("Error fetching student physical assessments:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch student physical assessments" });
+      }
+    }
+  );
+
+  app.get(
+    "/api/physical-assessments/:id",
+    isAuthenticated,
+    async (req, res) => {
+      try {
+        const assessment = await storage.getPhysicalAssessment(req.params.id);
+        if (!assessment) {
+          return res
+            .status(404)
+            .json({ message: "Physical assessment not found" });
+        }
+        res.json(assessment);
+      } catch (error) {
+        console.error("Error fetching physical assessment:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch physical assessment" });
+      }
+    }
+  );
+
+  app.post("/api/physical-assessments", isTeacher, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const validatedData = insertPhysicalAssessmentSchema.parse({
+        ...req.body,
+        personalTrainerId: userId,
+      });
+
+      const assessment = await storage.createPhysicalAssessment(validatedData);
+      res.status(201).json(assessment);
+    } catch (error) {
+      console.error("Error creating physical assessment:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: error.errors.map((e) => ({
+            field: e.path.join("."),
+            message: e.message,
+          })),
+        });
+      }
+      res.status(500).json({ message: "Failed to create physical assessment" });
+    }
+  });
+
+  app.put("/api/physical-assessments/:id", isTeacher, async (req: any, res) => {
+    try {
+      const assessmentId = req.params.id;
+
+      // Verify assessment exists and belongs to the teacher
+      const existingAssessment = await storage.getPhysicalAssessment(
+        assessmentId
+      );
+      if (!existingAssessment) {
+        return res
+          .status(404)
+          .json({ message: "Physical assessment not found" });
+      }
+
+      if (existingAssessment.personalTrainerId !== req.user.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Remove personalTrainerId from body to prevent changes
+      const { personalTrainerId, ...updateData } = req.body;
+
+      const validatedData = insertPhysicalAssessmentSchema
+        .partial()
+        .parse(updateData);
+      const assessment = await storage.updatePhysicalAssessment(
+        assessmentId,
+        validatedData
+      );
+
+      res.json(assessment);
+    } catch (error) {
+      console.error("Error updating physical assessment:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: error.errors.map((e) => ({
+            field: e.path.join("."),
+            message: e.message,
+          })),
+        });
+      }
+      res.status(500).json({ message: "Failed to update physical assessment" });
+    }
+  });
+
+  app.delete(
+    "/api/physical-assessments/:id",
+    isTeacher,
+    async (req: any, res) => {
+      try {
+        const assessmentId = req.params.id;
+
+        // Verify assessment exists and belongs to the teacher
+        const existingAssessment = await storage.getPhysicalAssessment(
+          assessmentId
+        );
+        if (!existingAssessment) {
+          return res
+            .status(404)
+            .json({ message: "Physical assessment not found" });
+        }
+
+        if (existingAssessment.personalTrainerId !== req.user.id) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+
+        await storage.deletePhysicalAssessment(assessmentId);
+        res.status(204).send();
+      } catch (error) {
+        console.error("Error deleting physical assessment:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to delete physical assessment" });
+      }
+    }
+  );
+
+  // Create HTTP server (don't start listening here)
   const httpServer = createServer(app);
   return httpServer;
 }
