@@ -123,8 +123,16 @@ export default function WorkoutModal({
 
   const createWorkoutMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest("POST", "/api/workouts", data);
-      return response.json();
+      console.log("Sending workout data to API:", data);
+      try {
+        const response = await apiRequest("POST", "/api/workouts", data);
+        const result = await response.json();
+        console.log("API response:", result);
+        return result;
+      } catch (error) {
+        console.error("API error:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/workouts"] });
@@ -134,21 +142,24 @@ export default function WorkoutModal({
       });
       onClose();
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error("Mutation error:", error);
       if (isUnauthorizedError(error)) {
         toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          title: "Não autorizado",
+          description: "Você precisa fazer login novamente",
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
+          window.location.href = "/login";
+        }, 1000);
         return;
       }
       toast({
         title: "Erro",
-        description: "Erro ao criar treino",
+        description: `Erro ao criar treino: ${
+          error.message || "Erro desconhecido"
+        }`,
         variant: "destructive",
       });
     },
@@ -276,6 +287,15 @@ export default function WorkoutModal({
   };
 
   const onSubmit = (data: WorkoutFormData) => {
+    console.log("Form submitted with data:", data);
+    console.log("Exercises:", exercises);
+    console.log("Form errors:", form.formState.errors);
+    console.log("Form is valid:", form.formState.isValid);
+
+    // Resetar estados de erro anterior
+    createWorkoutMutation.reset();
+    updateWorkoutMutation.reset();
+
     const workoutWithExercises = {
       ...data,
       exercises: exercises.map((exercise, index) => ({
@@ -290,6 +310,8 @@ export default function WorkoutModal({
         order: index + 1,
       })),
     };
+
+    console.log("Final workout data:", workoutWithExercises);
 
     if (workout) {
       updateWorkoutMutation.mutate(workoutWithExercises);
@@ -309,12 +331,21 @@ export default function WorkoutModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-screen overflow-y-auto">
+      <DialogContent
+        className="max-w-4xl max-h-screen overflow-y-auto"
+        aria-describedby="workout-form-description"
+      >
         <DialogHeader>
           <DialogTitle>
             {workout ? "Editar Treino" : "Criar Novo Treino"}
           </DialogTitle>
         </DialogHeader>
+        <div id="workout-form-description" className="sr-only">
+          Formulário para{" "}
+          {workout
+            ? "editar um treino existente"
+            : "criar um novo treino para um aluno"}
+        </div>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -726,11 +757,17 @@ export default function WorkoutModal({
               </Button>
               <Button
                 type="submit"
-                disabled={createWorkoutMutation.isPending}
+                disabled={
+                  createWorkoutMutation.isPending ||
+                  updateWorkoutMutation.isPending
+                }
                 data-testid="button-save-workout"
               >
-                {createWorkoutMutation.isPending
+                {createWorkoutMutation.isPending ||
+                updateWorkoutMutation.isPending
                   ? "Salvando..."
+                  : workout
+                  ? "Atualizar Treino"
                   : "Salvar Treino"}
               </Button>
             </div>
