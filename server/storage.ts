@@ -734,9 +734,42 @@ export class DatabaseStorage implements IStorage {
   async createPhysicalAssessment(
     assessment: InsertPhysicalAssessment
   ): Promise<PhysicalAssessment> {
+    // Remove fields that don't exist in database schema and handle assessmentDate
+    const {
+      nutritionHabits,
+      substanceUse,
+      assessmentDate,
+      ...validAssessment
+    } = assessment as any;
+
+    // Process assessmentDate - convert ISO string to Date object
+    const processedAssessmentDate = assessmentDate
+      ? new Date(assessmentDate)
+      : undefined;
+
+    // Convert numeric fields to strings for database storage
+    const dataForInsert = {
+      ...validAssessment,
+      assessmentDate: processedAssessmentDate,
+      currentWeight: validAssessment.currentWeight?.toString(),
+      currentHeight: validAssessment.currentHeight?.toString(),
+      bodyFatPercentage: validAssessment.bodyFatPercentage?.toString(),
+      leanMass: validAssessment.leanMass?.toString(),
+      bodyWater: validAssessment.bodyWater?.toString(),
+      waistCirc: validAssessment.waistCirc?.toString(),
+      hipCirc: validAssessment.hipCirc?.toString(),
+      abdomenCirc: validAssessment.abdomenCirc?.toString(),
+      armCirc: validAssessment.armCirc?.toString(),
+      thighCirc: validAssessment.thighCirc?.toString(),
+      calfCirc: validAssessment.calfCirc?.toString(),
+      chestCirc: validAssessment.chestCirc?.toString(),
+      bmi: validAssessment.bmi?.toString(),
+      oxygenSaturation: validAssessment.oxygenSaturation?.toString(),
+    };
+
     const [newAssessment] = await db
       .insert(physicalAssessments)
-      .values(assessment)
+      .values(dataForInsert)
       .returning();
     return newAssessment;
   }
@@ -745,9 +778,41 @@ export class DatabaseStorage implements IStorage {
     id: string,
     assessment: Partial<InsertPhysicalAssessment>
   ): Promise<PhysicalAssessment> {
+    // Remove fields that don't exist in database schema and handle assessmentDate
+    const {
+      nutritionHabits,
+      substanceUse,
+      assessmentDate,
+      ...validAssessment
+    } = assessment as any;
+
+    // Process assessmentDate - convert ISO string to Date object
+    const processedAssessmentDate = assessmentDate
+      ? new Date(assessmentDate)
+      : undefined;
+
+    const assessmentData = {
+      ...validAssessment,
+      assessmentDate: processedAssessmentDate,
+      currentWeight: validAssessment.currentWeight?.toString(),
+      currentHeight: validAssessment.currentHeight?.toString(),
+      bodyFatPercentage: validAssessment.bodyFatPercentage?.toString(),
+      leanMass: validAssessment.leanMass?.toString(),
+      bodyWater: validAssessment.bodyWater?.toString(),
+      waistCirc: validAssessment.waistCirc?.toString(),
+      hipCirc: validAssessment.hipCirc?.toString(),
+      abdomenCirc: validAssessment.abdomenCirc?.toString(),
+      armCirc: validAssessment.armCirc?.toString(),
+      thighCirc: validAssessment.thighCirc?.toString(),
+      calfCirc: validAssessment.calfCirc?.toString(),
+      chestCirc: validAssessment.chestCirc?.toString(),
+      bmi: validAssessment.bmi?.toString(),
+      oxygenSaturation: validAssessment.oxygenSaturation?.toString(),
+      updatedAt: new Date(),
+    };
     const [updatedAssessment] = await db
       .update(physicalAssessments)
-      .set(assessment)
+      .set(assessmentData)
       .where(eq(physicalAssessments.id, id))
       .returning();
     return updatedAssessment;

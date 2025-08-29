@@ -542,6 +542,13 @@ export const insertPhysicalAssessmentSchema = createInsertSchema(
     balanceCoordination: z
       .enum(["poor", "fair", "good", "excellent"])
       .optional(),
+    assessmentDate: z
+      .string()
+      .datetime()
+      .optional()
+      .transform((val) => {
+        return val ? new Date(val) : undefined;
+      }),
   });
 
 // Types

@@ -65,6 +65,11 @@ app.use((req, res, next) => {
     res.status(status).json({ message });
   });
 
+  // Final fallback for unmatched API routes BEFORE Vite
+  app.use("/api/*", (req, res) => {
+    res.status(404).json({ message: "API endpoint not found" });
+  });
+
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
@@ -74,12 +79,7 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // Final fallback for unmatched API routes
-  app.use("/api/*", (req, res) => {
-    res.status(404).json({ message: "API endpoint not found" });
-  });
-
-  // Use port 3000 locally, but allow Replit to override
+  // Use port 5000 for Replit, but allow override
   const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
   server.listen(
     {

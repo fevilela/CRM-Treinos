@@ -47,7 +47,7 @@ const assessmentFormSchema = insertPhysicalAssessmentSchema
   })
   .extend({
     studentId: z.string().min(1, "Selecione um aluno"),
-    assessmentDate: z.coerce.date().optional(), // Adicionado campo de data da avaliação
+    assessmentDate: z.date().optional(), // Data da avaliação
     profession: z.string().optional(),
     healthDiagnoses: z.string().optional(),
     medications: z.string().optional(),
@@ -101,9 +101,6 @@ const assessmentFormSchema = insertPhysicalAssessmentSchema
       .enum(["poor", "fair", "good", "excellent"])
       .optional(),
     additionalNotes: z.string().optional(),
-    // Novas propriedades adicionadas
-    nutritionHabits: z.string().optional(), // Campo adicionado para hábitos alimentares
-    substanceUse: z.string().optional(), // Campo adicionado para tabagismo, álcool, cafeína
   });
 
 type AssessmentFormData = z.infer<typeof assessmentFormSchema>;
@@ -114,7 +111,7 @@ interface PhysicalAssessmentModalProps {
   assessment?: PhysicalAssessment | null;
 }
 
-export default function PhysicalAssessmentModal({
+function PhysicalAssessmentModal({
   isOpen,
   onClose,
   assessment,
@@ -182,9 +179,6 @@ export default function PhysicalAssessmentModal({
       postureAssessment: "",
       balanceCoordination: undefined,
       additionalNotes: "",
-      // Novas propriedades inicializadas
-      nutritionHabits: "",
-      substanceUse: "",
     },
   });
 
@@ -328,8 +322,6 @@ export default function PhysicalAssessmentModal({
                 | "excellent")
             : undefined,
         additionalNotes: assessment.additionalNotes || "",
-        nutritionHabits: assessment.dailyNutrition || "",
-        substanceUse: "", // Campo não existe no schema, mantém vazio
       });
     } else if (isOpen) {
       form.reset({
@@ -371,8 +363,6 @@ export default function PhysicalAssessmentModal({
         postureAssessment: "",
         balanceCoordination: undefined,
         additionalNotes: "",
-        nutritionHabits: "",
-        substanceUse: "",
       });
     }
   }, [assessment, isOpen, form]);
@@ -463,10 +453,18 @@ export default function PhysicalAssessmentModal({
   });
 
   const onSubmit = (data: AssessmentFormData) => {
+    // Ensure assessmentDate is properly serialized
+    const processedData = {
+      ...data,
+      assessmentDate: data.assessmentDate
+        ? data.assessmentDate.toISOString()
+        : undefined,
+    };
+
     if (assessment) {
-      updateAssessmentMutation.mutate(data);
+      updateAssessmentMutation.mutate(processedData);
     } else {
-      createAssessmentMutation.mutate(data);
+      createAssessmentMutation.mutate(processedData);
     }
   };
 
@@ -566,7 +564,7 @@ export default function PhysicalAssessmentModal({
                                 onChange={(e) => {
                                   const dateValue = e.target.value
                                     ? new Date(e.target.value)
-                                    : null;
+                                    : undefined;
                                   field.onChange(dateValue);
                                 }}
                               />
@@ -976,13 +974,13 @@ export default function PhysicalAssessmentModal({
                   <CardContent className="space-y-4">
                     <FormField
                       control={form.control}
-                      name="nutritionHabits"
+                      name="dailyNutrition"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Como é sua alimentação diária?</FormLabel>
                           <FormControl>
                             <Textarea
-                              placeholder="Número de refeições, qualidade, consumo de ultraprocessados, água, álcool..."
+                              placeholder="Número de refeições, qualidade, consumo de ultraprocessados, água..."
                               rows={3}
                               {...field}
                               value={field.value?.toString() ?? ""}
@@ -1059,26 +1057,91 @@ export default function PhysicalAssessmentModal({
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name="substanceUse"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>
-                            Tabagismo / consumo de álcool / cafeína?
-                          </FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Descreva o consumo de cigarros, bebidas alcoólicas e cafeína..."
-                              rows={2}
-                              {...field}
-                              value={field.value?.toString() ?? ""}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="smoking"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Tabagismo</FormLabel>
+                            <Select
+                              value={field.value || ""}
+                              onValueChange={field.onChange}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="none">Não fuma</SelectItem>
+                                <SelectItem value="occasional">
+                                  Ocasional
+                                </SelectItem>
+                                <SelectItem value="regular">Regular</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="alcoholConsumption"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Consumo de álcool</FormLabel>
+                            <Select
+                              value={field.value || ""}
+                              onValueChange={field.onChange}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="none">Não bebe</SelectItem>
+                                <SelectItem value="occasional">
+                                  Ocasional
+                                </SelectItem>
+                                <SelectItem value="regular">Regular</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="caffeineConsumption"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Consumo de cafeína</FormLabel>
+                            <Select
+                              value={field.value || ""}
+                              onValueChange={field.onChange}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="none">Nenhum</SelectItem>
+                                <SelectItem value="moderate">
+                                  Moderado
+                                </SelectItem>
+                                <SelectItem value="high">Alto</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -1848,3 +1911,5 @@ export default function PhysicalAssessmentModal({
     </Dialog>
   );
 }
+
+export default PhysicalAssessmentModal;

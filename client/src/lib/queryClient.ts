@@ -12,13 +12,8 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined
 ): Promise<Response> {
-  // Always use absolute URL to bypass Vite proxy
+  // Use relative URLs so Vite proxy can handle API calls
   let apiUrl = url;
-
-  if (url.startsWith("/api/")) {
-    // Force absolute URL to connect directly to server
-    apiUrl = `http://localhost:3000${url}`;
-  }
 
   console.log("API Request:", method, apiUrl, data);
 
@@ -30,7 +25,6 @@ export async function apiRequest(
     },
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
-    mode: "cors", // Enable CORS
   });
 
   console.log("API Response:", res.status, res.headers.get("content-type"));
