@@ -10,36 +10,39 @@ async function throwIfResNotOk(res: Response) {
 export async function apiRequest(
   method: string,
   url: string,
-  data?: unknown | undefined,
+  data?: unknown | undefined
 ): Promise<Response> {
-  // Force absolute URL to bypass Vite completely
+  // Always use absolute URL to bypass Vite proxy
   let apiUrl = url;
-  
-  if (url.startsWith('/api/')) {
-    // Port configuration - change to 3000 when using in VSCode
-    apiUrl = `http://localhost:3000${url}`; // Change to 3000 for VSCode
+
+  if (url.startsWith("/api/")) {
+    // Force absolute URL to connect directly to server
+    apiUrl = `http://localhost:3000${url}`;
   }
-  
-  console.log('API Request:', method, apiUrl, data);
-  
+
+  console.log("API Request:", method, apiUrl, data);
+
   const res = await fetch(apiUrl, {
     method,
     headers: {
       "Content-Type": "application/json",
-      "Accept": "application/json",
+      Accept: "application/json",
     },
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
+    mode: "cors", // Enable CORS
   });
 
-  console.log('API Response:', res.status, res.headers.get('content-type'));
-  
+  console.log("API Response:", res.status, res.headers.get("content-type"));
+
   // Check if response is HTML instead of JSON
-  const contentType = res.headers.get('content-type');
-  if (contentType && contentType.includes('text/html')) {
+  const contentType = res.headers.get("content-type");
+  if (contentType && contentType.includes("text/html")) {
     const htmlText = await res.text();
-    console.error('Received HTML instead of JSON:', htmlText.substring(0, 200));
-    throw new Error('Server returned HTML instead of JSON. Check API endpoint.');
+    console.error("Received HTML instead of JSON:", htmlText.substring(0, 200));
+    throw new Error(
+      "Server returned HTML instead of JSON. Check API endpoint."
+    );
   }
 
   await throwIfResNotOk(res);

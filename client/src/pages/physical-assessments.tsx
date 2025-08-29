@@ -60,7 +60,8 @@ export default function PhysicalAssessments() {
     return student?.name || "Aluno não encontrado";
   };
 
-  const formatDate = (date: string | Date) => {
+  const formatDate = (date: string | Date | null) => {
+    if (!date) return "Data não informada";
     return new Date(date).toLocaleDateString("pt-BR");
   };
 

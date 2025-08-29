@@ -8,6 +8,7 @@ import LoginPage from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Students from "@/pages/students";
 import Workouts from "@/pages/workouts";
+import PhysicalAssessments from "@/pages/physical-assessments";
 import { StudentApp } from "@/pages/student-app";
 import StudentSetupPassword from "@/pages/student-setup-password";
 import NotFound from "@/pages/not-found";
@@ -40,6 +41,10 @@ function Router() {
               <Route path="/" component={Dashboard} />
               <Route path="/students" component={Students} />
               <Route path="/workouts" component={Workouts} />
+              <Route
+                path="/physical-assessments"
+                component={PhysicalAssessments}
+              />
               <Route path="/student" component={StudentApp} />
               <Route component={NotFound} />
             </Switch>

@@ -287,21 +287,26 @@ export const physicalAssessments = pgTable("physical_assessments", {
   leanMass: decimal("lean_mass", { precision: 5, scale: 2 }),
   bodyWater: decimal("body_water", { precision: 4, scale: 2 }),
 
-  // 7. Avaliação de desempenho
-  strengthTests: jsonb("strength_tests"), // JSON com diversos testes
-  cardioTests: jsonb("cardio_tests"), // Testes cardiovasculares
-  flexibilityTests: jsonb("flexibility_tests"),
-  postureAnalysis: text("posture_analysis"),
-  balanceCoordination: text("balance_coordination"),
+  // 7. Avaliação de desempenho/condicionamento
+  maxPushUps: integer("max_push_ups"),
+  maxSquats: integer("max_squats"),
+  maxSitUps: integer("max_sit_ups"),
+  plankTime: integer("plank_time"), // em segundos
+  cardioTest: varchar("cardio_test"), // tipo de teste cardiovascular
+  cardioTestResult: varchar("cardio_test_result"), // resultado do teste
+  flexibility: varchar("flexibility"), // poor, fair, good, excellent
+  postureAssessment: text("posture_assessment"), // desvios observados
+  balanceCoordination: varchar("balance_coordination"), // poor, fair, good, excellent
 
-  // 8. Avaliação clínica
+  // 8. Avaliação clínica básica
   bloodPressure: varchar("blood_pressure"),
   restingHeartRate: integer("resting_heart_rate"),
-  oxygenSaturation: decimal("oxygen_saturation", { precision: 4, scale: 2 }),
+  oxygenSaturation: decimal("oxygen_saturation"),
   subjectiveEffortPerception: text("subjective_effort_perception"),
 
   // Observações gerais
   additionalNotes: text("additional_notes"),
+
   assessmentDate: timestamp("assessment_date").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -518,11 +523,26 @@ export const insertWorkoutCommentSchema = createInsertSchema(
 
 export const insertPhysicalAssessmentSchema = createInsertSchema(
   physicalAssessments
-).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    // Performance Assessment fields
+    maxPushUps: z.number().int().positive().optional(),
+    maxSquats: z.number().int().positive().optional(),
+    maxSitUps: z.number().int().positive().optional(),
+    plankTime: z.number().int().positive().optional(),
+    cardioTest: z.string().optional(),
+    cardioTestResult: z.string().optional(),
+    flexibility: z.enum(["poor", "fair", "good", "excellent"]).optional(),
+    postureAssessment: z.string().optional(),
+    balanceCoordination: z
+      .enum(["poor", "fair", "good", "excellent"])
+      .optional(),
+  });
 
 // Types
 export type InsertUser = typeof users.$inferInsert;
@@ -625,4 +645,17 @@ export const bodyMeasurementSchema = z.object({
   hips: z.number().optional(),
   arms: z.number().optional(),
   thighs: z.number().optional(),
+});
+
+export const physicalAssessmentSchema = insertPhysicalAssessmentSchema.extend({
+  // Performance Assessment fields
+  maxPushUps: z.number().int().positive().optional(),
+  maxSquats: z.number().int().positive().optional(),
+  maxSitUps: z.number().int().positive().optional(),
+  plankTime: z.number().int().positive().optional(),
+  cardioTest: z.string().optional(),
+  cardioTestResult: z.string().optional(),
+  flexibility: z.enum(["poor", "fair", "good", "excellent"]).optional(),
+  postureAssessment: z.string().optional(),
+  balanceCoordination: z.enum(["poor", "fair", "good", "excellent"]).optional(),
 });

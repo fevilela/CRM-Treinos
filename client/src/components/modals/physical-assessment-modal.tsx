@@ -47,6 +47,63 @@ const assessmentFormSchema = insertPhysicalAssessmentSchema
   })
   .extend({
     studentId: z.string().min(1, "Selecione um aluno"),
+    assessmentDate: z.coerce.date().optional(), // Adicionado campo de data da avaliação
+    profession: z.string().optional(),
+    healthDiagnoses: z.string().optional(),
+    medications: z.string().optional(),
+    injuriesSurgeries: z.string().optional(),
+    currentPains: z.string().optional(),
+    familyHistory: z.string().optional(),
+    medicalClearance: z.boolean().optional(),
+    pastActivities: z.string().optional(),
+    currentActivities: z.string().optional(),
+    activityLevel: z.enum(["sedentary", "moderate", "very_active"]).optional(),
+    currentResistance: z.enum(["low", "medium", "high"]).optional(),
+    currentStrength: z.enum(["low", "medium", "high"]).optional(),
+    primaryGoal: z.string().optional(),
+    specificDeadline: z.string().optional(),
+    targetBodyPart: z.string().optional(),
+    lifestyleChange: z.boolean().optional(),
+    dailyNutrition: z.string().optional(), // Renomeado de nutritionHabits para dailyNutrition
+    supplements: z.string().optional(),
+    sleepQuality: z.string().optional(),
+    stressLevel: z.enum(["low", "moderate", "high"]).optional(),
+    smoking: z.enum(["none", "occasional", "regular"]).optional(),
+    alcoholConsumption: z.enum(["none", "occasional", "regular"]).optional(),
+    caffeineConsumption: z.enum(["none", "moderate", "high"]).optional(),
+    currentWeight: z.number().optional(),
+    currentHeight: z.number().optional(),
+    bmi: z.number().optional(),
+    waistCirc: z.number().optional(),
+    hipCirc: z.number().optional(),
+    abdomenCirc: z.number().optional(),
+    armCirc: z.number().optional(),
+    thighCirc: z.number().optional(),
+    calfCirc: z.number().optional(),
+    chestCirc: z.number().optional(),
+    bodyFatPercentage: z.number().optional(),
+    leanMass: z.number().optional(),
+    bodyWater: z.number().optional(),
+    bloodPressure: z.string().optional(),
+    restingHeartRate: z.number().optional(),
+    oxygenSaturation: z.number().optional(),
+    subjectiveEffortPerception: z.string().optional(),
+    // Performance/Conditioning Assessment fields
+    maxPushUps: z.number().int().positive().or(z.literal(0)).optional(),
+    maxSquats: z.number().int().positive().or(z.literal(0)).optional(),
+    maxSitUps: z.number().int().positive().or(z.literal(0)).optional(),
+    plankTime: z.number().int().positive().or(z.literal(0)).optional(),
+    cardioTest: z.string().optional(),
+    cardioTestResult: z.string().optional(),
+    flexibility: z.enum(["poor", "fair", "good", "excellent"]).optional(),
+    postureAssessment: z.string().optional(),
+    balanceCoordination: z
+      .enum(["poor", "fair", "good", "excellent"])
+      .optional(),
+    additionalNotes: z.string().optional(),
+    // Novas propriedades adicionadas
+    nutritionHabits: z.string().optional(), // Campo adicionado para hábitos alimentares
+    substanceUse: z.string().optional(), // Campo adicionado para tabagismo, álcool, cafeína
   });
 
 type AssessmentFormData = z.infer<typeof assessmentFormSchema>;
@@ -73,6 +130,7 @@ export default function PhysicalAssessmentModal({
     resolver: zodResolver(assessmentFormSchema),
     defaultValues: {
       studentId: "",
+      assessmentDate: undefined, // Inicializado como undefined
       profession: "",
       healthDiagnoses: "",
       medications: "",
@@ -82,23 +140,51 @@ export default function PhysicalAssessmentModal({
       medicalClearance: false,
       pastActivities: "",
       currentActivities: "",
-      activityLevel: "",
-      currentResistance: "",
-      currentStrength: "",
+      activityLevel: undefined,
+      currentResistance: undefined,
+      currentStrength: undefined,
       primaryGoal: "",
       specificDeadline: "",
       targetBodyPart: "",
       lifestyleChange: false,
-      dailyNutrition: "",
+      dailyNutrition: "", // Corrigido para dailyNutrition
       supplements: "",
       sleepQuality: "",
-      stressLevel: "",
-      smoking: "",
-      alcoholConsumption: "",
-      caffeineConsumption: "",
+      stressLevel: undefined,
+      smoking: undefined,
+      alcoholConsumption: undefined,
+      caffeineConsumption: undefined,
+      currentWeight: undefined,
+      currentHeight: undefined,
+      bmi: undefined,
+      waistCirc: undefined,
+      hipCirc: undefined,
+      abdomenCirc: undefined,
+      armCirc: undefined,
+      thighCirc: undefined,
+      calfCirc: undefined,
+      chestCirc: undefined,
+      bodyFatPercentage: undefined,
+      leanMass: undefined,
+      bodyWater: undefined,
       bloodPressure: "",
+      restingHeartRate: undefined,
+      oxygenSaturation: undefined,
       subjectiveEffortPerception: "",
+      // Performance/Conditioning Assessment fields
+      maxPushUps: undefined,
+      maxSquats: undefined,
+      maxSitUps: undefined,
+      plankTime: undefined,
+      cardioTest: "",
+      cardioTestResult: "",
+      flexibility: undefined,
+      postureAssessment: "",
+      balanceCoordination: undefined,
       additionalNotes: "",
+      // Novas propriedades inicializadas
+      nutritionHabits: "",
+      substanceUse: "",
     },
   });
 
@@ -118,6 +204,9 @@ export default function PhysicalAssessmentModal({
     if (assessment && isOpen) {
       form.reset({
         studentId: assessment.studentId,
+        assessmentDate: assessment.assessmentDate
+          ? new Date(assessment.assessmentDate)
+          : undefined,
         profession: assessment.profession || "",
         healthDiagnoses: assessment.healthDiagnoses || "",
         medications: assessment.medications || "",
@@ -127,9 +216,26 @@ export default function PhysicalAssessmentModal({
         medicalClearance: assessment.medicalClearance || false,
         pastActivities: assessment.pastActivities || "",
         currentActivities: assessment.currentActivities || "",
-        activityLevel: assessment.activityLevel || "",
-        currentResistance: assessment.currentResistance || "",
-        currentStrength: assessment.currentStrength || "",
+        activityLevel:
+          assessment.activityLevel &&
+          ["sedentary", "moderate", "very_active"].includes(
+            assessment.activityLevel
+          )
+            ? (assessment.activityLevel as
+                | "sedentary"
+                | "moderate"
+                | "very_active")
+            : undefined,
+        currentResistance:
+          assessment.currentResistance &&
+          ["low", "medium", "high"].includes(assessment.currentResistance)
+            ? (assessment.currentResistance as "low" | "medium" | "high")
+            : undefined,
+        currentStrength:
+          assessment.currentStrength &&
+          ["low", "medium", "high"].includes(assessment.currentStrength)
+            ? (assessment.currentStrength as "low" | "medium" | "high")
+            : undefined,
         primaryGoal: assessment.primaryGoal || "",
         specificDeadline: assessment.specificDeadline || "",
         targetBodyPart: assessment.targetBodyPart || "",
@@ -137,10 +243,31 @@ export default function PhysicalAssessmentModal({
         dailyNutrition: assessment.dailyNutrition || "",
         supplements: assessment.supplements || "",
         sleepQuality: assessment.sleepQuality || "",
-        stressLevel: assessment.stressLevel || "",
-        smoking: assessment.smoking || "",
-        alcoholConsumption: assessment.alcoholConsumption || "",
-        caffeineConsumption: assessment.caffeineConsumption || "",
+        stressLevel:
+          assessment.stressLevel &&
+          ["low", "moderate", "high"].includes(assessment.stressLevel)
+            ? (assessment.stressLevel as "low" | "moderate" | "high")
+            : undefined,
+        smoking:
+          assessment.smoking &&
+          ["none", "occasional", "regular"].includes(assessment.smoking)
+            ? (assessment.smoking as "none" | "occasional" | "regular")
+            : undefined,
+        alcoholConsumption:
+          assessment.alcoholConsumption &&
+          ["none", "occasional", "regular"].includes(
+            assessment.alcoholConsumption
+          )
+            ? (assessment.alcoholConsumption as
+                | "none"
+                | "occasional"
+                | "regular")
+            : undefined,
+        caffeineConsumption:
+          assessment.caffeineConsumption &&
+          ["none", "moderate", "high"].includes(assessment.caffeineConsumption)
+            ? (assessment.caffeineConsumption as "none" | "moderate" | "high")
+            : undefined,
         currentWeight: assessment.currentWeight
           ? Number(assessment.currentWeight)
           : undefined,
@@ -176,11 +303,38 @@ export default function PhysicalAssessmentModal({
           ? Number(assessment.oxygenSaturation)
           : undefined,
         subjectiveEffortPerception: assessment.subjectiveEffortPerception || "",
+        // Performance/Conditioning Assessment fields
+        maxPushUps: assessment.maxPushUps || undefined,
+        maxSquats: assessment.maxSquats || undefined,
+        maxSitUps: assessment.maxSitUps || undefined,
+        plankTime: assessment.plankTime || undefined,
+        cardioTest: assessment.cardioTest || "",
+        cardioTestResult: assessment.cardioTestResult || "",
+        flexibility:
+          assessment.flexibility &&
+          ["poor", "fair", "good", "excellent"].includes(assessment.flexibility)
+            ? (assessment.flexibility as "poor" | "fair" | "good" | "excellent")
+            : undefined,
+        postureAssessment: assessment.postureAssessment || "",
+        balanceCoordination:
+          assessment.balanceCoordination &&
+          ["poor", "fair", "good", "excellent"].includes(
+            assessment.balanceCoordination
+          )
+            ? (assessment.balanceCoordination as
+                | "poor"
+                | "fair"
+                | "good"
+                | "excellent")
+            : undefined,
         additionalNotes: assessment.additionalNotes || "",
+        nutritionHabits: assessment.dailyNutrition || "",
+        substanceUse: "", // Campo não existe no schema, mantém vazio
       });
     } else if (isOpen) {
       form.reset({
         studentId: "",
+        assessmentDate: undefined,
         profession: "",
         healthDiagnoses: "",
         medications: "",
@@ -190,9 +344,9 @@ export default function PhysicalAssessmentModal({
         medicalClearance: false,
         pastActivities: "",
         currentActivities: "",
-        activityLevel: "",
-        currentResistance: "",
-        currentStrength: "",
+        activityLevel: undefined,
+        currentResistance: undefined,
+        currentStrength: undefined,
         primaryGoal: "",
         specificDeadline: "",
         targetBodyPart: "",
@@ -200,13 +354,25 @@ export default function PhysicalAssessmentModal({
         dailyNutrition: "",
         supplements: "",
         sleepQuality: "",
-        stressLevel: "",
-        smoking: "",
-        alcoholConsumption: "",
-        caffeineConsumption: "",
+        stressLevel: undefined,
+        smoking: undefined,
+        alcoholConsumption: undefined,
+        caffeineConsumption: undefined,
         bloodPressure: "",
         subjectiveEffortPerception: "",
+        // Performance/Conditioning Assessment fields
+        maxPushUps: undefined,
+        maxSquats: undefined,
+        maxSitUps: undefined,
+        plankTime: undefined,
+        cardioTest: "",
+        cardioTestResult: "",
+        flexibility: undefined,
+        postureAssessment: "",
+        balanceCoordination: undefined,
         additionalNotes: "",
+        nutritionHabits: "",
+        substanceUse: "",
       });
     }
   }, [assessment, isOpen, form]);
@@ -358,13 +524,14 @@ export default function PhysicalAssessmentModal({
             />
 
             <Tabs defaultValue="identification" className="w-full">
-              <TabsList className="grid w-full grid-cols-8">
+              <TabsList className="grid w-full grid-cols-9">
                 <TabsTrigger value="identification">Identificação</TabsTrigger>
                 <TabsTrigger value="health">Saúde</TabsTrigger>
                 <TabsTrigger value="physical">Física</TabsTrigger>
                 <TabsTrigger value="goals">Objetivos</TabsTrigger>
                 <TabsTrigger value="lifestyle">Hábitos</TabsTrigger>
                 <TabsTrigger value="anthropometric">Antropométrica</TabsTrigger>
+                <TabsTrigger value="performance">Desempenho</TabsTrigger>
                 <TabsTrigger value="clinical">Clínica</TabsTrigger>
                 <TabsTrigger value="notes">Observações</TabsTrigger>
               </TabsList>
@@ -377,23 +544,57 @@ export default function PhysicalAssessmentModal({
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="profession"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Profissão</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Ex: Engenheiro, Professor, Vendedor..."
-                              {...field}
-                              value={field.value || ""}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Data da Avaliação */}
+                      <FormField
+                        control={form.control}
+                        name="assessmentDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Data da Avaliação</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="date"
+                                {...field}
+                                value={
+                                  field.value
+                                    ? new Date(field.value)
+                                        .toISOString()
+                                        .split("T")[0]
+                                    : ""
+                                }
+                                onChange={(e) => {
+                                  const dateValue = e.target.value
+                                    ? new Date(e.target.value)
+                                    : null;
+                                  field.onChange(dateValue);
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Profissão */}
+                      <FormField
+                        control={form.control}
+                        name="profession"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Profissão</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Ex: Engenheiro, Professor, Vendedor..."
+                                {...field}
+                                value={field.value?.toString() ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -411,13 +612,15 @@ export default function PhysicalAssessmentModal({
                       name="healthDiagnoses"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Doenças diagnosticadas</FormLabel>
+                          <FormLabel>
+                            Possui alguma doença diagnosticada?
+                          </FormLabel>
                           <FormControl>
                             <Textarea
                               placeholder="Hipertensão, diabetes, problemas cardíacos, respiratórios, etc."
                               rows={3}
                               {...field}
-                              value={field.value || ""}
+                              value={field.value?.toString() ?? ""}
                             />
                           </FormControl>
                           <FormMessage />
@@ -430,13 +633,13 @@ export default function PhysicalAssessmentModal({
                       name="medications"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Medicações em uso</FormLabel>
+                          <FormLabel>Faz uso de medicação? Qual?</FormLabel>
                           <FormControl>
                             <Textarea
-                              placeholder="Liste todas as medicações e dosagens..."
+                              placeholder="Liste medicamentos e dosagens..."
                               rows={2}
                               {...field}
-                              value={field.value || ""}
+                              value={field.value?.toString() ?? ""}
                             />
                           </FormControl>
                           <FormMessage />
@@ -449,13 +652,15 @@ export default function PhysicalAssessmentModal({
                       name="injuriesSurgeries"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Lesões, cirurgias ou fraturas</FormLabel>
+                          <FormLabel>
+                            Já teve lesões, cirurgias ou fraturas?
+                          </FormLabel>
                           <FormControl>
                             <Textarea
-                              placeholder="Histórico de lesões, cirurgias ou fraturas..."
+                              placeholder="Descreva o histórico de lesões, cirurgias ou fraturas..."
                               rows={2}
                               {...field}
-                              value={field.value || ""}
+                              value={field.value?.toString() ?? ""}
                             />
                           </FormControl>
                           <FormMessage />
@@ -469,14 +674,14 @@ export default function PhysicalAssessmentModal({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
-                            Dores articulares ou musculares atuais
+                            Possui dores articulares ou musculares atualmente?
                           </FormLabel>
                           <FormControl>
                             <Textarea
-                              placeholder="Descreva dores atuais e intensidade..."
+                              placeholder="Descreva dores atuais e localização..."
                               rows={2}
                               {...field}
-                              value={field.value || ""}
+                              value={field.value?.toString() ?? ""}
                             />
                           </FormControl>
                           <FormMessage />
@@ -489,13 +694,16 @@ export default function PhysicalAssessmentModal({
                       name="familyHistory"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Histórico familiar</FormLabel>
+                          <FormLabel>
+                            Histórico familiar de doenças cardiovasculares ou
+                            metabólicas?
+                          </FormLabel>
                           <FormControl>
                             <Textarea
-                              placeholder="Doenças cardiovasculares ou metabólicas na família..."
+                              placeholder="Informe doenças na família (pais, avós, irmãos)..."
                               rows={2}
                               {...field}
-                              value={field.value || ""}
+                              value={field.value?.toString() ?? ""}
                             />
                           </FormControl>
                           <FormMessage />
@@ -510,14 +718,14 @@ export default function PhysicalAssessmentModal({
                         <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                           <FormControl>
                             <Checkbox
-                              checked={field.value}
+                              checked={field.value || false}
                               onCheckedChange={field.onChange}
                             />
                           </FormControl>
                           <div className="space-y-1 leading-none">
                             <FormLabel>
-                              Foi liberado por um médico para praticar
-                              exercícios físicos
+                              Já foi liberado por um médico para praticar
+                              exercícios físicos?
                             </FormLabel>
                           </div>
                         </FormItem>
@@ -541,14 +749,15 @@ export default function PhysicalAssessmentModal({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
-                            Atividades físicas praticadas anteriormente
+                            Já praticou atividades físicas regularmente? Quais?
+                            Por quanto tempo?
                           </FormLabel>
                           <FormControl>
                             <Textarea
-                              placeholder="Quais atividades praticou? Por quanto tempo?"
+                              placeholder="Ex: Futebol por 5 anos, academia por 2 anos, corrida..."
                               rows={3}
                               {...field}
-                              value={field.value || ""}
+                              value={field.value?.toString() ?? ""}
                             />
                           </FormControl>
                           <FormMessage />
@@ -561,13 +770,15 @@ export default function PhysicalAssessmentModal({
                       name="currentActivities"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Atividades físicas atuais</FormLabel>
+                          <FormLabel>
+                            Atualmente pratica algum esporte ou exercício?
+                          </FormLabel>
                           <FormControl>
                             <Textarea
-                              placeholder="Pratica algum esporte ou exercício atualmente?"
+                              placeholder="Descreva atividades atuais, frequência e intensidade..."
                               rows={2}
                               {...field}
-                              value={field.value || ""}
+                              value={field.value?.toString() ?? ""}
                             />
                           </FormControl>
                           <FormMessage />
@@ -596,10 +807,10 @@ export default function PhysicalAssessmentModal({
                                   Sedentário
                                 </SelectItem>
                                 <SelectItem value="moderate">
-                                  Ativo moderado
+                                  Ativo Moderado
                                 </SelectItem>
                                 <SelectItem value="very_active">
-                                  Muito ativo
+                                  Muito Ativo
                                 </SelectItem>
                               </SelectContent>
                             </Select>
@@ -613,7 +824,9 @@ export default function PhysicalAssessmentModal({
                         name="currentResistance"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Resistência atual</FormLabel>
+                            <FormLabel>
+                              Como avalia sua resistência hoje?
+                            </FormLabel>
                             <Select
                               value={field.value || ""}
                               onValueChange={field.onChange}
@@ -639,7 +852,7 @@ export default function PhysicalAssessmentModal({
                         name="currentStrength"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Força atual</FormLabel>
+                            <FormLabel>Como avalia sua força hoje?</FormLabel>
                             <Select
                               value={field.value || ""}
                               onValueChange={field.onChange}
@@ -667,7 +880,7 @@ export default function PhysicalAssessmentModal({
               <TabsContent value="goals" className="space-y-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">🎯 Objetivos</CardTitle>
+                    <CardTitle>Objetivos</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <FormField
@@ -675,13 +888,15 @@ export default function PhysicalAssessmentModal({
                       name="primaryGoal"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Objetivo principal</FormLabel>
+                          <FormLabel>
+                            Qual é o seu principal objetivo?
+                          </FormLabel>
                           <FormControl>
                             <Textarea
-                              placeholder="Emagrecimento, hipertrofia, condicionamento, saúde, estética, desempenho..."
+                              placeholder="Emagrecimento, hipertrofia, condicionamento, saúde, estética, desempenho, etc."
                               rows={3}
                               {...field}
-                              value={field.value || ""}
+                              value={field.value?.toString() ?? ""}
                             />
                           </FormControl>
                           <FormMessage />
@@ -694,12 +909,14 @@ export default function PhysicalAssessmentModal({
                       name="specificDeadline"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Prazo/meta específica</FormLabel>
+                          <FormLabel>
+                            Tem algum prazo/meta específica?
+                          </FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="Ex: Perder 10kg em 6 meses, ganhar 5kg de massa em 1 ano..."
+                              placeholder="Ex: 3 meses, até dezembro, para o verão..."
                               {...field}
-                              value={field.value || ""}
+                              value={field.value?.toString() ?? ""}
                             />
                           </FormControl>
                           <FormMessage />
@@ -713,13 +930,13 @@ export default function PhysicalAssessmentModal({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
-                            Parte do corpo que gostaria mais de desenvolver
+                            Qual parte do corpo gostaria mais de desenvolver?
                           </FormLabel>
                           <FormControl>
                             <Input
                               placeholder="Ex: Pernas, braços, abdômen, glúteos..."
                               {...field}
-                              value={field.value || ""}
+                              value={field.value?.toString() ?? ""}
                             />
                           </FormControl>
                           <FormMessage />
@@ -734,14 +951,14 @@ export default function PhysicalAssessmentModal({
                         <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                           <FormControl>
                             <Checkbox
-                              checked={field.value}
+                              checked={field.value || false}
                               onCheckedChange={field.onChange}
                             />
                           </FormControl>
                           <div className="space-y-1 leading-none">
                             <FormLabel>
                               Está disposto(a) a mudar hábitos de sono e
-                              alimentação junto com o treino
+                              alimentação junto com o treino?
                             </FormLabel>
                           </div>
                         </FormItem>
@@ -754,23 +971,21 @@ export default function PhysicalAssessmentModal({
               <TabsContent value="lifestyle" className="space-y-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">
-                      🍎 Hábitos de Vida
-                    </CardTitle>
+                    <CardTitle>Hábitos de Vida</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <FormField
                       control={form.control}
-                      name="dailyNutrition"
+                      name="nutritionHabits"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Alimentação diária</FormLabel>
+                          <FormLabel>Como é sua alimentação diária?</FormLabel>
                           <FormControl>
                             <Textarea
-                              placeholder="Número de refeições, qualidade, consumo de ultraprocessados, água..."
+                              placeholder="Número de refeições, qualidade, consumo de ultraprocessados, água, álcool..."
                               rows={3}
                               {...field}
-                              value={field.value || ""}
+                              value={field.value?.toString() ?? ""}
                             />
                           </FormControl>
                           <FormMessage />
@@ -783,12 +998,13 @@ export default function PhysicalAssessmentModal({
                       name="supplements"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Suplementos</FormLabel>
+                          <FormLabel>Consome suplementos? Quais?</FormLabel>
                           <FormControl>
-                            <Input
-                              placeholder="Whey, creatina, vitaminas..."
+                            <Textarea
+                              placeholder="Liste os suplementos utilizados..."
+                              rows={2}
                               {...field}
-                              value={field.value || ""}
+                              value={field.value?.toString() ?? ""}
                             />
                           </FormControl>
                           <FormMessage />
@@ -801,12 +1017,15 @@ export default function PhysicalAssessmentModal({
                       name="sleepQuality"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Qualidade do sono</FormLabel>
+                          <FormLabel>
+                            Como é seu sono? (horas/dia, qualidade, insônia)
+                          </FormLabel>
                           <FormControl>
-                            <Input
-                              placeholder="Horas por dia, qualidade, problemas de insônia..."
+                            <Textarea
+                              placeholder="Ex: 7-8 horas, boa qualidade, sem insônia..."
+                              rows={2}
                               {...field}
-                              value={field.value || ""}
+                              value={field.value?.toString() ?? ""}
                             />
                           </FormControl>
                           <FormMessage />
@@ -814,121 +1033,52 @@ export default function PhysicalAssessmentModal({
                       )}
                     />
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="stressLevel"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Nível de estresse</FormLabel>
-                            <Select
-                              value={field.value || ""}
-                              onValueChange={field.onChange}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="low">Baixo</SelectItem>
-                                <SelectItem value="moderate">
-                                  Moderado
-                                </SelectItem>
-                                <SelectItem value="high">Alto</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                    <FormField
+                      control={form.control}
+                      name="stressLevel"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nível de estresse no dia a dia</FormLabel>
+                          <Select
+                            value={field.value || ""}
+                            onValueChange={field.onChange}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="low">Baixo</SelectItem>
+                              <SelectItem value="moderate">Moderado</SelectItem>
+                              <SelectItem value="high">Alto</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                      <FormField
-                        control={form.control}
-                        name="smoking"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Tabagismo</FormLabel>
-                            <Select
-                              value={field.value || ""}
-                              onValueChange={field.onChange}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="none">Não fuma</SelectItem>
-                                <SelectItem value="occasional">
-                                  Ocasional
-                                </SelectItem>
-                                <SelectItem value="regular">Regular</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="alcoholConsumption"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Consumo de álcool</FormLabel>
-                            <Select
-                              value={field.value || ""}
-                              onValueChange={field.onChange}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="none">Não bebe</SelectItem>
-                                <SelectItem value="occasional">
-                                  Ocasional
-                                </SelectItem>
-                                <SelectItem value="regular">Regular</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="caffeineConsumption"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Consumo de cafeína</FormLabel>
-                            <Select
-                              value={field.value || ""}
-                              onValueChange={field.onChange}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="none">
-                                  Não consome
-                                </SelectItem>
-                                <SelectItem value="moderate">
-                                  Moderado
-                                </SelectItem>
-                                <SelectItem value="high">Alto</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                    <FormField
+                      control={form.control}
+                      name="substanceUse"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            Tabagismo / consumo de álcool / cafeína?
+                          </FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Descreva o consumo de cigarros, bebidas alcoólicas e cafeína..."
+                              rows={2}
+                              {...field}
+                              value={field.value?.toString() ?? ""}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -954,7 +1104,7 @@ export default function PhysicalAssessmentModal({
                                 step="0.1"
                                 placeholder="70.5"
                                 {...field}
-                                value={field.value ?? ""}
+                                value={field.value?.toString() ?? ""}
                                 onChange={(e) =>
                                   field.onChange(
                                     e.target.value
@@ -981,7 +1131,7 @@ export default function PhysicalAssessmentModal({
                                 step="0.1"
                                 placeholder="175"
                                 {...field}
-                                value={field.value ?? ""}
+                                value={field.value?.toString() ?? ""}
                                 onChange={(e) =>
                                   field.onChange(
                                     e.target.value
@@ -1011,7 +1161,7 @@ export default function PhysicalAssessmentModal({
                                 placeholder="23.4"
                                 readOnly
                                 {...field}
-                                value={field.value ?? ""}
+                                value={field.value?.toString() ?? ""}
                                 className="bg-gray-50"
                               />
                             </FormControl>
@@ -1038,7 +1188,7 @@ export default function PhysicalAssessmentModal({
                                   step="0.1"
                                   placeholder="80"
                                   {...field}
-                                  value={field.value ?? ""}
+                                  value={field.value?.toString() ?? ""}
                                   onChange={(e) =>
                                     field.onChange(
                                       e.target.value
@@ -1064,7 +1214,7 @@ export default function PhysicalAssessmentModal({
                                   step="0.1"
                                   placeholder="95"
                                   {...field}
-                                  value={field.value ?? ""}
+                                  value={field.value?.toString() ?? ""}
                                   onChange={(e) =>
                                     field.onChange(
                                       e.target.value
@@ -1090,7 +1240,7 @@ export default function PhysicalAssessmentModal({
                                   step="0.1"
                                   placeholder="85"
                                   {...field}
-                                  value={field.value ?? ""}
+                                  value={field.value?.toString() ?? ""}
                                   onChange={(e) =>
                                     field.onChange(
                                       e.target.value
@@ -1116,7 +1266,7 @@ export default function PhysicalAssessmentModal({
                                   step="0.1"
                                   placeholder="32"
                                   {...field}
-                                  value={field.value ?? ""}
+                                  value={field.value?.toString() ?? ""}
                                   onChange={(e) =>
                                     field.onChange(
                                       e.target.value
@@ -1142,7 +1292,7 @@ export default function PhysicalAssessmentModal({
                                   step="0.1"
                                   placeholder="55"
                                   {...field}
-                                  value={field.value ?? ""}
+                                  value={field.value?.toString() ?? ""}
                                   onChange={(e) =>
                                     field.onChange(
                                       e.target.value
@@ -1170,7 +1320,7 @@ export default function PhysicalAssessmentModal({
                                   step="0.1"
                                   placeholder="36"
                                   {...field}
-                                  value={field.value ?? ""}
+                                  value={field.value?.toString() ?? ""}
                                   onChange={(e) =>
                                     field.onChange(
                                       e.target.value
@@ -1196,7 +1346,7 @@ export default function PhysicalAssessmentModal({
                                   step="0.1"
                                   placeholder="95"
                                   {...field}
-                                  value={field.value ?? ""}
+                                  value={field.value?.toString() ?? ""}
                                   onChange={(e) =>
                                     field.onChange(
                                       e.target.value
@@ -1225,7 +1375,7 @@ export default function PhysicalAssessmentModal({
                                 step="0.1"
                                 placeholder="15.5"
                                 {...field}
-                                value={field.value ?? ""}
+                                value={field.value?.toString() ?? ""}
                                 onChange={(e) =>
                                   field.onChange(
                                     e.target.value
@@ -1252,7 +1402,7 @@ export default function PhysicalAssessmentModal({
                                 step="0.1"
                                 placeholder="60.5"
                                 {...field}
-                                value={field.value ?? ""}
+                                value={field.value?.toString() ?? ""}
                                 onChange={(e) =>
                                   field.onChange(
                                     e.target.value
@@ -1279,7 +1429,7 @@ export default function PhysicalAssessmentModal({
                                 step="0.1"
                                 placeholder="60.2"
                                 {...field}
-                                value={field.value ?? ""}
+                                value={field.value?.toString() ?? ""}
                                 onChange={(e) =>
                                   field.onChange(
                                     e.target.value
@@ -1298,12 +1448,249 @@ export default function PhysicalAssessmentModal({
                 </Card>
               </TabsContent>
 
-              <TabsContent value="clinical" className="space-y-4">
+              <TabsContent value="performance" className="space-y-4">
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">
-                      🫀 Avaliação Clínica Básica
+                      💪 Avaliação de Desempenho/Condicionamento
                     </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="maxPushUps"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              Teste de força - Flexões máximas
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="0"
+                                {...field}
+                                value={field.value?.toString() ?? ""}
+                                onChange={(e) =>
+                                  field.onChange(
+                                    e.target.value
+                                      ? parseInt(e.target.value)
+                                      : undefined
+                                  )
+                                }
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="maxSquats"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              Teste de força - Agachamentos máximos
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="0"
+                                {...field}
+                                value={field.value?.toString() ?? ""}
+                                onChange={(e) =>
+                                  field.onChange(
+                                    e.target.value
+                                      ? parseInt(e.target.value)
+                                      : undefined
+                                  )
+                                }
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="maxSitUps"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              Teste de força - Abdominais máximos
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="0"
+                                {...field}
+                                value={field.value?.toString() ?? ""}
+                                onChange={(e) =>
+                                  field.onChange(
+                                    e.target.value
+                                      ? parseInt(e.target.value)
+                                      : undefined
+                                  )
+                                }
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="plankTime"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Tempo de Prancha (segundos)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="0"
+                                {...field}
+                                value={field.value?.toString() ?? ""}
+                                onChange={(e) =>
+                                  field.onChange(
+                                    e.target.value
+                                      ? parseInt(e.target.value)
+                                      : undefined
+                                  )
+                                }
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="cardioTest"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            Teste de resistência cardiovascular
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Ex: corrida de 12 minutos, esteira, bicicleta..."
+                              {...field}
+                              value={field.value?.toString() ?? ""}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="cardioTestResult"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            Resultado do teste cardiovascular
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Ex: 2000m em 12 min, 150 bpm máximo..."
+                              {...field}
+                              value={field.value?.toString() ?? ""}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="flexibility"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              Flexibilidade (teste de sentar e alcançar)
+                            </FormLabel>
+                            <Select
+                              value={field.value || ""}
+                              onValueChange={field.onChange}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="poor">Ruim</SelectItem>
+                                <SelectItem value="fair">Regular</SelectItem>
+                                <SelectItem value="good">Boa</SelectItem>
+                                <SelectItem value="excellent">
+                                  Excelente
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="balanceCoordination"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Equilíbrio e coordenação</FormLabel>
+                            <Select
+                              value={field.value || ""}
+                              onValueChange={field.onChange}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="poor">Ruim</SelectItem>
+                                <SelectItem value="fair">Regular</SelectItem>
+                                <SelectItem value="good">Boa</SelectItem>
+                                <SelectItem value="excellent">
+                                  Excelente
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="postureAssessment"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Mobilidade articular e postura</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Observação de desvios posturais: lordose, cifose, escoliose, etc."
+                              rows={3}
+                              {...field}
+                              value={field.value?.toString() ?? ""}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Avaliação Clínica Básica</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1315,9 +1702,9 @@ export default function PhysicalAssessmentModal({
                             <FormLabel>Pressão arterial</FormLabel>
                             <FormControl>
                               <Input
-                                placeholder="120/80"
+                                placeholder="Ex: 120/80 mmHg"
                                 {...field}
-                                value={field.value || ""}
+                                value={field.value?.toString() ?? ""}
                               />
                             </FormControl>
                             <FormMessage />
@@ -1330,13 +1717,15 @@ export default function PhysicalAssessmentModal({
                         name="restingHeartRate"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>FC repouso (bpm)</FormLabel>
+                            <FormLabel>
+                              Frequência cardíaca de repouso
+                            </FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
-                                placeholder="70"
+                                placeholder="bpm"
                                 {...field}
-                                value={field.value ?? ""}
+                                value={field.value?.toString() ?? ""}
                                 onChange={(e) =>
                                   field.onChange(
                                     e.target.value
@@ -1356,14 +1745,14 @@ export default function PhysicalAssessmentModal({
                         name="oxygenSaturation"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Saturação O2 (%)</FormLabel>
+                            <FormLabel>Saturação de oxigênio</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
                                 step="0.1"
-                                placeholder="98.5"
+                                placeholder="%"
                                 {...field}
-                                value={field.value ?? ""}
+                                value={field.value?.toString() ?? ""}
                                 onChange={(e) =>
                                   field.onChange(
                                     e.target.value
@@ -1390,7 +1779,7 @@ export default function PhysicalAssessmentModal({
                               placeholder="Escala Borg ou outras observações sobre percepção de esforço..."
                               rows={2}
                               {...field}
-                              value={field.value || ""}
+                              value={field.value?.toString() ?? ""}
                             />
                           </FormControl>
                           <FormMessage />
@@ -1420,7 +1809,7 @@ export default function PhysicalAssessmentModal({
                               placeholder="Observações importantes, restrições específicas, recomendações..."
                               rows={6}
                               {...field}
-                              value={field.value || ""}
+                              value={field.value?.toString() ?? ""}
                             />
                           </FormControl>
                           <FormMessage />
