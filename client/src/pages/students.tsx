@@ -4,7 +4,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,9 +55,10 @@ export default function Students() {
     },
   });
 
-  const filteredStudents = students?.filter(student =>
-    student.name.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  const filteredStudents =
+    students?.filter((student) =>
+      student.name.toLowerCase().includes(searchTerm.toLowerCase())
+    ) || [];
 
   const handleEditStudent = (student: Student) => {
     setSelectedStudent(student);
@@ -118,132 +118,140 @@ export default function Students() {
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
-      <Sidebar />
-      
-      <div className="flex-1 ml-64">
-        <Header 
-          title="Alunos" 
-          subtitle="Gerencie seus alunos e acompanhe o progresso"
-        />
-        
-        <main className="p-6">
-          <div className="mb-6 flex justify-between items-center">
-            <div className="flex-1 max-w-md">
-              <Input
-                placeholder="Buscar alunos..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                data-testid="input-search-students"
-              />
-            </div>
-            <Button 
-              onClick={handleCreateStudent}
-              data-testid="button-create-student"
-            >
-              <i className="fas fa-plus mr-2"></i>
-              Novo Aluno
-            </Button>
+    <div>
+      <Header
+        title="Alunos"
+        subtitle="Gerencie seus alunos e acompanhe o progresso"
+      />
+
+      <main className="p-6">
+        <div className="mb-6 flex justify-between items-center">
+          <div className="flex-1 max-w-md">
+            <Input
+              placeholder="Buscar alunos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              data-testid="input-search-students"
+            />
           </div>
+          <Button
+            onClick={handleCreateStudent}
+            data-testid="button-create-student"
+          >
+            <i className="fas fa-plus mr-2"></i>
+            Novo Aluno
+          </Button>
+        </div>
 
-          {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                <p className="mt-2 text-gray-600">Carregando alunos...</p>
-              </div>
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-2 text-gray-600">Carregando alunos...</p>
             </div>
-          ) : filteredStudents.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <i className="fas fa-users text-gray-400 text-4xl mb-4"></i>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  {students?.length === 0 ? "Nenhum aluno cadastrado" : "Nenhum aluno encontrado"}
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  {students?.length === 0 
-                    ? "Comece adicionando seu primeiro aluno ao sistema"
-                    : "Tente ajustar os termos de busca"
-                  }
-                </p>
-                {students?.length === 0 && (
-                  <Button onClick={handleCreateStudent} data-testid="button-create-first-student">
-                    <i className="fas fa-plus mr-2"></i>
-                    Adicionar Primeiro Aluno
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredStudents.map((student) => (
-                <Card key={student.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-4 mb-4">
-                      <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
-                        <i className="fas fa-user text-white"></i>
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900" data-testid={`text-student-name-${student.id}`}>
-                          {student.name}
-                        </h3>
-                        <p className="text-sm text-gray-600">{student.email}</p>
-                      </div>
-                      <Badge className={getStatusColor(student.status || "active")}>
-                        {getStatusText(student.status || "active")}
-                      </Badge>
+          </div>
+        ) : filteredStudents.length === 0 ? (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <i className="fas fa-users text-gray-400 text-4xl mb-4"></i>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {students?.length === 0
+                  ? "Nenhum aluno cadastrado"
+                  : "Nenhum aluno encontrado"}
+              </h3>
+              <p className="text-gray-600 mb-4">
+                {students?.length === 0
+                  ? "Comece adicionando seu primeiro aluno ao sistema"
+                  : "Tente ajustar os termos de busca"}
+              </p>
+              {students?.length === 0 && (
+                <Button
+                  onClick={handleCreateStudent}
+                  data-testid="button-create-first-student"
+                >
+                  <i className="fas fa-plus mr-2"></i>
+                  Adicionar Primeiro Aluno
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredStudents.map((student) => (
+              <Card
+                key={student.id}
+                className="hover:shadow-md transition-shadow"
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-4 mb-4">
+                    <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
+                      <i className="fas fa-user text-white"></i>
                     </div>
-                    
-                    <div className="space-y-2 text-sm text-gray-600 mb-4">
-                      {student.goal && (
-                        <div className="flex items-center">
-                          <i className="fas fa-target mr-2 w-4"></i>
-                          <span>{student.goal}</span>
-                        </div>
-                      )}
-                      {student.phone && (
-                        <div className="flex items-center">
-                          <i className="fas fa-phone mr-2 w-4"></i>
-                          <span>{student.phone}</span>
-                        </div>
-                      )}
-                      {student.weight && (
-                        <div className="flex items-center">
-                          <i className="fas fa-weight mr-2 w-4"></i>
-                          <span>{student.weight}kg</span>
-                        </div>
-                      )}
+                    <div className="flex-1">
+                      <h3
+                        className="font-semibold text-gray-900"
+                        data-testid={`text-student-name-${student.id}`}
+                      >
+                        {student.name}
+                      </h3>
+                      <p className="text-sm text-gray-600">{student.email}</p>
                     </div>
+                    <Badge
+                      className={getStatusColor(student.status || "active")}
+                    >
+                      {getStatusText(student.status || "active")}
+                    </Badge>
+                  </div>
 
-                    <div className="flex justify-end space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditStudent(student)}
-                        data-testid={`button-edit-student-${student.id}`}
-                      >
-                        <i className="fas fa-edit mr-1"></i>
-                        Editar
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteStudent(student.id)}
-                        className="text-red-600 border-red-200 hover:bg-red-50"
-                        disabled={deleteStudentMutation.isPending}
-                        data-testid={`button-delete-student-${student.id}`}
-                      >
-                        <i className="fas fa-trash mr-1"></i>
-                        {deleteStudentMutation.isPending ? "..." : "Remover"}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </main>
-      </div>
+                  <div className="space-y-2 text-sm text-gray-600 mb-4">
+                    {student.goal && (
+                      <div className="flex items-center">
+                        <i className="fas fa-target mr-2 w-4"></i>
+                        <span>{student.goal}</span>
+                      </div>
+                    )}
+                    {student.phone && (
+                      <div className="flex items-center">
+                        <i className="fas fa-phone mr-2 w-4"></i>
+                        <span>{student.phone}</span>
+                      </div>
+                    )}
+                    {student.weight && (
+                      <div className="flex items-center">
+                        <i className="fas fa-weight mr-2 w-4"></i>
+                        <span>{student.weight}kg</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditStudent(student)}
+                      data-testid={`button-edit-student-${student.id}`}
+                    >
+                      <i className="fas fa-edit mr-1"></i>
+                      Editar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteStudent(student.id)}
+                      className="text-red-600 border-red-200 hover:bg-red-50"
+                      disabled={deleteStudentMutation.isPending}
+                      data-testid={`button-delete-student-${student.id}`}
+                    >
+                      <i className="fas fa-trash mr-1"></i>
+                      {deleteStudentMutation.isPending ? "..." : "Remover"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </main>
 
       <StudentModal
         isOpen={isModalOpen}
