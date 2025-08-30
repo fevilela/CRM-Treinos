@@ -12,6 +12,7 @@ import PhysicalAssessments from "@/pages/physical-assessments";
 import { StudentApp } from "@/pages/student-app";
 import StudentSetupPassword from "@/pages/student-setup-password";
 import NotFound from "@/pages/not-found";
+import Sidebar from "@/components/layout/sidebar"; // Importar o componente Sidebar
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -37,17 +38,24 @@ function Router() {
           }
 
           return (
-            <Switch>
-              <Route path="/" component={Dashboard} />
-              <Route path="/students" component={Students} />
-              <Route path="/workouts" component={Workouts} />
-              <Route
-                path="/physical-assessments"
-                component={PhysicalAssessments}
-              />
-              <Route path="/student" component={StudentApp} />
-              <Route component={NotFound} />
-            </Switch>
+            <div className="flex">
+              <Sidebar />
+              <main className="flex-1 p-6 bg-gray-50 min-h-screen ml-64">
+                {" "}
+                {/* Adicionada ml-64 */}
+                <Switch>
+                  <Route path="/" component={Dashboard} />
+                  <Route path="/students" component={Students} />
+                  <Route path="/workouts" component={Workouts} />
+                  <Route
+                    path="/physical-assessments"
+                    component={PhysicalAssessments}
+                  />
+                  <Route path="/student" component={StudentApp} />
+                  <Route component={NotFound} />
+                </Switch>
+              </main>
+            </div>
           );
         }}
       </Route>
