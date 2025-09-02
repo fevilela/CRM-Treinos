@@ -316,35 +316,37 @@ function PhysicalAssessmentModal({
           ? Number(assessment.waistCirc)
           : undefined,
         hipCirc: assessment.hipCirc ? Number(assessment.hipCirc) : undefined,
-        abdomenCirc: assessment.abdomenCirc
-          ? Number(assessment.abdomenCirc)
-          : undefined,
-        armCirc: assessment.armCirc ? Number(assessment.armCirc) : undefined,
-        thighCirc: assessment.thighCirc
-          ? Number(assessment.thighCirc)
-          : undefined,
-        calfCirc: assessment.calfCirc ? Number(assessment.calfCirc) : undefined,
+        abdomenCirc: assessment.abdomenCirc || undefined,
+        armCirc: assessment.armCirc || undefined,
+        thighCirc: assessment.thighCirc || undefined,
+        calfCirc: assessment.calfCirc || undefined,
         chestCirc: assessment.chestCirc
           ? Number(assessment.chestCirc)
           : undefined,
-        bodyFatPercentage: assessment.bodyFatPercentage
-          ? Number(assessment.bodyFatPercentage)
-          : undefined,
-        leanMass: assessment.leanMass ? Number(assessment.leanMass) : undefined,
+        bodyFatPercentage: assessment.bodyFatPercentage || undefined,
+        leanMass: assessment.leanMass || undefined,
         bodyWater: assessment.bodyWater
           ? Number(assessment.bodyWater)
           : undefined,
         bloodPressure: assessment.bloodPressure || "",
-        restingHeartRate: assessment.restingHeartRate || undefined,
-        oxygenSaturation: assessment.oxygenSaturation
-          ? Number(assessment.oxygenSaturation)
+        restingHeartRate: assessment.restingHeartRate
+          ? Number(assessment.restingHeartRate)
           : undefined,
+        oxygenSaturation: assessment.oxygenSaturation || undefined,
         subjectiveEffortPerception: assessment.subjectiveEffortPerception || "",
         // Performance/Conditioning Assessment fields
-        maxPushUps: assessment.maxPushUps || undefined,
-        maxSquats: assessment.maxSquats || undefined,
-        maxSitUps: assessment.maxSitUps || undefined,
-        plankTime: assessment.plankTime || undefined,
+        maxPushUps: assessment.maxPushUps
+          ? Number(assessment.maxPushUps)
+          : undefined,
+        maxSquats: assessment.maxSquats
+          ? Number(assessment.maxSquats)
+          : undefined,
+        maxSitUps: assessment.maxSitUps
+          ? Number(assessment.maxSitUps)
+          : undefined,
+        plankTime: assessment.plankTime
+          ? Number(assessment.plankTime)
+          : undefined,
         cardioTest: assessment.cardioTest || "",
         cardioTestResult: assessment.cardioTestResult || "",
         flexibility:
@@ -366,26 +368,58 @@ function PhysicalAssessmentModal({
             : undefined,
         additionalNotes: assessment.additionalNotes || "",
         // Skinfold Measurements
-        pectoralSkinFold: assessment.pectoralSkinFold,
-        subscapularSkinFold: assessment.subscapularSkinFold,
-        tricepsSkinFold: assessment.tricepsSkinFold,
-        axillaryMidSkinFold: assessment.axillaryMidSkinFold,
-        abdominalSkinFold: assessment.abdominalSkinFold,
-        thighSkinFold: assessment.thighSkinFold,
+        pectoralSkinFold: assessment.pectoralSkinFold
+          ? Number(assessment.pectoralSkinFold)
+          : undefined,
+        subscapularSkinFold: assessment.subscapularSkinFold
+          ? Number(assessment.subscapularSkinFold)
+          : undefined,
+        tricepsSkinFold: assessment.tricepsSkinFold
+          ? Number(assessment.tricepsSkinFold)
+          : undefined,
+        axillaryMidSkinFold: assessment.axillaryMidSkinFold
+          ? Number(assessment.axillaryMidSkinFold)
+          : undefined,
+        abdominalSkinFold: assessment.abdominalSkinFold
+          ? Number(assessment.abdominalSkinFold)
+          : undefined,
+        thighSkinFold: assessment.thighSkinFold
+          ? Number(assessment.thighSkinFold)
+          : undefined,
         // Composition Fields
-        fatMass: assessment.fatMass,
-        leanMassBody: assessment.leanMassBody, // Usando leanMassBody aqui
+        fatMass: assessment.fatMass ? Number(assessment.fatMass) : undefined,
+        leanMassBody: assessment.leanMassBody
+          ? Number(assessment.leanMassBody)
+          : undefined,
         // Additional Circumferences
-        rightArmContractedCirc: assessment.rightArmContractedCirc,
-        rightArmRelaxedCirc: assessment.rightArmRelaxedCirc,
-        leftArmContractedCirc: assessment.leftArmContractedCirc,
-        leftArmRelaxedCirc: assessment.leftArmRelaxedCirc,
-        rightThighCirc: assessment.rightThighCirc,
-        leftThighCirc: assessment.leftThighCirc,
-        rightCalfCirc: assessment.rightCalfCirc,
-        leftCalfCirc: assessment.leftCalfCirc,
+        rightArmContractedCirc: assessment.rightArmContractedCirc
+          ? Number(assessment.rightArmContractedCirc)
+          : undefined,
+        rightArmRelaxedCirc: assessment.rightArmRelaxedCirc
+          ? Number(assessment.rightArmRelaxedCirc)
+          : undefined,
+        leftArmContractedCirc: assessment.leftArmContractedCirc
+          ? Number(assessment.leftArmContractedCirc)
+          : undefined,
+        leftArmRelaxedCirc: assessment.leftArmRelaxedCirc
+          ? Number(assessment.leftArmRelaxedCirc)
+          : undefined,
+        rightThighCirc: assessment.rightThighCirc
+          ? Number(assessment.rightThighCirc)
+          : undefined,
+        leftThighCirc: assessment.leftThighCirc
+          ? Number(assessment.leftThighCirc)
+          : undefined,
+        rightCalfCirc: assessment.rightCalfCirc
+          ? Number(assessment.rightCalfCirc)
+          : undefined,
+        leftCalfCirc: assessment.leftCalfCirc
+          ? Number(assessment.leftCalfCirc)
+          : undefined,
         // Ratios
-        waistHipRatio: assessment.waistHipRatio,
+        waistHipRatio: assessment.waistHipRatio
+          ? Number(assessment.waistHipRatio)
+          : undefined,
       });
     } else if (isOpen) {
       form.reset({
@@ -414,7 +448,22 @@ function PhysicalAssessmentModal({
         smoking: undefined,
         alcoholConsumption: undefined,
         caffeineConsumption: undefined,
+        currentWeight: undefined,
+        currentHeight: undefined,
+        bmi: undefined,
+        waistCirc: undefined,
+        hipCirc: undefined,
+        abdomenCirc: undefined,
+        armCirc: undefined,
+        thighCirc: undefined,
+        calfCirc: undefined,
+        chestCirc: undefined,
+        bodyFatPercentage: undefined,
+        leanMass: undefined,
+        bodyWater: undefined,
         bloodPressure: "",
+        restingHeartRate: undefined,
+        oxygenSaturation: undefined,
         subjectiveEffortPerception: "",
         // Performance/Conditioning Assessment fields
         maxPushUps: undefined,
@@ -1246,15 +1295,22 @@ function PhysicalAssessmentModal({
                           currentWeight: form.watch("currentWeight"),
                           currentHeight: form.watch("currentHeight"),
                           bmi: form.watch("bmi"),
-                          waistCirc: form.watch("waistCirc"),
-                          hipCirc: form.watch("hipCirc"),
-                          abdomenCirc: form.watch("abdomenCirc"),
-                          armCirc: form.watch("armCirc"),
-                          thighCirc: form.watch("thighCirc"),
-                          calfCirc: form.watch("calfCirc"),
-                          chestCirc: form.watch("chestCirc"),
-                          bodyFatPercentage: form.watch("bodyFatPercentage"),
-                          leanMass: form.watch("leanMass"), // Note: This might need to be leanMassBody based on schema update
+                          waistCirc: form.watch("waistCirc")?.toString(),
+                          hipCirc: form.watch("hipCirc")?.toString(),
+                          abdomenCirc: form.watch("abdomenCirc")?.toString(),
+                          armCirc: form.watch("armCirc")?.toString(),
+                          thighCirc: form.watch("thighCirc")?.toString(),
+                          calfCirc: form.watch("calfCirc")?.toString(),
+                          chestCirc: form.watch("chestCirc")?.toString(),
+                          bodyFatPercentage:
+                            form.watch("bodyFatPercentage") !== undefined
+                              ? String(form.watch("bodyFatPercentage"))
+                              : null,
+
+                          leanMass:
+                            form.watch("leanMass") !== undefined
+                              ? String(form.watch("leanMass"))
+                              : null,
                         }}
                         interactive={true}
                       />

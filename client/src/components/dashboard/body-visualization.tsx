@@ -47,6 +47,10 @@ interface BodyVisualizationProps {
     balanceCoordination?: string | null;
     additionalNotes?: string | null;
     gender?: string;
+    abdomenCirc?: string | null;
+    armCirc?: string | null;
+    thighCirc?: string | null;
+    calfCirc?: string | null;
   };
   interactive?: boolean;
 }
@@ -670,7 +674,7 @@ export default function BodyVisualization({
                   >
                     <span className="text-sm font-medium">{part.label}</span>
                     <span className="text-sm text-gray-600">
-                      {part.value ? `${part.value.toFixed(1)} cm` : "-"}
+                      {part.value ? `${part.value.fixed} cm` : "-"}
                     </span>
                   </div>
                 ))}
@@ -778,9 +782,10 @@ export default function BodyVisualization({
               Medida atual:{" "}
               <span className="font-semibold">
                 {bodyParts[selectedPart as keyof typeof bodyParts]?.value
-                  ? `${bodyParts[
-                      selectedPart as keyof typeof bodyParts
-                    ].value?.toFixed(1)} cm`
+                  ? `${
+                      bodyParts[selectedPart as keyof typeof bodyParts].value
+                        ?.fixed
+                    } cm`
                   : "Não informado"}
               </span>
             </p>

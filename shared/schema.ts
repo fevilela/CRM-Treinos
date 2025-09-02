@@ -10,6 +10,7 @@ import {
   decimal,
   boolean,
   pgEnum,
+  real,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -325,9 +326,21 @@ export const physicalAssessments = pgTable("physical_assessments", {
   balanceCoordination: text("balance_coordination"),
   additionalNotes: text("additional_notes"),
 
-  assessmentDate: timestamp("assessment_date").defaultNow(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  assessmentDate: timestamp("assessment_date"),
+
+  // Circumference measurements
+  abdomenCirc: real("abdomen_circ"),
+  armCirc: real("arm_circ"),
+  thighCirc: real("thigh_circ"),
+  calfCirc: real("calf_circ"),
+
+  // Body composition
+  bodyFatPercentage: real("body_fat_percentage"),
+  leanMass: real("lean_mass"),
+  leanMassBody: real("lean_mass_body"),
+
+  // Vital signs
+  oxygenSaturation: real("oxygen_saturation"),
 });
 
 // Relations
@@ -544,37 +557,19 @@ export const insertPhysicalAssessmentSchema = createInsertSchema(
 )
   .omit({
     id: true,
-    createdAt: true,
-    updatedAt: true,
   })
   .extend({
-    // Performance Assessment fields
-    maxPushUps: z.number().int().nonnegative().optional(),
-    maxSquats: z.number().int().nonnegative().optional(),
-    maxSitUps: z.number().int().nonnegative().optional(),
-    plankTime: z.number().int().nonnegative().optional(),
-    cardioTest: z.string().optional(),
-    cardioTestResult: z.string().optional(),
-    flexibility: z.enum(["poor", "fair", "good", "excellent"]).optional(),
-    postureAssessment: z.string().optional(),
-    balanceCoordination: z
-      .enum(["poor", "fair", "good", "excellent"])
-      .optional(),
     // Numeric fields that should accept numbers
     currentWeight: z.number().positive().optional(),
     currentHeight: z.number().positive().optional(),
     bmi: z.number().positive().optional(),
-    waistCirc: z.number().positive().optional(),
-    hipCirc: z.number().positive().optional(),
     abdomenCirc: z.number().positive().optional(),
     armCirc: z.number().positive().optional(),
     thighCirc: z.number().positive().optional(),
     calfCirc: z.number().positive().optional(),
-    chestCirc: z.number().positive().optional(),
     bodyFatPercentage: z.number().positive().optional(),
     leanMass: z.number().positive().optional(),
-    bodyWater: z.number().positive().optional(),
-    restingHeartRate: z.number().int().positive().optional(),
+    leanMassBody: z.number().positive().optional(),
     oxygenSaturation: z.number().positive().optional(),
     assessmentDate: z
       .string()
@@ -585,29 +580,7 @@ export const insertPhysicalAssessmentSchema = createInsertSchema(
         if (!val) return undefined;
         return val instanceof Date ? val : new Date(val);
       }),
-    // New fields from the change
-    rightArmContractedCirc: z.number().positive().optional(),
-    rightArmRelaxedCirc: z.number().positive().optional(),
-    leftArmContractedCirc: z.number().positive().optional(),
-    leftArmRelaxedCirc: z.number().positive().optional(),
-    rightThighCirc: z.number().positive().optional(),
-    leftThighCirc: z.number().positive().optional(),
-    rightCalfCirc: z.number().positive().optional(),
-    leftCalfCirc: z.number().positive().optional(),
-    tricepsSkinFold: z.number().positive().optional(),
-    subscapularSkinFold: z.number().positive().optional(),
-    axillaryMidSkinFold: z.number().positive().optional(),
-    pectoralSkinFold: z.number().positive().optional(),
-    suprailiacSkinFold: z.number().positive().optional(),
-    abdominalSkinFold: z.number().positive().optional(),
-    thighSkinFold: z.number().positive().optional(),
-    fatMass: z.number().positive().optional(),
-    waistHipRatio: z.number().positive().optional(),
-    waistHipRatioClassification: z.string().optional(),
-    bodyWater: z.number().positive().optional(),
-    bloodPressure: z.string().optional(),
-    restingHeartRate: z.number().int().positive().optional(),
-    subjectiveEffortPerception: z.string().optional(),
+    // Performance Assessment fields (keeping only once)
     maxPushUps: z.number().int().nonnegative().optional(),
     maxSquats: z.number().int().nonnegative().optional(),
     maxSitUps: z.number().int().nonnegative().optional(),
