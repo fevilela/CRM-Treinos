@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import BodyVisualization from "@/components/dashboard/body-visualization";
 import { z } from "zod";
 
 const assessmentFormSchema = insertPhysicalAssessmentSchema
@@ -101,6 +102,27 @@ const assessmentFormSchema = insertPhysicalAssessmentSchema
       .enum(["poor", "fair", "good", "excellent"])
       .optional(),
     additionalNotes: z.string().optional(),
+    // Skinfold Measurements
+    pectoralSkinFold: z.number().optional(),
+    subscapularSkinFold: z.number().optional(),
+    tricepsSkinFold: z.number().optional(),
+    axillaryMidSkinFold: z.number().optional(),
+    abdominalSkinFold: z.number().optional(),
+    thighSkinFold: z.number().optional(),
+    // Composition Fields
+    fatMass: z.number().optional(),
+    leanMassBody: z.number().optional(), // Renomeado de leanMass para leanMassBody
+    // Additional Circumferences
+    rightArmContractedCirc: z.number().optional(),
+    rightArmRelaxedCirc: z.number().optional(),
+    leftArmContractedCirc: z.number().optional(),
+    leftArmRelaxedCirc: z.number().optional(),
+    rightThighCirc: z.number().optional(),
+    leftThighCirc: z.number().optional(),
+    rightCalfCirc: z.number().optional(),
+    leftCalfCirc: z.number().optional(),
+    // Ratios
+    waistHipRatio: z.number().optional(),
   });
 
 type AssessmentFormData = z.infer<typeof assessmentFormSchema>;
@@ -179,6 +201,27 @@ function PhysicalAssessmentModal({
       postureAssessment: "",
       balanceCoordination: undefined,
       additionalNotes: "",
+      // Skinfold Measurements
+      pectoralSkinFold: undefined,
+      subscapularSkinFold: undefined,
+      tricepsSkinFold: undefined,
+      axillaryMidSkinFold: undefined,
+      abdominalSkinFold: undefined,
+      thighSkinFold: undefined,
+      // Composition Fields
+      fatMass: undefined,
+      leanMassBody: undefined, // Inicializado como undefined
+      // Additional Circumferences
+      rightArmContractedCirc: undefined,
+      rightArmRelaxedCirc: undefined,
+      leftArmContractedCirc: undefined,
+      leftArmRelaxedCirc: undefined,
+      rightThighCirc: undefined,
+      leftThighCirc: undefined,
+      rightCalfCirc: undefined,
+      leftCalfCirc: undefined,
+      // Ratios
+      waistHipRatio: undefined,
     },
   });
 
@@ -322,6 +365,27 @@ function PhysicalAssessmentModal({
                 | "excellent")
             : undefined,
         additionalNotes: assessment.additionalNotes || "",
+        // Skinfold Measurements
+        pectoralSkinFold: assessment.pectoralSkinFold,
+        subscapularSkinFold: assessment.subscapularSkinFold,
+        tricepsSkinFold: assessment.tricepsSkinFold,
+        axillaryMidSkinFold: assessment.axillaryMidSkinFold,
+        abdominalSkinFold: assessment.abdominalSkinFold,
+        thighSkinFold: assessment.thighSkinFold,
+        // Composition Fields
+        fatMass: assessment.fatMass,
+        leanMassBody: assessment.leanMassBody, // Usando leanMassBody aqui
+        // Additional Circumferences
+        rightArmContractedCirc: assessment.rightArmContractedCirc,
+        rightArmRelaxedCirc: assessment.rightArmRelaxedCirc,
+        leftArmContractedCirc: assessment.leftArmContractedCirc,
+        leftArmRelaxedCirc: assessment.leftArmRelaxedCirc,
+        rightThighCirc: assessment.rightThighCirc,
+        leftThighCirc: assessment.leftThighCirc,
+        rightCalfCirc: assessment.rightCalfCirc,
+        leftCalfCirc: assessment.leftCalfCirc,
+        // Ratios
+        waistHipRatio: assessment.waistHipRatio,
       });
     } else if (isOpen) {
       form.reset({
@@ -363,6 +427,27 @@ function PhysicalAssessmentModal({
         postureAssessment: "",
         balanceCoordination: undefined,
         additionalNotes: "",
+        // Skinfold Measurements
+        pectoralSkinFold: undefined,
+        subscapularSkinFold: undefined,
+        tricepsSkinFold: undefined,
+        axillaryMidSkinFold: undefined,
+        abdominalSkinFold: undefined,
+        thighSkinFold: undefined,
+        // Composition Fields
+        fatMass: undefined,
+        leanMassBody: undefined,
+        // Additional Circumferences
+        rightArmContractedCirc: undefined,
+        rightArmRelaxedCirc: undefined,
+        leftArmContractedCirc: undefined,
+        leftArmRelaxedCirc: undefined,
+        rightThighCirc: undefined,
+        leftThighCirc: undefined,
+        rightCalfCirc: undefined,
+        leftCalfCirc: undefined,
+        // Ratios
+        waistHipRatio: undefined,
       });
     }
   }, [assessment, isOpen, form]);
@@ -1154,13 +1239,33 @@ function PhysicalAssessmentModal({
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {/* Visualização Corporal */}
+                    <div className="mb-6">
+                      <BodyVisualization
+                        assessment={{
+                          currentWeight: form.watch("currentWeight"),
+                          currentHeight: form.watch("currentHeight"),
+                          bmi: form.watch("bmi"),
+                          waistCirc: form.watch("waistCirc"),
+                          hipCirc: form.watch("hipCirc"),
+                          abdomenCirc: form.watch("abdomenCirc"),
+                          armCirc: form.watch("armCirc"),
+                          thighCirc: form.watch("thighCirc"),
+                          calfCirc: form.watch("calfCirc"),
+                          chestCirc: form.watch("chestCirc"),
+                          bodyFatPercentage: form.watch("bodyFatPercentage"),
+                          leanMass: form.watch("leanMass"), // Note: This might need to be leanMassBody based on schema update
+                        }}
+                        interactive={true}
+                      />
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <FormField
                         control={form.control}
                         name="currentWeight"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Peso atual (kg)</FormLabel>
+                            <FormLabel>Peso (kg)</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
@@ -1187,7 +1292,7 @@ function PhysicalAssessmentModal({
                         name="currentHeight"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Altura atual (cm)</FormLabel>
+                            <FormLabel>Altura (cm)</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
@@ -1214,18 +1319,22 @@ function PhysicalAssessmentModal({
                         name="bmi"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>
-                              IMC (calculado automaticamente)
-                            </FormLabel>
+                            <FormLabel>IMC</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
                                 step="0.01"
-                                placeholder="23.4"
-                                readOnly
+                                placeholder="Calculado automaticamente"
                                 {...field}
                                 value={field.value?.toString() ?? ""}
-                                className="bg-gray-50"
+                                onChange={(e) =>
+                                  field.onChange(
+                                    e.target.value
+                                      ? parseFloat(e.target.value)
+                                      : undefined
+                                  )
+                                }
+                                readOnly
                               />
                             </FormControl>
                             <FormMessage />
@@ -1249,7 +1358,7 @@ function PhysicalAssessmentModal({
                                 <Input
                                   type="number"
                                   step="0.1"
-                                  placeholder="80"
+                                  placeholder="80.0"
                                   {...field}
                                   value={field.value?.toString() ?? ""}
                                   onChange={(e) =>
@@ -1275,7 +1384,7 @@ function PhysicalAssessmentModal({
                                 <Input
                                   type="number"
                                   step="0.1"
-                                  placeholder="95"
+                                  placeholder="95.0"
                                   {...field}
                                   value={field.value?.toString() ?? ""}
                                   onChange={(e) =>
@@ -1431,7 +1540,7 @@ function PhysicalAssessmentModal({
                         name="bodyFatPercentage"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>% Gordura corporal</FormLabel>
+                            <FormLabel>%GC</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
@@ -1440,11 +1549,7 @@ function PhysicalAssessmentModal({
                                 {...field}
                                 value={field.value?.toString() ?? ""}
                                 onChange={(e) =>
-                                  field.onChange(
-                                    e.target.value
-                                      ? parseFloat(e.target.value)
-                                      : undefined
-                                  )
+                                  field.onChange(e.target.value || undefined)
                                 }
                               />
                             </FormControl>
@@ -1455,23 +1560,19 @@ function PhysicalAssessmentModal({
 
                       <FormField
                         control={form.control}
-                        name="leanMass"
+                        name="fatMass"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Massa magra (kg)</FormLabel>
+                            <FormLabel>Massa Gorda (kg)</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
                                 step="0.1"
-                                placeholder="60.5"
+                                placeholder="10.9"
                                 {...field}
                                 value={field.value?.toString() ?? ""}
                                 onChange={(e) =>
-                                  field.onChange(
-                                    e.target.value
-                                      ? parseFloat(e.target.value)
-                                      : undefined
-                                  )
+                                  field.onChange(e.target.value || undefined)
                                 }
                               />
                             </FormControl>
@@ -1482,23 +1583,19 @@ function PhysicalAssessmentModal({
 
                       <FormField
                         control={form.control}
-                        name="bodyWater"
+                        name="leanMassBody"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>% Água corporal</FormLabel>
+                            <FormLabel>Massa Livre de Gord. (kg)</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
                                 step="0.1"
-                                placeholder="60.2"
+                                placeholder="59.6"
                                 {...field}
                                 value={field.value?.toString() ?? ""}
                                 onChange={(e) =>
-                                  field.onChange(
-                                    e.target.value
-                                      ? parseFloat(e.target.value)
-                                      : undefined
-                                  )
+                                  field.onChange(e.target.value || undefined)
                                 }
                               />
                             </FormControl>

@@ -14,11 +14,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import PhysicalAssessmentModal from "@/components/modals/physical-assessment-modal";
+import BodyVisualization from "@/components/dashboard/body-visualization";
 import type { PhysicalAssessment, Student } from "@shared/schema";
 
 export default function PhysicalAssessments() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAssessment, setSelectedAssessment] =
+    useState<PhysicalAssessment | null>(null);
+  const [viewingAssessment, setViewingAssessment] =
     useState<PhysicalAssessment | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStudent, setFilterStudent] = useState<string>("all");
@@ -45,14 +48,26 @@ export default function PhysicalAssessments() {
     return matchesSearch && matchesStudent;
   });
 
-  const handleEditAssessment = (assessment: PhysicalAssessment) => {
+  const handleEditAssessment = (
+    assessment: PhysicalAssessment,
+    event: React.MouseEvent
+  ) => {
+    event.stopPropagation();
     setSelectedAssessment(assessment);
     setIsModalOpen(true);
+  };
+
+  const handleViewAssessment = (assessment: PhysicalAssessment) => {
+    setViewingAssessment(assessment);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedAssessment(null);
+  };
+
+  const handleCloseViewModal = () => {
+    setViewingAssessment(null);
   };
 
   const getStudentName = (studentId: string) => {
@@ -164,7 +179,7 @@ export default function PhysicalAssessments() {
                 <Card
                   key={assessment.id}
                   className="hover:shadow-lg transition-shadow cursor-pointer"
-                  onClick={() => handleEditAssessment(assessment)}
+                  onClick={() => handleViewAssessment(assessment)}
                 >
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start">
@@ -182,6 +197,14 @@ export default function PhysicalAssessments() {
                             {assessment.profession}
                           </Badge>
                         )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs"
+                          onClick={(e) => handleEditAssessment(assessment, e)}
+                        >
+                          ✏️ Editar
+                        </Button>
                       </div>
                     </div>
                   </CardHeader>
@@ -272,6 +295,139 @@ export default function PhysicalAssessments() {
         onClose={handleCloseModal}
         assessment={selectedAssessment}
       />
+
+      {/* Modal de Visualização Detalhada */}
+      {viewingAssessment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-7xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold">
+                    Avaliação Física -{" "}
+                    {getStudentName(viewingAssessment.studentId)}
+                  </h2>
+                  <p className="text-gray-600">
+                    {formatDate(viewingAssessment.assessmentDate)}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={(e) => {
+                      handleCloseViewModal();
+                      handleEditAssessment(viewingAssessment, e);
+                    }}
+                  >
+                    ✏️ Editar
+                  </Button>
+                  <Button variant="outline" onClick={handleCloseViewModal}>
+                    ✕ Fechar
+                  </Button>
+                </div>
+              </div>
+
+              <BodyVisualization
+                assessment={{
+                  currentWeight: viewingAssessment.currentWeight
+                    ? Number(viewingAssessment.currentWeight)
+                    : undefined,
+                  currentHeight: viewingAssessment.currentHeight
+                    ? Number(viewingAssessment.currentHeight)
+                    : undefined,
+                  bmi: viewingAssessment.bmi
+                    ? Number(viewingAssessment.bmi)
+                    : undefined,
+                  waistCirc: viewingAssessment.waistCirc
+                    ? Number(viewingAssessment.waistCirc)
+                    : undefined,
+                  hipCirc: viewingAssessment.hipCirc
+                    ? Number(viewingAssessment.hipCirc)
+                    : undefined,
+                  abdomenCirc: viewingAssessment.abdomenCirc
+                    ? Number(viewingAssessment.abdomenCirc)
+                    : undefined,
+                  armCirc: viewingAssessment.armCirc
+                    ? Number(viewingAssessment.armCirc)
+                    : undefined,
+                  thighCirc: viewingAssessment.thighCirc
+                    ? Number(viewingAssessment.thighCirc)
+                    : undefined,
+                  calfCirc: viewingAssessment.calfCirc
+                    ? Number(viewingAssessment.calfCirc)
+                    : undefined,
+                  chestCirc: viewingAssessment.chestCirc
+                    ? Number(viewingAssessment.chestCirc)
+                    : undefined,
+                  bodyFatPercentage: viewingAssessment.bodyFatPercentage
+                    ? Number(viewingAssessment.bodyFatPercentage)
+                    : undefined,
+                  leanMass: viewingAssessment.leanMass
+                    ? Number(viewingAssessment.leanMass)
+                    : undefined,
+                }}
+                interactive={true}
+              />
+
+              {/* Informações adicionais */}
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Objetivos */}
+                {viewingAssessment.primaryGoal && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">🎯 Objetivos</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm">{viewingAssessment.primaryGoal}</p>
+                      {viewingAssessment.specificDeadline && (
+                        <p className="text-sm text-gray-600 mt-2">
+                          <strong>Prazo:</strong>{" "}
+                          {viewingAssessment.specificDeadline}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Dados clínicos */}
+                {(viewingAssessment.bloodPressure ||
+                  viewingAssessment.restingHeartRate) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">
+                        🩺 Dados Clínicos
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {viewingAssessment.bloodPressure && (
+                        <p className="text-sm">
+                          <strong>Pressão Arterial:</strong>{" "}
+                          {viewingAssessment.bloodPressure}
+                        </p>
+                      )}
+                      {viewingAssessment.restingHeartRate && (
+                        <p className="text-sm">
+                          <strong>FC Repouso:</strong>{" "}
+                          {viewingAssessment.restingHeartRate} bpm
+                        </p>
+                      )}
+                      {viewingAssessment.oxygenSaturation && (
+                        <p className="text-sm">
+                          <strong>Saturação O²:</strong>{" "}
+                          {Number(viewingAssessment.oxygenSaturation).toFixed(
+                            1
+                          )}
+                          %
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -276,35 +276,53 @@ export const physicalAssessments = pgTable("physical_assessments", {
   currentWeight: decimal("current_weight", { precision: 5, scale: 2 }),
   currentHeight: decimal("current_height", { precision: 5, scale: 2 }),
   bmi: decimal("bmi", { precision: 4, scale: 2 }),
-  waistCirc: decimal("waist_circ", { precision: 5, scale: 2 }),
-  hipCirc: decimal("hip_circ", { precision: 5, scale: 2 }),
-  abdomenCirc: decimal("abdomen_circ", { precision: 5, scale: 2 }),
-  armCirc: decimal("arm_circ", { precision: 5, scale: 2 }),
-  thighCirc: decimal("thigh_circ", { precision: 5, scale: 2 }),
-  calfCirc: decimal("calf_circ", { precision: 5, scale: 2 }),
-  chestCirc: decimal("chest_circ", { precision: 5, scale: 2 }),
-  bodyFatPercentage: decimal("body_fat_percentage", { precision: 4, scale: 2 }),
-  leanMass: decimal("lean_mass", { precision: 5, scale: 2 }),
-  bodyWater: decimal("body_water", { precision: 4, scale: 2 }),
+  // Medidas corporais
+  waistCirc: text("waist_circ"),
+  hipCirc: text("hip_circ"),
+  chestCirc: text("chest_circ"),
+  rightArmContractedCirc: text("right_arm_contracted_circ"),
+  rightArmRelaxedCirc: text("right_arm_relaxed_circ"),
+  leftArmContractedCirc: text("left_arm_contracted_circ"),
+  leftArmRelaxedCirc: text("left_arm_relaxed_circ"),
+  rightThighCirc: text("right_thigh_circ"),
+  leftThighCirc: text("left_thigh_circ"),
+  rightCalfCirc: text("right_calf_circ"),
+  leftCalfCirc: text("left_calf_circ"),
 
-  // 7. Avaliação de desempenho/condicionamento
-  maxPushUps: integer("max_push_ups"),
-  maxSquats: integer("max_squats"),
-  maxSitUps: integer("max_sit_ups"),
-  plankTime: integer("plank_time"), // em segundos
-  cardioTest: varchar("cardio_test"), // tipo de teste cardiovascular
-  cardioTestResult: varchar("cardio_test_result"), // resultado do teste
-  flexibility: varchar("flexibility"), // poor, fair, good, excellent
-  postureAssessment: text("posture_assessment"), // desvios observados
-  balanceCoordination: varchar("balance_coordination"), // poor, fair, good, excellent
+  // Dobras cutâneas
+  tricepsSkinFold: text("triceps_skin_fold"),
+  subscapularSkinFold: text("subscapular_skin_fold"),
+  axillaryMidSkinFold: text("axillary_mid_skin_fold"),
+  pectoralSkinFold: text("pectoral_skin_fold"),
+  suprailiacSkinFold: text("suprailiac_skin_fold"),
+  abdominalSkinFold: text("abdominal_skin_fold"),
+  thighSkinFold: text("thigh_skin_fold"),
 
-  // 8. Avaliação clínica básica
-  bloodPressure: varchar("blood_pressure"),
-  restingHeartRate: integer("resting_heart_rate"),
-  oxygenSaturation: decimal("oxygen_saturation"),
+  // Composição corporal
+  fatMass: text("fat_mass"),
+
+  // RCQ
+  waistHipRatio: text("waist_hip_ratio"),
+  waistHipRatioClassification: text("waist_hip_ratio_classification"),
+
+  // Novos campos fisiológicos
+  bodyWater: text("body_water"),
+  bloodPressure: text("blood_pressure"),
+  restingHeartRate: text("resting_heart_rate"),
+
+  // Testes de aptidão física
   subjectiveEffortPerception: text("subjective_effort_perception"),
+  maxPushUps: text("max_push_ups"),
+  maxSquats: text("max_squats"),
+  maxSitUps: text("max_sit_ups"),
+  plankTime: text("plank_time"),
+  cardioTest: text("cardio_test"),
+  cardioTestResult: text("cardio_test_result"),
 
-  // Observações gerais
+  // Avaliações adicionais
+  flexibility: text("flexibility"),
+  postureAssessment: text("posture_assessment"),
+  balanceCoordination: text("balance_coordination"),
   additionalNotes: text("additional_notes"),
 
   assessmentDate: timestamp("assessment_date").defaultNow(),
@@ -531,10 +549,10 @@ export const insertPhysicalAssessmentSchema = createInsertSchema(
   })
   .extend({
     // Performance Assessment fields
-    maxPushUps: z.number().int().positive().optional(),
-    maxSquats: z.number().int().positive().optional(),
-    maxSitUps: z.number().int().positive().optional(),
-    plankTime: z.number().int().positive().optional(),
+    maxPushUps: z.number().int().nonnegative().optional(),
+    maxSquats: z.number().int().nonnegative().optional(),
+    maxSitUps: z.number().int().nonnegative().optional(),
+    plankTime: z.number().int().nonnegative().optional(),
     cardioTest: z.string().optional(),
     cardioTestResult: z.string().optional(),
     flexibility: z.enum(["poor", "fair", "good", "excellent"]).optional(),
@@ -542,13 +560,66 @@ export const insertPhysicalAssessmentSchema = createInsertSchema(
     balanceCoordination: z
       .enum(["poor", "fair", "good", "excellent"])
       .optional(),
+    // Numeric fields that should accept numbers
+    currentWeight: z.number().positive().optional(),
+    currentHeight: z.number().positive().optional(),
+    bmi: z.number().positive().optional(),
+    waistCirc: z.number().positive().optional(),
+    hipCirc: z.number().positive().optional(),
+    abdomenCirc: z.number().positive().optional(),
+    armCirc: z.number().positive().optional(),
+    thighCirc: z.number().positive().optional(),
+    calfCirc: z.number().positive().optional(),
+    chestCirc: z.number().positive().optional(),
+    bodyFatPercentage: z.number().positive().optional(),
+    leanMass: z.number().positive().optional(),
+    bodyWater: z.number().positive().optional(),
+    restingHeartRate: z.number().int().positive().optional(),
+    oxygenSaturation: z.number().positive().optional(),
     assessmentDate: z
       .string()
       .datetime()
       .optional()
+      .or(z.date().optional())
       .transform((val) => {
-        return val ? new Date(val) : undefined;
+        if (!val) return undefined;
+        return val instanceof Date ? val : new Date(val);
       }),
+    // New fields from the change
+    rightArmContractedCirc: z.number().positive().optional(),
+    rightArmRelaxedCirc: z.number().positive().optional(),
+    leftArmContractedCirc: z.number().positive().optional(),
+    leftArmRelaxedCirc: z.number().positive().optional(),
+    rightThighCirc: z.number().positive().optional(),
+    leftThighCirc: z.number().positive().optional(),
+    rightCalfCirc: z.number().positive().optional(),
+    leftCalfCirc: z.number().positive().optional(),
+    tricepsSkinFold: z.number().positive().optional(),
+    subscapularSkinFold: z.number().positive().optional(),
+    axillaryMidSkinFold: z.number().positive().optional(),
+    pectoralSkinFold: z.number().positive().optional(),
+    suprailiacSkinFold: z.number().positive().optional(),
+    abdominalSkinFold: z.number().positive().optional(),
+    thighSkinFold: z.number().positive().optional(),
+    fatMass: z.number().positive().optional(),
+    waistHipRatio: z.number().positive().optional(),
+    waistHipRatioClassification: z.string().optional(),
+    bodyWater: z.number().positive().optional(),
+    bloodPressure: z.string().optional(),
+    restingHeartRate: z.number().int().positive().optional(),
+    subjectiveEffortPerception: z.string().optional(),
+    maxPushUps: z.number().int().nonnegative().optional(),
+    maxSquats: z.number().int().nonnegative().optional(),
+    maxSitUps: z.number().int().nonnegative().optional(),
+    plankTime: z.number().int().nonnegative().optional(),
+    cardioTest: z.string().optional(),
+    cardioTestResult: z.string().optional(),
+    flexibility: z.enum(["poor", "fair", "good", "excellent"]).optional(),
+    postureAssessment: z.string().optional(),
+    balanceCoordination: z
+      .enum(["poor", "fair", "good", "excellent"])
+      .optional(),
+    additionalNotes: z.string().optional(),
   });
 
 // Types
@@ -655,14 +726,7 @@ export const bodyMeasurementSchema = z.object({
 });
 
 export const physicalAssessmentSchema = insertPhysicalAssessmentSchema.extend({
-  // Performance Assessment fields
-  maxPushUps: z.number().int().positive().optional(),
-  maxSquats: z.number().int().positive().optional(),
-  maxSitUps: z.number().int().positive().optional(),
-  plankTime: z.number().int().positive().optional(),
-  cardioTest: z.string().optional(),
-  cardioTestResult: z.string().optional(),
-  flexibility: z.enum(["poor", "fair", "good", "excellent"]).optional(),
-  postureAssessment: z.string().optional(),
-  balanceCoordination: z.enum(["poor", "fair", "good", "excellent"]).optional(),
+  id: z.string().uuid().optional(),
+  createdAt: z.date().optional(),
+  updatedAt: z.date().optional(),
 });

@@ -753,17 +753,39 @@ export class DatabaseStorage implements IStorage {
       assessmentDate: processedAssessmentDate,
       currentWeight: validAssessment.currentWeight?.toString(),
       currentHeight: validAssessment.currentHeight?.toString(),
-      bodyFatPercentage: validAssessment.bodyFatPercentage?.toString(),
-      leanMass: validAssessment.leanMass?.toString(),
-      bodyWater: validAssessment.bodyWater?.toString(),
+      bmi: validAssessment.bmi?.toString(),
+
+      // Circunferências
+      chestCirc: validAssessment.chestCirc?.toString(),
+      rightArmContractedCirc:
+        validAssessment.rightArmContractedCirc?.toString(),
+      rightArmRelaxedCirc: validAssessment.rightArmRelaxedCirc?.toString(),
+      leftArmContractedCirc: validAssessment.leftArmContractedCirc?.toString(),
+      leftArmRelaxedCirc: validAssessment.leftArmRelaxedCirc?.toString(),
       waistCirc: validAssessment.waistCirc?.toString(),
       hipCirc: validAssessment.hipCirc?.toString(),
-      abdomenCirc: validAssessment.abdomenCirc?.toString(),
-      armCirc: validAssessment.armCirc?.toString(),
-      thighCirc: validAssessment.thighCirc?.toString(),
-      calfCirc: validAssessment.calfCirc?.toString(),
-      chestCirc: validAssessment.chestCirc?.toString(),
-      bmi: validAssessment.bmi?.toString(),
+      rightThighCirc: validAssessment.rightThighCirc?.toString(),
+      leftThighCirc: validAssessment.leftThighCirc?.toString(),
+      rightCalfCirc: validAssessment.rightCalfCirc?.toString(),
+      leftCalfCirc: validAssessment.leftCalfCirc?.toString(),
+
+      // RCQ
+      waistHipRatio: validAssessment.waistHipRatio?.toString(),
+
+      // Dobras cutâneas
+      tricepsSkinFold: validAssessment.tricepsSkinFold?.toString(),
+      subscapularSkinFold: validAssessment.subscapularSkinFold?.toString(),
+      midAxillarySkinFold: validAssessment.midAxillarySkinFold?.toString(),
+      pectoralSkinFold: validAssessment.pectoralSkinFold?.toString(),
+      suprailiacSkinFold: validAssessment.suprailiacSkinFold?.toString(),
+      abdominalSkinFold: validAssessment.abdominalSkinFold?.toString(),
+      thighSkinFold: validAssessment.thighSkinFold?.toString(),
+
+      // Composição corporal
+      bodyFatPercentage: validAssessment.bodyFatPercentage?.toString(),
+      fatMass: validAssessment.fatMass?.toString(),
+      leanMass: validAssessment.leanMass?.toString(),
+      bodyWater: validAssessment.bodyWater?.toString(),
       oxygenSaturation: validAssessment.oxygenSaturation?.toString(),
     };
 
@@ -796,17 +818,39 @@ export class DatabaseStorage implements IStorage {
       assessmentDate: processedAssessmentDate,
       currentWeight: validAssessment.currentWeight?.toString(),
       currentHeight: validAssessment.currentHeight?.toString(),
-      bodyFatPercentage: validAssessment.bodyFatPercentage?.toString(),
-      leanMass: validAssessment.leanMass?.toString(),
-      bodyWater: validAssessment.bodyWater?.toString(),
+      bmi: validAssessment.bmi?.toString(),
+
+      // Circunferências
+      chestCirc: validAssessment.chestCirc?.toString(),
+      rightArmContractedCirc:
+        validAssessment.rightArmContractedCirc?.toString(),
+      rightArmRelaxedCirc: validAssessment.rightArmRelaxedCirc?.toString(),
+      leftArmContractedCirc: validAssessment.leftArmContractedCirc?.toString(),
+      leftArmRelaxedCirc: validAssessment.leftArmRelaxedCirc?.toString(),
       waistCirc: validAssessment.waistCirc?.toString(),
       hipCirc: validAssessment.hipCirc?.toString(),
-      abdomenCirc: validAssessment.abdomenCirc?.toString(),
-      armCirc: validAssessment.armCirc?.toString(),
-      thighCirc: validAssessment.thighCirc?.toString(),
-      calfCirc: validAssessment.calfCirc?.toString(),
-      chestCirc: validAssessment.chestCirc?.toString(),
-      bmi: validAssessment.bmi?.toString(),
+      rightThighCirc: validAssessment.rightThighCirc?.toString(),
+      leftThighCirc: validAssessment.leftThighCirc?.toString(),
+      rightCalfCirc: validAssessment.rightCalfCirc?.toString(),
+      leftCalfCirc: validAssessment.leftCalfCirc?.toString(),
+
+      // RCQ
+      waistHipRatio: validAssessment.waistHipRatio?.toString(),
+
+      // Dobras cutâneas
+      tricepsSkinFold: validAssessment.tricepsSkinFold?.toString(),
+      subscapularSkinFold: validAssessment.subscapularSkinFold?.toString(),
+      midAxillarySkinFold: validAssessment.midAxillarySkinFold?.toString(),
+      pectoralSkinFold: validAssessment.pectoralSkinFold?.toString(),
+      suprailiacSkinFold: validAssessment.suprailiacSkinFold?.toString(),
+      abdominalSkinFold: validAssessment.abdominalSkinFold?.toString(),
+      thighSkinFold: validAssessment.thighSkinFold?.toString(),
+
+      // Composição corporal
+      bodyFatPercentage: validAssessment.bodyFatPercentage?.toString(),
+      fatMass: validAssessment.fatMass?.toString(),
+      leanMass: validAssessment.leanMass?.toString(),
+      bodyWater: validAssessment.bodyWater?.toString(),
       oxygenSaturation: validAssessment.oxygenSaturation?.toString(),
       updatedAt: new Date(),
     };

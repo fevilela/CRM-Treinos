@@ -44,31 +44,27 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
-      <Sidebar />
-      
-      <div className="flex-1 ml-64">
-        <Header 
-          title="Dashboard" 
-          subtitle="Visão geral do seu sistema de treinos"
-        />
-        
-        <main className="p-6">
-          <StatsCards />
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <ProgressChart />
-            <BodyVisualization />
-          </div>
+    <div className="min-h-screen bg-gray-50">
+      <Header
+        title="Dashboard"
+        subtitle="Visão geral do seu sistema de treinos"
+      />
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <StudentList />
-            </div>
-            <ActivityFeed />
+      <main className="p-6">
+        <StatsCards />
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <ProgressChart />
+          <BodyVisualization />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <StudentList />
           </div>
-        </main>
-      </div>
+          <ActivityFeed />
+        </div>
+      </main>
     </div>
   );
 }

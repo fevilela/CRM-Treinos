@@ -4,7 +4,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -129,155 +128,151 @@ export default function Workouts() {
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
-      <Sidebar />
+    <div className="min-h-screen bg-gray-50">
+      <Header
+        title="Treinos"
+        subtitle="Crie e gerencie fichas de treino personalizadas"
+      />
 
-      <div className="flex-1 ml-64">
-        <Header
-          title="Treinos"
-          subtitle="Crie e gerencie fichas de treino personalizadas"
-        />
-
-        <main className="p-6">
-          <div className="mb-6 flex justify-between items-center">
-            <div className="flex-1 max-w-md">
-              <Input
-                placeholder="Buscar treinos..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                data-testid="input-search-workouts"
-              />
-            </div>
-            <Button
-              onClick={handleCreateWorkout}
-              data-testid="button-create-workout"
-            >
-              <i className="fas fa-plus mr-2"></i>
-              Novo Treino
-            </Button>
+      <main className="p-6">
+        <div className="mb-6 flex justify-between items-center">
+          <div className="flex-1 max-w-md">
+            <Input
+              placeholder="Buscar treinos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              data-testid="input-search-workouts"
+            />
           </div>
+          <Button
+            onClick={handleCreateWorkout}
+            data-testid="button-create-workout"
+          >
+            <i className="fas fa-plus mr-2"></i>
+            Novo Treino
+          </Button>
+        </div>
 
-          {workoutsLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                <p className="mt-2 text-gray-600">Carregando treinos...</p>
-              </div>
+        {workoutsLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-2 text-gray-600">Carregando treinos...</p>
             </div>
-          ) : filteredWorkouts.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <i className="fas fa-clipboard-list text-gray-400 text-4xl mb-4"></i>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  {workouts?.length === 0
-                    ? "Nenhum treino cadastrado"
-                    : "Nenhum treino encontrado"}
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  {workouts?.length === 0
-                    ? "Comece criando seu primeiro treino personalizado"
-                    : "Tente ajustar os termos de busca"}
-                </p>
-                {workouts?.length === 0 && (
-                  <Button
-                    onClick={handleCreateWorkout}
-                    data-testid="button-create-first-workout"
-                  >
-                    <i className="fas fa-plus mr-2"></i>
-                    Criar Primeiro Treino
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredWorkouts.map((workout) => (
-                <Card
-                  key={workout.id}
-                  className="hover:shadow-md transition-shadow"
+          </div>
+        ) : filteredWorkouts.length === 0 ? (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <i className="fas fa-clipboard-list text-gray-400 text-4xl mb-4"></i>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {workouts?.length === 0
+                  ? "Nenhum treino cadastrado"
+                  : "Nenhum treino encontrado"}
+              </h3>
+              <p className="text-gray-600 mb-4">
+                {workouts?.length === 0
+                  ? "Comece criando seu primeiro treino personalizado"
+                  : "Tente ajustar os termos de busca"}
+              </p>
+              {workouts?.length === 0 && (
+                <Button
+                  onClick={handleCreateWorkout}
+                  data-testid="button-create-first-workout"
                 >
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle
-                        className="text-lg"
-                        data-testid={`text-workout-name-${workout.id}`}
+                  <i className="fas fa-plus mr-2"></i>
+                  Criar Primeiro Treino
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredWorkouts.map((workout) => (
+              <Card
+                key={workout.id}
+                className="hover:shadow-md transition-shadow"
+              >
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle
+                      className="text-lg"
+                      data-testid={`text-workout-name-${workout.id}`}
+                    >
+                      {workout.name}
+                    </CardTitle>
+                    <Badge className={getCategoryColor(workout.category)}>
+                      {getCategoryLabel(workout.category)}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3 mb-4">
+                    <div className="flex items-center text-sm text-gray-600">
+                      <i className="fas fa-user mr-2 w-4"></i>
+                      <span>{getStudentName(workout.studentId)}</span>
+                    </div>
+
+                    {workout.description && (
+                      <div className="flex items-start text-sm text-gray-600">
+                        <i className="fas fa-align-left mr-2 w-4 mt-0.5"></i>
+                        <span>{workout.description}</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center text-sm text-gray-600">
+                      <i className="fas fa-clock mr-2 w-4"></i>
+                      <span>
+                        Criado em{" "}
+                        {new Date(workout.createdAt!).toLocaleDateString(
+                          "pt-BR"
+                        )}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center text-sm text-gray-600 mb-2">
+                      <i className="fas fa-dumbbell mr-2 w-4"></i>
+                      <span data-testid={`text-exercise-count-${workout.id}`}>
+                        {(workout as any).exercises?.length || 0} exercício(s)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center">
+                      <Badge
+                        variant={workout.isActive ? "default" : "secondary"}
                       >
-                        {workout.name}
-                      </CardTitle>
-                      <Badge className={getCategoryColor(workout.category)}>
-                        {getCategoryLabel(workout.category)}
+                        {workout.isActive ? "Ativo" : "Inativo"}
                       </Badge>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3 mb-4">
-                      <div className="flex items-center text-sm text-gray-600">
-                        <i className="fas fa-user mr-2 w-4"></i>
-                        <span>{getStudentName(workout.studentId)}</span>
-                      </div>
+                  </div>
 
-                      {workout.description && (
-                        <div className="flex items-start text-sm text-gray-600">
-                          <i className="fas fa-align-left mr-2 w-4 mt-0.5"></i>
-                          <span>{workout.description}</span>
-                        </div>
-                      )}
-
-                      <div className="flex items-center text-sm text-gray-600">
-                        <i className="fas fa-clock mr-2 w-4"></i>
-                        <span>
-                          Criado em{" "}
-                          {new Date(workout.createdAt!).toLocaleDateString(
-                            "pt-BR"
-                          )}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center text-sm text-gray-600 mb-2">
-                        <i className="fas fa-dumbbell mr-2 w-4"></i>
-                        <span data-testid={`text-exercise-count-${workout.id}`}>
-                          {(workout as any).exercises?.length || 0} exercício(s)
-                        </span>
-                      </div>
-
-                      <div className="flex items-center">
-                        <Badge
-                          variant={workout.isActive ? "default" : "secondary"}
-                        >
-                          {workout.isActive ? "Ativo" : "Inativo"}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditWorkout(workout)}
-                        data-testid={`button-edit-workout-${workout.id}`}
-                      >
-                        <i className="fas fa-edit mr-1"></i>
-                        Editar
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteWorkout(workout.id)}
-                        className="text-red-600 border-red-200 hover:bg-red-50"
-                        disabled={deleteWorkoutMutation.isPending}
-                        data-testid={`button-delete-workout-${workout.id}`}
-                      >
-                        <i className="fas fa-trash mr-1"></i>
-                        {deleteWorkoutMutation.isPending ? "..." : "Remover"}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </main>
-      </div>
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditWorkout(workout)}
+                      data-testid={`button-edit-workout-${workout.id}`}
+                    >
+                      <i className="fas fa-edit mr-1"></i>
+                      Editar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteWorkout(workout.id)}
+                      className="text-red-600 border-red-200 hover:bg-red-50"
+                      disabled={deleteWorkoutMutation.isPending}
+                      data-testid={`button-delete-workout-${workout.id}`}
+                    >
+                      <i className="fas fa-trash mr-1"></i>
+                      {deleteWorkoutMutation.isPending ? "..." : "Remover"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </main>
 
       <WorkoutModal
         isOpen={isModalOpen}
