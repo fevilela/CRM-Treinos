@@ -8,38 +8,38 @@ interface BodyVisualizationProps {
     currentWeight?: number;
     currentHeight?: number;
     bmi?: number;
-    waistCirc?: string | null;
-    hipCirc?: string | null;
-    chestCirc?: string | null;
-    rightArmContractedCirc?: string | null;
-    rightArmRelaxedCirc?: string | null;
-    leftArmContractedCirc?: string | null;
-    leftArmRelaxedCirc?: string | null;
-    rightThighCirc?: string | null;
-    leftThighCirc?: string | null;
-    rightCalfCirc?: string | null;
-    leftCalfCirc?: string | null;
-    bodyFatPercentage?: string | null;
-    leanMass?: string | null;
-    fatMass?: string | null;
-    waistHipRatio?: string | null;
+    waistCirc?: string | number | null;
+    hipCirc?: string | number | null;
+    chestCirc?: string | number | null;
+    rightArmContractedCirc?: string | number | null;
+    rightArmRelaxedCirc?: string | number | null;
+    leftArmContractedCirc?: string | number | null;
+    leftArmRelaxedCirc?: string | number | null;
+    rightThighCirc?: string | number | null;
+    leftThighCirc?: string | number | null;
+    rightCalfCirc?: string | number | null;
+    leftCalfCirc?: string | number | null;
+    bodyFatPercentage?: string | number | null;
+    leanMass?: string | number | null;
+    fatMass?: string | number | null;
+    waistHipRatio?: string | number | null;
     waistHipRatioClassification?: string | null;
-    tricepsSkinFold?: string | null;
-    subscapularSkinFold?: string | null;
-    axillaryMidSkinFold?: string | null;
-    pectoralSkinFold?: string | null;
-    suprailiacSkinFold?: string | null;
-    abdominalSkinFold?: string | null;
-    thighSkinFold?: string | null;
-    bodyWater?: string | null;
+    tricepsSkinFold?: string | number | null;
+    subscapularSkinFold?: string | number | null;
+    axillaryMidSkinFold?: string | number | null;
+    pectoralSkinFold?: string | number | null;
+    suprailiacSkinFold?: string | number | null;
+    abdominalSkinFold?: string | number | null;
+    thighSkinFold?: string | number | null;
+    bodyWater?: string | number | null;
     bloodPressure?: string | null;
-    restingHeartRate?: string | null;
-    oxygenSaturation?: string | null;
+    restingHeartRate?: string | number | null;
+    oxygenSaturation?: string | number | null;
     subjectiveEffortPerception?: string | null;
-    maxPushUps?: string | null;
-    maxSquats?: string | null;
-    maxSitUps?: string | null;
-    plankTime?: string | null;
+    maxPushUps?: string | number | null;
+    maxSquats?: string | number | null;
+    maxSitUps?: string | number | null;
+    plankTime?: string | number | null;
     cardioTest?: string | null;
     cardioTestResult?: string | null;
     flexibility?: string | null;
@@ -47,10 +47,10 @@ interface BodyVisualizationProps {
     balanceCoordination?: string | null;
     additionalNotes?: string | null;
     gender?: string;
-    abdomenCirc?: string | null;
-    armCirc?: string | null;
-    thighCirc?: string | null;
-    calfCirc?: string | null;
+    abdomenCirc?: string | number | null;
+    armCirc?: string | number | null;
+    thighCirc?: string | number | null;
+    calfCirc?: string | number | null;
   };
   interactive?: boolean;
 }
@@ -60,7 +60,7 @@ export default function BodyVisualization({
   interactive = true,
 }: BodyVisualizationProps) {
   const [selectedGender, setSelectedGender] = useState<"male" | "female">(
-    "male"
+    (assessment?.gender as "male" | "female") || "male"
   );
   const [selectedPart, setSelectedPart] = useState<string | null>(null);
 
@@ -141,6 +141,15 @@ export default function BodyVisualization({
     }
   };
 
+  const formatValue = (value: string | number | null | undefined): string => {
+    if (value === null || value === undefined) return "-";
+    if (typeof value === "string") {
+      const numValue = parseFloat(value);
+      return isNaN(numValue) ? value : numValue.toFixed(1);
+    }
+    return value.toFixed(1);
+  };
+
   const bodyParts = {
     chest: { label: "Tórax", value: assessment?.chestCirc },
     rightArmContracted: {
@@ -161,6 +170,10 @@ export default function BodyVisualization({
     },
     waist: { label: "Cintura", value: assessment?.waistCirc },
     hip: { label: "Quadril", value: assessment?.hipCirc },
+    abdomen: { label: "Abdômen", value: assessment?.abdomenCirc },
+    arm: { label: "Braço", value: assessment?.armCirc },
+    thigh: { label: "Coxa", value: assessment?.thighCirc },
+    calf: { label: "Panturrilha", value: assessment?.calfCirc },
     rightThigh: { label: "Coxa D", value: assessment?.rightThighCirc },
     leftThigh: { label: "Coxa E", value: assessment?.leftThighCirc },
     rightCalf: { label: "Pant D", value: assessment?.rightCalfCirc },
@@ -168,38 +181,102 @@ export default function BodyVisualization({
   };
 
   const MaleBodySVG = () => (
-    <svg viewBox="0 0 200 400" className="w-full h-full">
-      {/* Cabeça */}
-      <circle
-        cx="100"
-        cy="40"
-        r="25"
-        fill="#f3f4f6"
-        stroke="#374151"
-        strokeWidth="2"
+    <svg viewBox="0 0 200 450" className="w-full h-full">
+      {/* Cabeça anatômica */}
+      <path
+        d="M 100 10 Q 118 12 125 25 Q 127 35 125 45 Q 118 58 100 60 Q 82 58 75 45 Q 73 35 75 25 Q 82 12 100 10 Z"
+        fill="#fce4b6"
+        stroke="#d97706"
+        strokeWidth="1.5"
       />
 
-      {/* Pescoço */}
-      <rect
-        x="90"
-        y="60"
-        width="20"
-        height="20"
-        fill="#f3f4f6"
-        stroke="#374151"
-        strokeWidth="2"
+      {/* Cabelo */}
+      <path
+        d="M 100 10 Q 120 8 128 22 Q 125 15 118 12 Q 100 8 82 12 Q 75 15 72 22 Q 80 8 100 10 Z"
+        fill="#8b4513"
+        stroke="#654321"
+        strokeWidth="1"
       />
 
-      {/* Peito/Tronco */}
-      <rect
-        x="70"
-        y="80"
-        width="60"
-        height="80"
-        rx="10"
-        fill={selectedPart === "chest" ? "#dbeafe" : "#f3f4f6"}
-        stroke="#374151"
-        strokeWidth="2"
+      {/* Olhos */}
+      <ellipse cx="92" cy="30" rx="3" ry="2" fill="white" />
+      <ellipse cx="108" cy="30" rx="3" ry="2" fill="white" />
+      <circle cx="92" cy="30" r="1.5" fill="#2563eb" />
+      <circle cx="108" cy="30" r="1.5" fill="#2563eb" />
+
+      {/* Nariz */}
+      <path d="M 100 35 L 98 40 L 102 40 Z" fill="#f59e0b" />
+
+      {/* Boca */}
+      <ellipse cx="100" cy="44" rx="4" ry="1.5" fill="#dc2626" />
+
+      {/* Pescoço anatômico */}
+      <path
+        d="M 88 58 Q 90 65 92 75 L 108 75 Q 110 65 112 58 Q 108 60 100 60 Q 92 60 88 58 Z"
+        fill="#fce4b6"
+        stroke="#d97706"
+        strokeWidth="1.5"
+      />
+
+      {/* Músculos do pescoço (esternocleidomastóideo) */}
+      <path
+        d="M 94 62 Q 96 68 98 73"
+        stroke="#e08c4a"
+        strokeWidth="1"
+        fill="none"
+      />
+      <path
+        d="M 106 62 Q 104 68 102 73"
+        stroke="#e08c4a"
+        strokeWidth="1"
+        fill="none"
+      />
+
+      {/* Ombros e deltóides anatômicos */}
+      <ellipse
+        cx="68"
+        cy="88"
+        rx="18"
+        ry="12"
+        fill="#fce4b6"
+        stroke="#d97706"
+        strokeWidth="1.5"
+      />
+      <ellipse
+        cx="132"
+        cy="88"
+        rx="18"
+        ry="12"
+        fill="#fce4b6"
+        stroke="#d97706"
+        strokeWidth="1.5"
+      />
+
+      {/* Trapézio */}
+      <path
+        d="M 85 75 Q 100 78 115 75 Q 120 82 118 90 Q 100 85 82 90 Q 80 82 85 75 Z"
+        fill="#fce4b6"
+        stroke="#d97706"
+        strokeWidth="1.5"
+      />
+
+      {/* Peitorais anatômicos */}
+      <path
+        d="M 75 90 Q 85 95 95 105 Q 100 108 100 115 Q 95 110 85 108 Q 78 105 75 100 Z"
+        fill={selectedPart === "chest" ? "#dbeafe" : "#fce4b6"}
+        stroke="#d97706"
+        strokeWidth="1.5"
+        className={interactive ? "cursor-pointer hover:fill-blue-100" : ""}
+        onClick={() =>
+          interactive &&
+          setSelectedPart(selectedPart === "chest" ? null : "chest")
+        }
+      />
+      <path
+        d="M 125 90 Q 115 95 105 105 Q 100 108 100 115 Q 105 110 115 108 Q 122 105 125 100 Z"
+        fill={selectedPart === "chest" ? "#dbeafe" : "#fce4b6"}
+        stroke="#d97706"
+        strokeWidth="1.5"
         className={interactive ? "cursor-pointer hover:fill-blue-100" : ""}
         onClick={() =>
           interactive &&
@@ -207,63 +284,46 @@ export default function BodyVisualization({
         }
       />
 
-      {/* Braços */}
+      {/* Abdominais anatômicos */}
       <rect
-        x="40"
-        y="90"
-        width="25"
-        height="60"
-        rx="12"
-        fill={selectedPart === "arm" ? "#dbeafe" : "#f3f4f6"}
-        stroke="#374151"
-        strokeWidth="2"
-        className={interactive ? "cursor-pointer hover:fill-blue-100" : ""}
-        onClick={() =>
-          interactive && setSelectedPart(selectedPart === "arm" ? null : "arm")
-        }
-      />
-      <rect
-        x="135"
-        y="90"
-        width="25"
-        height="60"
-        rx="12"
-        fill={selectedPart === "arm" ? "#dbeafe" : "#f3f4f6"}
-        stroke="#374151"
-        strokeWidth="2"
-        className={interactive ? "cursor-pointer hover:fill-blue-100" : ""}
-        onClick={() =>
-          interactive && setSelectedPart(selectedPart === "arm" ? null : "arm")
-        }
-      />
-
-      {/* Cintura */}
-      <rect
-        x="75"
-        y="160"
-        width="50"
-        height="30"
-        rx="5"
-        fill={selectedPart === "waist" ? "#dbeafe" : "#f3f4f6"}
-        stroke="#374151"
-        strokeWidth="2"
+        x="85"
+        y="115"
+        width="30"
+        height="12"
+        rx="3"
+        fill={selectedPart === "abdomen" ? "#dbeafe" : "#fce4b6"}
+        stroke="#d97706"
+        strokeWidth="1.5"
         className={interactive ? "cursor-pointer hover:fill-blue-100" : ""}
         onClick={() =>
           interactive &&
-          setSelectedPart(selectedPart === "waist" ? null : "waist")
+          setSelectedPart(selectedPart === "abdomen" ? null : "abdomen")
         }
       />
-
-      {/* Abdômen */}
       <rect
-        x="80"
-        y="190"
-        width="40"
-        height="40"
-        rx="5"
-        fill={selectedPart === "abdomen" ? "#dbeafe" : "#f3f4f6"}
-        stroke="#374151"
-        strokeWidth="2"
+        x="87"
+        y="128"
+        width="26"
+        height="12"
+        rx="3"
+        fill={selectedPart === "abdomen" ? "#dbeafe" : "#fce4b6"}
+        stroke="#d97706"
+        strokeWidth="1.5"
+        className={interactive ? "cursor-pointer hover:fill-blue-100" : ""}
+        onClick={() =>
+          interactive &&
+          setSelectedPart(selectedPart === "abdomen" ? null : "abdomen")
+        }
+      />
+      <rect
+        x="89"
+        y="141"
+        width="22"
+        height="12"
+        rx="3"
+        fill={selectedPart === "abdomen" ? "#dbeafe" : "#fce4b6"}
+        stroke="#d97706"
+        strokeWidth="1.5"
         className={interactive ? "cursor-pointer hover:fill-blue-100" : ""}
         onClick={() =>
           interactive &&
@@ -271,137 +331,525 @@ export default function BodyVisualization({
         }
       />
 
-      {/* Quadril */}
-      <rect
-        x="75"
-        y="230"
-        width="50"
-        height="35"
+      {/* Linhas dos abdominais */}
+      <line
+        x1="100"
+        y1="115"
+        x2="100"
+        y2="153"
+        stroke="#d97706"
+        strokeWidth="1"
+        opacity="0.6"
+      />
+      <line
+        x1="90"
+        y1="121"
+        x2="110"
+        y2="121"
+        stroke="#d97706"
+        strokeWidth="0.8"
+        opacity="0.4"
+      />
+      <line
+        x1="91"
+        y1="134"
+        x2="109"
+        y2="134"
+        stroke="#d97706"
+        strokeWidth="0.8"
+        opacity="0.4"
+      />
+      <line
+        x1="93"
+        y1="147"
+        x2="107"
+        y2="147"
+        stroke="#d97706"
+        strokeWidth="0.8"
+        opacity="0.4"
+      />
+
+      {/* Cintura anatômica */}
+      <path
+        d="M 89 153 Q 85 158 85 165 Q 88 170 95 172 L 105 172 Q 112 170 115 165 Q 115 158 111 153 Z"
+        fill={selectedPart === "waist" ? "#dbeafe" : "#fce4b6"}
+        stroke="#d97706"
+        strokeWidth="1.5"
+        className={interactive ? "cursor-pointer hover:fill-blue-100" : ""}
+        onClick={() =>
+          interactive &&
+          setSelectedPart(selectedPart === "waist" ? null : "waist")
+        }
+      />
+
+      {/* Bíceps direito */}
+      <ellipse
+        cx="50"
+        cy="110"
+        rx="11"
+        ry="25"
+        fill={selectedPart === "rightArmRelaxed" ? "#dbeafe" : "#fce4b6"}
+        stroke="#d97706"
+        strokeWidth="1.5"
+        className={interactive ? "cursor-pointer hover:fill-blue-100" : ""}
+        onClick={() =>
+          interactive &&
+          setSelectedPart(
+            selectedPart === "rightArmRelaxed" ? null : "rightArmRelaxed"
+          )
+        }
+      />
+
+      {/* Bíceps esquerdo */}
+      <ellipse
+        cx="150"
+        cy="110"
+        rx="11"
+        ry="25"
+        fill={selectedPart === "leftArmRelaxed" ? "#dbeafe" : "#fce4b6"}
+        stroke="#d97706"
+        strokeWidth="1.5"
+        className={interactive ? "cursor-pointer hover:fill-blue-100" : ""}
+        onClick={() =>
+          interactive &&
+          setSelectedPart(
+            selectedPart === "leftArmRelaxed" ? null : "leftArmRelaxed"
+          )
+        }
+      />
+
+      {/* Definição muscular dos braços */}
+      <path
+        d="M 45 100 Q 50 105 55 120"
+        stroke="#d97706"
+        strokeWidth="0.8"
+        fill="none"
+        opacity="0.6"
+      />
+      <path
+        d="M 155 100 Q 150 105 145 120"
+        stroke="#d97706"
+        strokeWidth="0.8"
+        fill="none"
+        opacity="0.6"
+      />
+
+      {/* Antebraços anatômicos */}
+      <path
+        d="M 45 135 Q 42 140 40 155 Q 38 165 40 175 Q 42 182 48 184 Q 52 182 54 175 Q 56 165 54 155 Q 52 140 49 135 Z"
+        fill="#fce4b6"
+        stroke="#d97706"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M 155 135 Q 158 140 160 155 Q 162 165 160 175 Q 158 182 152 184 Q 148 182 146 175 Q 144 165 146 155 Q 148 140 151 135 Z"
+        fill="#fce4b6"
+        stroke="#d97706"
+        strokeWidth="1.5"
+      />
+
+      {/* Mãos anatômicas */}
+      <ellipse
+        cx="44"
+        cy="190"
         rx="8"
-        fill={selectedPart === "hip" ? "#dbeafe" : "#f3f4f6"}
-        stroke="#374151"
-        strokeWidth="2"
+        ry="12"
+        fill="#fce4b6"
+        stroke="#d97706"
+        strokeWidth="1.5"
+      />
+      <ellipse
+        cx="156"
+        cy="190"
+        rx="8"
+        ry="12"
+        fill="#fce4b6"
+        stroke="#d97706"
+        strokeWidth="1.5"
+      />
+
+      {/* Quadril e glúteos anatômicos */}
+      <path
+        d="M 85 172 Q 80 180 78 195 Q 76 210 80 225 Q 85 235 95 240 L 105 240 Q 115 235 120 225 Q 124 210 122 195 Q 120 180 115 172 Z"
+        fill={selectedPart === "hip" ? "#dbeafe" : "#fce4b6"}
+        stroke="#d97706"
+        strokeWidth="1.5"
         className={interactive ? "cursor-pointer hover:fill-blue-100" : ""}
         onClick={() =>
           interactive && setSelectedPart(selectedPart === "hip" ? null : "hip")
         }
       />
 
-      {/* Coxas */}
-      <rect
-        x="80"
-        y="265"
-        width="18"
-        height="70"
-        rx="9"
-        fill={selectedPart === "thigh" ? "#dbeafe" : "#f3f4f6"}
-        stroke="#374151"
-        strokeWidth="2"
+      {/* Coxas anatômicas com definição */}
+      <path
+        d="M 82 240 Q 75 250 73 270 Q 72 290 75 320 Q 78 340 85 345 Q 92 340 95 320 Q 98 290 97 270 Q 95 250 88 240 Z"
+        fill={selectedPart === "rightThigh" ? "#dbeafe" : "#fce4b6"}
+        stroke="#d97706"
+        strokeWidth="1.5"
         className={interactive ? "cursor-pointer hover:fill-blue-100" : ""}
         onClick={() =>
           interactive &&
-          setSelectedPart(selectedPart === "thigh" ? null : "thigh")
+          setSelectedPart(selectedPart === "rightThigh" ? null : "rightThigh")
         }
       />
-      <rect
-        x="102"
-        y="265"
-        width="18"
-        height="70"
-        rx="9"
-        fill={selectedPart === "thigh" ? "#dbeafe" : "#f3f4f6"}
-        stroke="#374151"
-        strokeWidth="2"
+      <path
+        d="M 118 240 Q 125 250 127 270 Q 128 290 125 320 Q 122 340 115 345 Q 108 340 105 320 Q 102 290 103 270 Q 105 250 112 240 Z"
+        fill={selectedPart === "leftThigh" ? "#dbeafe" : "#fce4b6"}
+        stroke="#d97706"
+        strokeWidth="1.5"
         className={interactive ? "cursor-pointer hover:fill-blue-100" : ""}
         onClick={() =>
           interactive &&
-          setSelectedPart(selectedPart === "thigh" ? null : "thigh")
+          setSelectedPart(selectedPart === "leftThigh" ? null : "leftThigh")
         }
       />
 
-      {/* Panturrilhas */}
-      <rect
-        x="82"
-        y="335"
-        width="14"
-        height="50"
-        rx="7"
-        fill={selectedPart === "calf" ? "#dbeafe" : "#f3f4f6"}
-        stroke="#374151"
-        strokeWidth="2"
+      {/* Definição muscular das coxas (quadríceps) */}
+      <path
+        d="M 78 250 Q 85 260 92 320"
+        stroke="#d97706"
+        strokeWidth="0.8"
+        fill="none"
+        opacity="0.5"
+      />
+      <path
+        d="M 122 250 Q 115 260 108 320"
+        stroke="#d97706"
+        strokeWidth="0.8"
+        fill="none"
+        opacity="0.5"
+      />
+
+      {/* Joelhos anatômicos */}
+      <ellipse
+        cx="85"
+        cy="350"
+        rx="8"
+        ry="6"
+        fill="#e6c090"
+        stroke="#d97706"
+        strokeWidth="1"
+      />
+      <ellipse
+        cx="115"
+        cy="350"
+        rx="8"
+        ry="6"
+        fill="#e6c090"
+        stroke="#d97706"
+        strokeWidth="1"
+      />
+
+      {/* Panturrilhas anatômicas */}
+      <path
+        d="M 85 355 Q 78 365 76 380 Q 75 395 78 405 Q 82 410 88 408 Q 94 406 96 395 Q 98 380 96 365 Q 94 355 89 352 Z"
+        fill={selectedPart === "rightCalf" ? "#dbeafe" : "#fce4b6"}
+        stroke="#d97706"
+        strokeWidth="1.5"
         className={interactive ? "cursor-pointer hover:fill-blue-100" : ""}
         onClick={() =>
           interactive &&
-          setSelectedPart(selectedPart === "calf" ? null : "calf")
+          setSelectedPart(selectedPart === "rightCalf" ? null : "rightCalf")
         }
       />
-      <rect
-        x="104"
-        y="335"
-        width="14"
-        height="50"
-        rx="7"
-        fill={selectedPart === "calf" ? "#dbeafe" : "#f3f4f6"}
-        stroke="#374151"
-        strokeWidth="2"
+      <path
+        d="M 115 355 Q 122 365 124 380 Q 125 395 122 405 Q 118 410 112 408 Q 106 406 104 395 Q 102 380 104 365 Q 106 355 111 352 Z"
+        fill={selectedPart === "leftCalf" ? "#dbeafe" : "#fce4b6"}
+        stroke="#d97706"
+        strokeWidth="1.5"
         className={interactive ? "cursor-pointer hover:fill-blue-100" : ""}
         onClick={() =>
           interactive &&
-          setSelectedPart(selectedPart === "calf" ? null : "calf")
+          setSelectedPart(selectedPart === "leftCalf" ? null : "leftCalf")
         }
       />
 
-      {/* Pés */}
-      <ellipse
-        cx="89"
-        cy="395"
-        rx="12"
-        ry="8"
-        fill="#f3f4f6"
-        stroke="#374151"
-        strokeWidth="2"
+      {/* Definição das panturrilhas */}
+      <path
+        d="M 80 365 Q 85 375 90 395"
+        stroke="#d97706"
+        strokeWidth="0.8"
+        fill="none"
+        opacity="0.5"
       />
-      <ellipse
-        cx="111"
-        cy="395"
-        rx="12"
-        ry="8"
-        fill="#f3f4f6"
-        stroke="#374151"
-        strokeWidth="2"
+      <path
+        d="M 120 365 Q 115 375 110 395"
+        stroke="#d97706"
+        strokeWidth="0.8"
+        fill="none"
+        opacity="0.5"
+      />
+
+      {/* Pés anatômicos */}
+      <path
+        d="M 78 408 Q 70 412 68 418 Q 70 425 78 428 Q 88 430 95 428 Q 98 425 96 418 Q 94 412 88 408 Z"
+        fill="#fce4b6"
+        stroke="#d97706"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M 122 408 Q 130 412 132 418 Q 130 425 122 428 Q 112 430 105 428 Q 102 425 104 418 Q 106 412 112 408 Z"
+        fill="#fce4b6"
+        stroke="#d97706"
+        strokeWidth="1.5"
+      />
+
+      {/* Dedos dos pés */}
+      <circle
+        cx="72"
+        cy="420"
+        r="2"
+        fill="#fce4b6"
+        stroke="#d97706"
+        strokeWidth="1"
+      />
+      <circle
+        cx="76"
+        cy="422"
+        r="1.5"
+        fill="#fce4b6"
+        stroke="#d97706"
+        strokeWidth="1"
+      />
+      <circle
+        cx="80"
+        cy="423"
+        r="1.5"
+        fill="#fce4b6"
+        stroke="#d97706"
+        strokeWidth="1"
+      />
+      <circle
+        cx="84"
+        cy="422"
+        r="1.5"
+        fill="#fce4b6"
+        stroke="#d97706"
+        strokeWidth="1"
+      />
+      <circle
+        cx="88"
+        cy="420"
+        r="1.5"
+        fill="#fce4b6"
+        stroke="#d97706"
+        strokeWidth="1"
+      />
+
+      <circle
+        cx="128"
+        cy="420"
+        r="2"
+        fill="#fce4b6"
+        stroke="#d97706"
+        strokeWidth="1"
+      />
+      <circle
+        cx="124"
+        cy="422"
+        r="1.5"
+        fill="#fce4b6"
+        stroke="#d97706"
+        strokeWidth="1"
+      />
+      <circle
+        cx="120"
+        cy="423"
+        r="1.5"
+        fill="#fce4b6"
+        stroke="#d97706"
+        strokeWidth="1"
+      />
+      <circle
+        cx="116"
+        cy="422"
+        r="1.5"
+        fill="#fce4b6"
+        stroke="#d97706"
+        strokeWidth="1"
+      />
+      <circle
+        cx="112"
+        cy="420"
+        r="1.5"
+        fill="#fce4b6"
+        stroke="#d97706"
+        strokeWidth="1"
+      />
+
+      {/* Músculos intercostais */}
+      <path
+        d="M 85 105 Q 95 108 105 105"
+        stroke="#d97706"
+        strokeWidth="0.6"
+        fill="none"
+        opacity="0.4"
+      />
+      <path
+        d="M 87 112 Q 95 115 103 112"
+        stroke="#d97706"
+        strokeWidth="0.6"
+        fill="none"
+        opacity="0.4"
+      />
+
+      {/* Linha alba (linha central do abdômen) */}
+      <line
+        x1="100"
+        y1="115"
+        x2="100"
+        y2="172"
+        stroke="#d97706"
+        strokeWidth="1.2"
+        opacity="0.7"
+      />
+
+      {/* Músculos oblíquos */}
+      <path
+        d="M 85 125 Q 80 135 82 145"
+        stroke="#d97706"
+        strokeWidth="0.8"
+        fill="none"
+        opacity="0.5"
+      />
+      <path
+        d="M 115 125 Q 120 135 118 145"
+        stroke="#d97706"
+        strokeWidth="0.8"
+        fill="none"
+        opacity="0.5"
       />
     </svg>
   );
 
   const FemaleBodySVG = () => (
-    <svg viewBox="0 0 200 400" className="w-full h-full">
-      {/* Cabeça */}
-      <circle
-        cx="100"
-        cy="40"
-        r="25"
-        fill="#fef7ff"
-        stroke="#7c2d92"
-        strokeWidth="2"
-      />
-
-      {/* Pescoço */}
-      <rect
-        x="90"
-        y="60"
-        width="20"
-        height="20"
-        fill="#fef7ff"
-        stroke="#7c2d92"
-        strokeWidth="2"
-      />
-
-      {/* Peito/Tronco (formato mais curvilíneo) */}
+    <svg viewBox="0 0 200 450" className="w-full h-full">
+      {/* Cabeça anatômica feminina */}
       <path
-        d="M 70 80 Q 65 100 70 120 L 70 150 Q 70 160 80 160 L 120 160 Q 130 160 130 150 L 130 120 Q 135 100 130 80 Z"
-        fill={selectedPart === "chest" ? "#f3e8ff" : "#fef7ff"}
-        stroke="#7c2d92"
-        strokeWidth="2"
+        d="M 100 10 Q 115 12 122 24 Q 124 34 122 44 Q 115 57 100 59 Q 85 57 78 44 Q 76 34 78 24 Q 85 12 100 10 Z"
+        fill="#fdf2f8"
+        stroke="#be185d"
+        strokeWidth="1.5"
+      />
+
+      {/* Cabelo feminino (mais longo) */}
+      <path
+        d="M 100 10 Q 125 5 130 20 Q 128 30 125 40 Q 122 50 115 55 Q 100 8 85 55 Q 78 50 75 40 Q 72 30 70 20 Q 75 5 100 10 Z"
+        fill="#4a1d96"
+        stroke="#3c1558"
+        strokeWidth="1"
+      />
+
+      {/* Olhos femininos (mais expressivos) */}
+      <ellipse cx="91" cy="29" rx="4" ry="2.5" fill="white" />
+      <ellipse cx="109" cy="29" rx="4" ry="2.5" fill="white" />
+      <circle cx="91" cy="29" r="1.8" fill="#7c3aed" />
+      <circle cx="109" cy="29" r="1.8" fill="#7c3aed" />
+
+      {/* Cílios */}
+      <path
+        d="M 87 27 Q 89 26 91 27"
+        stroke="#3c1558"
+        strokeWidth="0.8"
+        fill="none"
+      />
+      <path
+        d="M 109 27 Q 111 26 113 27"
+        stroke="#3c1558"
+        strokeWidth="0.8"
+        fill="none"
+      />
+
+      {/* Sobrancelhas */}
+      <path
+        d="M 85 25 Q 91 23 95 24"
+        stroke="#3c1558"
+        strokeWidth="1.2"
+        fill="none"
+      />
+      <path
+        d="M 105 24 Q 109 23 115 25"
+        stroke="#3c1558"
+        strokeWidth="1.2"
+        fill="none"
+      />
+
+      {/* Nariz feminino (mais delicado) */}
+      <path
+        d="M 100 34 Q 99 38 100 40 Q 101 38 100 34"
+        stroke="#be185d"
+        strokeWidth="1"
+        fill="none"
+      />
+
+      {/* Lábios femininos */}
+      <path
+        d="M 97 42 Q 100 44 103 42 Q 100 45 97 42"
+        fill="#ec4899"
+        stroke="#be185d"
+        strokeWidth="0.8"
+      />
+
+      {/* Pescoço feminino (mais delicado) */}
+      <path
+        d="M 90 57 Q 92 64 94 73 L 106 73 Q 108 64 110 57 Q 106 59 100 59 Q 94 59 90 57 Z"
+        fill="#fdf2f8"
+        stroke="#be185d"
+        strokeWidth="1.5"
+      />
+
+      {/* Clavículas */}
+      <path
+        d="M 82 75 Q 100 78 118 75"
+        stroke="#be185d"
+        strokeWidth="1.2"
+        fill="none"
+        opacity="0.6"
+      />
+
+      {/* Ombros femininos (mais estreitos) */}
+      <ellipse
+        cx="72"
+        cy="85"
+        rx="15"
+        ry="10"
+        fill="#fdf2f8"
+        stroke="#be185d"
+        strokeWidth="1.5"
+      />
+      <ellipse
+        cx="128"
+        cy="85"
+        rx="15"
+        ry="10"
+        fill="#fdf2f8"
+        stroke="#be185d"
+        strokeWidth="1.5"
+      />
+
+      {/* Seios anatômicos */}
+      <ellipse
+        cx="88"
+        cy="98"
+        rx="10"
+        ry="12"
+        fill={selectedPart === "chest" ? "#f3e8ff" : "#fdf2f8"}
+        stroke="#be185d"
+        strokeWidth="1.5"
+        className={interactive ? "cursor-pointer hover:fill-purple-100" : ""}
+        onClick={() =>
+          interactive &&
+          setSelectedPart(selectedPart === "chest" ? null : "chest")
+        }
+      />
+      <ellipse
+        cx="112"
+        cy="98"
+        rx="10"
+        ry="12"
+        fill={selectedPart === "chest" ? "#f3e8ff" : "#fdf2f8"}
+        stroke="#be185d"
+        strokeWidth="1.5"
         className={interactive ? "cursor-pointer hover:fill-purple-100" : ""}
         onClick={() =>
           interactive &&
@@ -409,46 +857,87 @@ export default function BodyVisualization({
         }
       />
 
-      {/* Braços */}
-      <rect
-        x="40"
-        y="90"
-        width="25"
-        height="60"
-        rx="12"
-        fill={selectedPart === "arm" ? "#f3e8ff" : "#fef7ff"}
-        stroke="#7c2d92"
-        strokeWidth="2"
+      {/* Braços femininos */}
+      <path
+        d="M 65 90 Q 55 100 52 120 Q 50 140 52 155 Q 55 165 62 167 Q 68 165 70 155 Q 72 140 70 120 Q 68 100 67 90 Z"
+        fill={selectedPart === "rightArmRelaxed" ? "#f3e8ff" : "#fdf2f8"}
+        stroke="#be185d"
+        strokeWidth="1.5"
         className={interactive ? "cursor-pointer hover:fill-purple-100" : ""}
         onClick={() =>
-          interactive && setSelectedPart(selectedPart === "arm" ? null : "arm")
+          interactive &&
+          setSelectedPart(
+            selectedPart === "rightArmRelaxed" ? null : "rightArmRelaxed"
+          )
         }
       />
-      <rect
-        x="135"
-        y="90"
-        width="25"
-        height="60"
-        rx="12"
-        fill={selectedPart === "arm" ? "#f3e8ff" : "#fef7ff"}
-        stroke="#7c2d92"
-        strokeWidth="2"
+      <path
+        d="M 135 90 Q 145 100 148 120 Q 150 140 148 155 Q 145 165 138 167 Q 132 165 130 155 Q 128 140 130 120 Q 132 100 133 90 Z"
+        fill={selectedPart === "leftArmRelaxed" ? "#f3e8ff" : "#fdf2f8"}
+        stroke="#be185d"
+        strokeWidth="1.5"
         className={interactive ? "cursor-pointer hover:fill-purple-100" : ""}
         onClick={() =>
-          interactive && setSelectedPart(selectedPart === "arm" ? null : "arm")
+          interactive &&
+          setSelectedPart(
+            selectedPart === "leftArmRelaxed" ? null : "leftArmRelaxed"
+          )
         }
       />
 
-      {/* Cintura (mais estreita) */}
-      <rect
-        x="80"
-        y="160"
-        width="40"
-        height="25"
-        rx="5"
-        fill={selectedPart === "waist" ? "#f3e8ff" : "#fef7ff"}
-        stroke="#7c2d92"
-        strokeWidth="2"
+      {/* Antebraços femininos */}
+      <path
+        d="M 58 167 Q 52 170 48 185 Q 46 200 48 210 Q 52 218 58 216 Q 64 214 66 200 Q 68 185 62 170 Z"
+        fill="#fdf2f8"
+        stroke="#be185d"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M 142 167 Q 148 170 152 185 Q 154 200 152 210 Q 148 218 142 216 Q 136 214 134 200 Q 132 185 138 170 Z"
+        fill="#fdf2f8"
+        stroke="#be185d"
+        strokeWidth="1.5"
+      />
+
+      {/* Mãos femininas */}
+      <ellipse
+        cx="52"
+        cy="222"
+        rx="6"
+        ry="10"
+        fill="#fdf2f8"
+        stroke="#be185d"
+        strokeWidth="1.5"
+      />
+      <ellipse
+        cx="148"
+        cy="222"
+        rx="6"
+        ry="10"
+        fill="#fdf2f8"
+        stroke="#be185d"
+        strokeWidth="1.5"
+      />
+
+      {/* Torso feminino */}
+      <path
+        d="M 78 110 Q 75 125 78 140 Q 82 155 88 162 L 112 162 Q 118 155 122 140 Q 125 125 122 110 Z"
+        fill={selectedPart === "chest" ? "#f3e8ff" : "#fdf2f8"}
+        stroke="#be185d"
+        strokeWidth="1.5"
+        className={interactive ? "cursor-pointer hover:fill-purple-100" : ""}
+        onClick={() =>
+          interactive &&
+          setSelectedPart(selectedPart === "chest" ? null : "chest")
+        }
+      />
+
+      {/* Cintura feminina (bem definida) */}
+      <path
+        d="M 88 162 Q 85 168 85 175 Q 88 182 95 184 L 105 184 Q 112 182 115 175 Q 115 168 112 162 Z"
+        fill={selectedPart === "waist" ? "#f3e8ff" : "#fdf2f8"}
+        stroke="#be185d"
+        strokeWidth="1.5"
         className={interactive ? "cursor-pointer hover:fill-purple-100" : ""}
         onClick={() =>
           interactive &&
@@ -456,16 +945,12 @@ export default function BodyVisualization({
         }
       />
 
-      {/* Abdômen */}
-      <rect
-        x="82"
-        y="185"
-        width="36"
-        height="35"
-        rx="5"
-        fill={selectedPart === "abdomen" ? "#f3e8ff" : "#fef7ff"}
-        stroke="#7c2d92"
-        strokeWidth="2"
+      {/* Abdômen feminino */}
+      <path
+        d="M 95 184 Q 92 190 92 200 Q 95 210 100 212 Q 105 210 108 200 Q 108 190 105 184 Z"
+        fill={selectedPart === "abdomen" ? "#f3e8ff" : "#fdf2f8"}
+        stroke="#be185d"
+        strokeWidth="1.5"
         className={interactive ? "cursor-pointer hover:fill-purple-100" : ""}
         onClick={() =>
           interactive &&
@@ -473,100 +958,283 @@ export default function BodyVisualization({
         }
       />
 
-      {/* Quadril (mais largo) */}
+      {/* Quadril feminino (formato de pêra) */}
       <path
-        d="M 70 220 Q 65 235 70 250 L 70 255 Q 70 265 80 265 L 120 265 Q 130 265 130 255 L 130 250 Q 135 235 130 220 Z"
-        fill={selectedPart === "hip" ? "#f3e8ff" : "#fef7ff"}
-        stroke="#7c2d92"
-        strokeWidth="2"
+        d="M 92 212 Q 75 220 68 240 Q 65 260 70 275 Q 78 285 90 287 L 110 287 Q 122 285 130 275 Q 135 260 132 240 Q 125 220 108 212 Z"
+        fill={selectedPart === "hip" ? "#f3e8ff" : "#fdf2f8"}
+        stroke="#be185d"
+        strokeWidth="1.5"
         className={interactive ? "cursor-pointer hover:fill-purple-100" : ""}
         onClick={() =>
           interactive && setSelectedPart(selectedPart === "hip" ? null : "hip")
         }
       />
 
-      {/* Coxas */}
-      <rect
-        x="80"
-        y="265"
-        width="18"
-        height="70"
-        rx="9"
-        fill={selectedPart === "thigh" ? "#f3e8ff" : "#fef7ff"}
-        stroke="#7c2d92"
-        strokeWidth="2"
+      {/* Coxas femininas (curvilíneas) */}
+      <path
+        d="M 80 287 Q 72 300 70 325 Q 69 350 72 370 Q 76 385 85 388 Q 94 385 98 370 Q 100 350 99 325 Q 97 300 89 287 Z"
+        fill={selectedPart === "rightThigh" ? "#f3e8ff" : "#fdf2f8"}
+        stroke="#be185d"
+        strokeWidth="1.5"
         className={interactive ? "cursor-pointer hover:fill-purple-100" : ""}
         onClick={() =>
           interactive &&
-          setSelectedPart(selectedPart === "thigh" ? null : "thigh")
+          setSelectedPart(selectedPart === "rightThigh" ? null : "rightThigh")
         }
       />
-      <rect
-        x="102"
-        y="265"
-        width="18"
-        height="70"
-        rx="9"
-        fill={selectedPart === "thigh" ? "#f3e8ff" : "#fef7ff"}
-        stroke="#7c2d92"
-        strokeWidth="2"
+      <path
+        d="M 120 287 Q 128 300 130 325 Q 131 350 128 370 Q 124 385 115 388 Q 106 385 102 370 Q 100 350 101 325 Q 103 300 111 287 Z"
+        fill={selectedPart === "leftThigh" ? "#f3e8ff" : "#fdf2f8"}
+        stroke="#be185d"
+        strokeWidth="1.5"
         className={interactive ? "cursor-pointer hover:fill-purple-100" : ""}
         onClick={() =>
           interactive &&
-          setSelectedPart(selectedPart === "thigh" ? null : "thigh")
+          setSelectedPart(selectedPart === "leftThigh" ? null : "leftThigh")
         }
       />
 
-      {/* Panturrilhas */}
-      <rect
-        x="82"
-        y="335"
-        width="14"
-        height="50"
+      {/* Joelhos femininos */}
+      <ellipse
+        cx="85"
+        cy="393"
         rx="7"
-        fill={selectedPart === "calf" ? "#f3e8ff" : "#fef7ff"}
-        stroke="#7c2d92"
-        strokeWidth="2"
+        ry="5"
+        fill="#f3d4e6"
+        stroke="#be185d"
+        strokeWidth="1"
+      />
+      <ellipse
+        cx="115"
+        cy="393"
+        rx="7"
+        ry="5"
+        fill="#f3d4e6"
+        stroke="#be185d"
+        strokeWidth="1"
+      />
+
+      {/* Panturrilhas femininas (formato elegante) */}
+      <path
+        d="M 85 398 Q 78 405 76 420 Q 75 435 78 445 Q 82 450 88 448 Q 94 446 96 435 Q 98 420 96 405 Q 94 398 89 395 Z"
+        fill={selectedPart === "rightCalf" ? "#f3e8ff" : "#fdf2f8"}
+        stroke="#be185d"
+        strokeWidth="1.5"
         className={interactive ? "cursor-pointer hover:fill-purple-100" : ""}
         onClick={() =>
           interactive &&
-          setSelectedPart(selectedPart === "calf" ? null : "calf")
+          setSelectedPart(selectedPart === "rightCalf" ? null : "rightCalf")
         }
       />
-      <rect
-        x="104"
-        y="335"
-        width="14"
-        height="50"
-        rx="7"
-        fill={selectedPart === "calf" ? "#f3e8ff" : "#fef7ff"}
-        stroke="#7c2d92"
-        strokeWidth="2"
+      <path
+        d="M 115 398 Q 122 405 124 420 Q 125 435 122 445 Q 118 450 112 448 Q 106 446 104 435 Q 102 420 104 405 Q 106 398 111 395 Z"
+        fill={selectedPart === "leftCalf" ? "#f3e8ff" : "#fdf2f8"}
+        stroke="#be185d"
+        strokeWidth="1.5"
         className={interactive ? "cursor-pointer hover:fill-purple-100" : ""}
         onClick={() =>
           interactive &&
-          setSelectedPart(selectedPart === "calf" ? null : "calf")
+          setSelectedPart(selectedPart === "leftCalf" ? null : "leftCalf")
         }
       />
 
-      {/* Pés */}
+      {/* Tornozelos */}
       <ellipse
-        cx="89"
-        cy="395"
-        rx="12"
-        ry="8"
-        fill="#fef7ff"
-        stroke="#7c2d92"
-        strokeWidth="2"
+        cx="85"
+        cy="453"
+        rx="5"
+        ry="3"
+        fill="#f3d4e6"
+        stroke="#be185d"
+        strokeWidth="1"
       />
       <ellipse
-        cx="111"
-        cy="395"
-        rx="12"
-        ry="8"
-        fill="#fef7ff"
-        stroke="#7c2d92"
-        strokeWidth="2"
+        cx="115"
+        cy="453"
+        rx="5"
+        ry="3"
+        fill="#f3d4e6"
+        stroke="#be185d"
+        strokeWidth="1"
+      />
+
+      {/* Pés femininos anatômicos */}
+      <path
+        d="M 82 453 Q 72 457 70 463 Q 72 470 82 473 Q 92 475 98 472 Q 100 468 98 463 Q 96 457 88 453 Z"
+        fill="#fdf2f8"
+        stroke="#be185d"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M 118 453 Q 128 457 130 463 Q 128 470 118 473 Q 108 475 102 472 Q 100 468 102 463 Q 104 457 112 453 Z"
+        fill="#fdf2f8"
+        stroke="#be185d"
+        strokeWidth="1.5"
+      />
+
+      {/* Dedos dos pés femininos */}
+      <circle
+        cx="74"
+        cy="465"
+        r="1.8"
+        fill="#fdf2f8"
+        stroke="#be185d"
+        strokeWidth="1"
+      />
+      <circle
+        cx="78"
+        cy="467"
+        r="1.5"
+        fill="#fdf2f8"
+        stroke="#be185d"
+        strokeWidth="1"
+      />
+      <circle
+        cx="82"
+        cy="468"
+        r="1.3"
+        fill="#fdf2f8"
+        stroke="#be185d"
+        strokeWidth="1"
+      />
+      <circle
+        cx="86"
+        cy="467"
+        r="1.2"
+        fill="#fdf2f8"
+        stroke="#be185d"
+        strokeWidth="1"
+      />
+      <circle
+        cx="90"
+        cy="465"
+        r="1"
+        fill="#fdf2f8"
+        stroke="#be185d"
+        strokeWidth="1"
+      />
+
+      <circle
+        cx="126"
+        cy="465"
+        r="1.8"
+        fill="#fdf2f8"
+        stroke="#be185d"
+        strokeWidth="1"
+      />
+      <circle
+        cx="122"
+        cy="467"
+        r="1.5"
+        fill="#fdf2f8"
+        stroke="#be185d"
+        strokeWidth="1"
+      />
+      <circle
+        cx="118"
+        cy="468"
+        r="1.3"
+        fill="#fdf2f8"
+        stroke="#be185d"
+        strokeWidth="1"
+      />
+      <circle
+        cx="114"
+        cy="467"
+        r="1.2"
+        fill="#fdf2f8"
+        stroke="#be185d"
+        strokeWidth="1"
+      />
+      <circle
+        cx="110"
+        cy="465"
+        r="1"
+        fill="#fdf2f8"
+        stroke="#be185d"
+        strokeWidth="1"
+      />
+
+      {/* Linha central do tronco */}
+      <line
+        x1="100"
+        y1="110"
+        x2="100"
+        y2="212"
+        stroke="#be185d"
+        strokeWidth="1"
+        opacity="0.4"
+      />
+
+      {/* Costelas (sutis) */}
+      <path
+        d="M 85 115 Q 95 118 105 115"
+        stroke="#be185d"
+        strokeWidth="0.8"
+        fill="none"
+        opacity="0.3"
+      />
+      <path
+        d="M 87 125 Q 95 128 103 125"
+        stroke="#be185d"
+        strokeWidth="0.8"
+        fill="none"
+        opacity="0.3"
+      />
+      <path
+        d="M 89 135 Q 95 138 101 135"
+        stroke="#be185d"
+        strokeWidth="0.8"
+        fill="none"
+        opacity="0.3"
+      />
+
+      {/* Curvas femininas */}
+      <path
+        d="M 78 140 Q 85 150 92 165"
+        stroke="#be185d"
+        strokeWidth="1"
+        fill="none"
+        opacity="0.4"
+      />
+      <path
+        d="M 122 140 Q 115 150 108 165"
+        stroke="#be185d"
+        strokeWidth="1"
+        fill="none"
+        opacity="0.4"
+      />
+
+      {/* Definição das coxas */}
+      <path
+        d="M 75 300 Q 82 315 89 350"
+        stroke="#be185d"
+        strokeWidth="0.8"
+        fill="none"
+        opacity="0.4"
+      />
+      <path
+        d="M 125 300 Q 118 315 111 350"
+        stroke="#be185d"
+        strokeWidth="0.8"
+        fill="none"
+        opacity="0.4"
+      />
+
+      {/* Definição das panturrilhas */}
+      <path
+        d="M 80 405 Q 85 420 90 440"
+        stroke="#be185d"
+        strokeWidth="0.8"
+        fill="none"
+        opacity="0.4"
+      />
+      <path
+        d="M 120 405 Q 115 420 110 440"
+        stroke="#be185d"
+        strokeWidth="0.8"
+        fill="none"
+        opacity="0.4"
       />
     </svg>
   );
@@ -600,8 +1268,8 @@ export default function BodyVisualization({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Visualização corporal */}
           <div className="space-y-4">
-            <div className="relative bg-gray-50 rounded-lg p-4 min-h-[400px]">
-              <div className="w-full h-[400px] flex items-center justify-center">
+            <div className="relative bg-gray-50 rounded-lg p-4 min-h-[450px]">
+              <div className="w-full h-[450px] flex items-center justify-center">
                 {selectedGender === "male" ? (
                   <MaleBodySVG />
                 ) : (
@@ -674,7 +1342,7 @@ export default function BodyVisualization({
                   >
                     <span className="text-sm font-medium">{part.label}</span>
                     <span className="text-sm text-gray-600">
-                      {part.value ? `${part.value.fixed} cm` : "-"}
+                      {part.value ? `${formatValue(part.value)} cm` : "-"}
                     </span>
                   </div>
                 ))}
@@ -696,10 +1364,7 @@ export default function BodyVisualization({
                         <div className="flex justify-between items-center p-2 bg-orange-50 rounded">
                           <span className="text-sm font-medium">% Gordura</span>
                           <span className="text-sm text-orange-600 font-semibold">
-                            {parseFloat(assessment.bodyFatPercentage).toFixed(
-                              1
-                            )}
-                            %
+                            {formatValue(assessment.bodyFatPercentage)}%
                           </span>
                         </div>
                         {assessment.gender && (
@@ -707,14 +1372,18 @@ export default function BodyVisualization({
                             <Badge
                               className={
                                 getBodyFatClassification(
-                                  parseFloat(assessment.bodyFatPercentage),
+                                  parseFloat(
+                                    formatValue(assessment.bodyFatPercentage)
+                                  ),
                                   assessment.gender as "male" | "female"
                                 ).color
                               }
                             >
                               {
                                 getBodyFatClassification(
-                                  parseFloat(assessment.bodyFatPercentage),
+                                  parseFloat(
+                                    formatValue(assessment.bodyFatPercentage)
+                                  ),
                                   assessment.gender as "male" | "female"
                                 ).category
                               }
@@ -729,7 +1398,7 @@ export default function BodyVisualization({
                           Massa Livre de Gord.
                         </span>
                         <span className="text-sm text-green-600 font-semibold">
-                          {parseFloat(assessment.leanMass).toFixed(1)} kg
+                          {formatValue(assessment.leanMass)} kg
                         </span>
                       </div>
                     )}
@@ -737,7 +1406,7 @@ export default function BodyVisualization({
                       <div className="flex justify-between items-center p-2 bg-red-50 rounded">
                         <span className="text-sm font-medium">Massa Gorda</span>
                         <span className="text-sm text-red-600 font-semibold">
-                          {parseFloat(assessment.fatMass).toFixed(1)} kg
+                          {formatValue(assessment.fatMass)} kg
                         </span>
                       </div>
                     )}
@@ -746,7 +1415,7 @@ export default function BodyVisualization({
                         <div className="flex justify-between items-center p-2 bg-purple-50 rounded">
                           <span className="text-sm font-medium">RCQ</span>
                           <span className="text-sm text-purple-600 font-semibold">
-                            {parseFloat(assessment.waistHipRatio).toFixed(2)}
+                            {formatValue(assessment.waistHipRatio)}
                           </span>
                         </div>
                         {assessment.waistHipRatioClassification && (
@@ -762,7 +1431,7 @@ export default function BodyVisualization({
                       <div className="flex justify-between items-center p-2 bg-blue-50 rounded">
                         <span className="text-sm font-medium">% Água</span>
                         <span className="text-sm text-blue-600 font-semibold">
-                          {parseFloat(assessment.bodyWater).toFixed(1)}%
+                          {formatValue(assessment.bodyWater)}%
                         </span>
                       </div>
                     )}
@@ -782,10 +1451,9 @@ export default function BodyVisualization({
               Medida atual:{" "}
               <span className="font-semibold">
                 {bodyParts[selectedPart as keyof typeof bodyParts]?.value
-                  ? `${
+                  ? `${formatValue(
                       bodyParts[selectedPart as keyof typeof bodyParts].value
-                        ?.fixed
-                    } cm`
+                    )} cm`
                   : "Não informado"}
               </span>
             </p>

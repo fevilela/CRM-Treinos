@@ -338,33 +338,29 @@ export default function PhysicalAssessments() {
                   bmi: viewingAssessment.bmi
                     ? Number(viewingAssessment.bmi)
                     : undefined,
-                  waistCirc: viewingAssessment.waistCirc
-                    ? Number(viewingAssessment.waistCirc)
-                    : undefined,
-                  hipCirc: viewingAssessment.hipCirc
-                    ? Number(viewingAssessment.hipCirc)
-                    : undefined,
-                  abdomenCirc: viewingAssessment.abdomenCirc
-                    ? Number(viewingAssessment.abdomenCirc)
-                    : undefined,
-                  armCirc: viewingAssessment.armCirc
-                    ? Number(viewingAssessment.armCirc)
-                    : undefined,
-                  thighCirc: viewingAssessment.thighCirc
-                    ? Number(viewingAssessment.thighCirc)
-                    : undefined,
-                  calfCirc: viewingAssessment.calfCirc
-                    ? Number(viewingAssessment.calfCirc)
-                    : undefined,
-                  chestCirc: viewingAssessment.chestCirc
-                    ? Number(viewingAssessment.chestCirc)
-                    : undefined,
-                  bodyFatPercentage: viewingAssessment.bodyFatPercentage
-                    ? Number(viewingAssessment.bodyFatPercentage)
-                    : undefined,
-                  leanMass: viewingAssessment.leanMass
-                    ? Number(viewingAssessment.leanMass)
-                    : undefined,
+                  waistCirc: viewingAssessment.waistCirc,
+                  hipCirc: viewingAssessment.hipCirc,
+                  abdomenCirc: viewingAssessment.abdomenCirc,
+                  armCirc: viewingAssessment.armCirc,
+                  thighCirc: viewingAssessment.thighCirc,
+                  calfCirc: viewingAssessment.calfCirc,
+                  chestCirc: viewingAssessment.chestCirc,
+                  rightArmContractedCirc:
+                    viewingAssessment.rightArmContractedCirc,
+                  rightArmRelaxedCirc: viewingAssessment.rightArmRelaxedCirc,
+                  leftArmContractedCirc:
+                    viewingAssessment.leftArmContractedCirc,
+                  leftArmRelaxedCirc: viewingAssessment.leftArmRelaxedCirc,
+                  rightThighCirc: viewingAssessment.rightThighCirc,
+                  leftThighCirc: viewingAssessment.leftThighCirc,
+                  rightCalfCirc: viewingAssessment.rightCalfCirc,
+                  leftCalfCirc: viewingAssessment.leftCalfCirc,
+                  bodyFatPercentage: viewingAssessment.bodyFatPercentage,
+                  leanMass: viewingAssessment.leanMass,
+                  fatMass: viewingAssessment.fatMass,
+                  waistHipRatio: viewingAssessment.waistHipRatio,
+                  bodyWater: viewingAssessment.bodyWater,
+                  gender: viewingAssessment.gender || undefined,
                 }}
                 interactive={true}
               />

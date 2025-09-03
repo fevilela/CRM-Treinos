@@ -341,6 +341,9 @@ export const physicalAssessments = pgTable("physical_assessments", {
 
   // Vital signs
   oxygenSaturation: real("oxygen_saturation"),
+
+  // Gender
+  gender: genderEnum("gender"),
 });
 
 // Relations
@@ -593,6 +596,8 @@ export const insertPhysicalAssessmentSchema = createInsertSchema(
       .enum(["poor", "fair", "good", "excellent"])
       .optional(),
     additionalNotes: z.string().optional(),
+    // Gender
+    gender: z.enum(["male", "female"]).optional(),
   });
 
 // Types
