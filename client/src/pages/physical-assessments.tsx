@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import PhysicalAssessmentModal from "@/components/modals/physical-assessment-modal";
 import BodyVisualization from "@/components/dashboard/body-visualization";
+import HumanBody3D from "@/components/dashboard/human-body-3d";
 import type { PhysicalAssessment, Student } from "@shared/schema";
 
 export default function PhysicalAssessments() {
@@ -327,8 +328,8 @@ export default function PhysicalAssessments() {
                 </div>
               </div>
 
-              <BodyVisualization
-                assessment={{
+              <HumanBody3D
+                measurements={{
                   currentWeight: viewingAssessment.currentWeight
                     ? Number(viewingAssessment.currentWeight)
                     : undefined,
@@ -338,13 +339,9 @@ export default function PhysicalAssessments() {
                   bmi: viewingAssessment.bmi
                     ? Number(viewingAssessment.bmi)
                     : undefined,
+                  chestCirc: viewingAssessment.chestCirc,
                   waistCirc: viewingAssessment.waistCirc,
                   hipCirc: viewingAssessment.hipCirc,
-                  abdomenCirc: viewingAssessment.abdomenCirc,
-                  armCirc: viewingAssessment.armCirc,
-                  thighCirc: viewingAssessment.thighCirc,
-                  calfCirc: viewingAssessment.calfCirc,
-                  chestCirc: viewingAssessment.chestCirc,
                   rightArmContractedCirc:
                     viewingAssessment.rightArmContractedCirc,
                   rightArmRelaxedCirc: viewingAssessment.rightArmRelaxedCirc,
@@ -356,13 +353,12 @@ export default function PhysicalAssessments() {
                   rightCalfCirc: viewingAssessment.rightCalfCirc,
                   leftCalfCirc: viewingAssessment.leftCalfCirc,
                   bodyFatPercentage: viewingAssessment.bodyFatPercentage,
-                  leanMass: viewingAssessment.leanMass,
-                  fatMass: viewingAssessment.fatMass,
-                  waistHipRatio: viewingAssessment.waistHipRatio,
-                  bodyWater: viewingAssessment.bodyWater,
                   gender: viewingAssessment.gender || undefined,
                 }}
                 interactive={true}
+                onPartClick={(partName, measurements) => {
+                  console.log(`Visualizando ${partName}:`, measurements);
+                }}
               />
 
               {/* Informações adicionais */}

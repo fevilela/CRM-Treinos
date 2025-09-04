@@ -40,6 +40,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import BodyVisualization from "@/components/dashboard/body-visualization";
+import HumanBody3D from "@/components/dashboard/human-body-3d";
 import { z } from "zod";
 
 const assessmentFormSchema = insertPhysicalAssessmentSchema
@@ -744,7 +745,7 @@ function PhysicalAssessmentModal({
             />
 
             <Tabs defaultValue="identification" className="w-full">
-              <TabsList className="grid w-full grid-cols-9">
+              <TabsList className="grid w-full grid-cols-10">
                 <TabsTrigger value="identification">Identificação</TabsTrigger>
                 <TabsTrigger value="health">Saúde</TabsTrigger>
                 <TabsTrigger value="physical">Física</TabsTrigger>
@@ -753,6 +754,7 @@ function PhysicalAssessmentModal({
                 <TabsTrigger value="anthropometric">Antropométrica</TabsTrigger>
                 <TabsTrigger value="performance">Desempenho</TabsTrigger>
                 <TabsTrigger value="clinical">Clínica</TabsTrigger>
+                <TabsTrigger value="visualization3d">🧬 3D</TabsTrigger>
                 <TabsTrigger value="notes">Observações</TabsTrigger>
               </TabsList>
 
@@ -2586,6 +2588,51 @@ function PhysicalAssessmentModal({
                           <FormMessage />
                         </FormItem>
                       )}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="visualization3d" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      🧬 Visualização 3D do Corpo Humano
+                    </CardTitle>
+                    <p className="text-sm text-gray-600">
+                      Modelo 3D interativo baseado nas medições corporais
+                      registradas. Clique nas partes do corpo para visualizar as
+                      circunferências específicas.
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <HumanBody3D
+                      measurements={{
+                        currentWeight: form.watch("currentWeight"),
+                        currentHeight: form.watch("currentHeight"),
+                        bmi: form.watch("bmi"),
+                        chestCirc: form.watch("chestCirc"),
+                        waistCirc: form.watch("waistCirc"),
+                        hipCirc: form.watch("hipCirc"),
+                        rightArmContractedCirc: form.watch(
+                          "rightArmContractedCirc"
+                        ),
+                        rightArmRelaxedCirc: form.watch("rightArmRelaxedCirc"),
+                        leftArmContractedCirc: form.watch(
+                          "leftArmContractedCirc"
+                        ),
+                        leftArmRelaxedCirc: form.watch("leftArmRelaxedCirc"),
+                        rightThighCirc: form.watch("rightThighCirc"),
+                        leftThighCirc: form.watch("leftThighCirc"),
+                        rightCalfCirc: form.watch("rightCalfCirc"),
+                        leftCalfCirc: form.watch("leftCalfCirc"),
+                        bodyFatPercentage: form.watch("bodyFatPercentage"),
+                        gender: selectedGender,
+                      }}
+                      interactive={true}
+                      onPartClick={(partName, measurements) => {
+                        console.log(`Parte clicada: ${partName}`, measurements);
+                      }}
                     />
                   </CardContent>
                 </Card>
