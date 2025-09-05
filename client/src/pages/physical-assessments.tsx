@@ -339,20 +339,43 @@ export default function PhysicalAssessments() {
                   bmi: viewingAssessment.bmi
                     ? Number(viewingAssessment.bmi)
                     : undefined,
-                  chestCirc: viewingAssessment.chestCirc,
-                  waistCirc: viewingAssessment.waistCirc,
-                  hipCirc: viewingAssessment.hipCirc,
+                  chestCirc: viewingAssessment.chestCirc
+                    ? Number(viewingAssessment.chestCirc)
+                    : undefined,
+                  waistCirc: viewingAssessment.waistCirc
+                    ? Number(viewingAssessment.waistCirc)
+                    : undefined,
+                  hipCirc: viewingAssessment.hipCirc
+                    ? Number(viewingAssessment.hipCirc)
+                    : undefined,
                   rightArmContractedCirc:
-                    viewingAssessment.rightArmContractedCirc,
-                  rightArmRelaxedCirc: viewingAssessment.rightArmRelaxedCirc,
-                  leftArmContractedCirc:
-                    viewingAssessment.leftArmContractedCirc,
-                  leftArmRelaxedCirc: viewingAssessment.leftArmRelaxedCirc,
-                  rightThighCirc: viewingAssessment.rightThighCirc,
-                  leftThighCirc: viewingAssessment.leftThighCirc,
-                  rightCalfCirc: viewingAssessment.rightCalfCirc,
-                  leftCalfCirc: viewingAssessment.leftCalfCirc,
-                  bodyFatPercentage: viewingAssessment.bodyFatPercentage,
+                    viewingAssessment.rightArmContractedCirc
+                      ? Number(viewingAssessment.rightArmContractedCirc)
+                      : undefined,
+                  rightArmRelaxedCirc: viewingAssessment.rightArmRelaxedCirc
+                    ? Number(viewingAssessment.rightArmRelaxedCirc)
+                    : undefined,
+                  leftArmContractedCirc: viewingAssessment.leftArmContractedCirc
+                    ? Number(viewingAssessment.leftArmContractedCirc)
+                    : undefined,
+                  leftArmRelaxedCirc: viewingAssessment.leftArmRelaxedCirc
+                    ? Number(viewingAssessment.leftArmRelaxedCirc)
+                    : undefined,
+                  rightThighCirc: viewingAssessment.rightThighCirc
+                    ? Number(viewingAssessment.rightThighCirc)
+                    : undefined,
+                  leftThighCirc: viewingAssessment.leftThighCirc
+                    ? Number(viewingAssessment.leftThighCirc)
+                    : undefined,
+                  rightCalfCirc: viewingAssessment.rightCalfCirc
+                    ? Number(viewingAssessment.rightCalfCirc)
+                    : undefined,
+                  leftCalfCirc: viewingAssessment.leftCalfCirc
+                    ? Number(viewingAssessment.leftCalfCirc)
+                    : undefined,
+                  bodyFatPercentage: viewingAssessment.bodyFatPercentage
+                    ? Number(viewingAssessment.bodyFatPercentage)
+                    : undefined,
                   gender: viewingAssessment.gender || undefined,
                 }}
                 interactive={true}

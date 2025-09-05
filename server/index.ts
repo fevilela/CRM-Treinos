@@ -79,7 +79,7 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // Use port 5000 for Replit, but allow override
+  // Use port 3000 for Replit webview (both frontend and backend on same server)
   const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
   server.listen(
     {

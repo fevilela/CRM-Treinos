@@ -1,7 +1,4 @@
-import React, { useRef, useState, useMemo, useCallback } from "react";
-import { Canvas, useFrame, useThree, ThreeEvent } from "@react-three/fiber";
-import { OrbitControls, Text, Html } from "@react-three/drei";
-import * as THREE from "three";
+import React, { useState, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,584 +7,853 @@ interface BodyMeasurements {
   currentWeight?: number;
   currentHeight?: number;
   bmi?: number;
-  chestCirc?: string | number | null;
-  waistCirc?: string | number | null;
-  hipCirc?: string | number | null;
-  rightArmContractedCirc?: string | number | null;
-  rightArmRelaxedCirc?: string | number | null;
-  leftArmContractedCirc?: string | number | null;
-  leftArmRelaxedCirc?: string | number | null;
-  rightThighCirc?: string | number | null;
-  leftThighCirc?: string | number | null;
-  rightCalfCirc?: string | number | null;
-  leftCalfCirc?: string | number | null;
-  bodyFatPercentage?: string | number | null;
+  neck?: number;
+  chest?: number;
+  chestCirc?: number;
+  rightArm?: number;
+  leftArm?: number;
+  rightArmContractedCirc?: number;
+  rightArmRelaxedCirc?: number;
+  leftArmContractedCirc?: number;
+  leftArmRelaxedCirc?: number;
+  waist?: number;
+  waistCirc?: number;
+  hips?: number;
+  hipCirc?: number;
+  rightThigh?: number;
+  leftThigh?: number;
+  rightThighCirc?: number;
+  leftThighCirc?: number;
+  rightCalf?: number;
+  leftCalf?: number;
+  rightCalfCirc?: number;
+  leftCalfCirc?: number;
+  bodyFatPercentage?: number;
   gender?: string;
-}
-
-interface HumanBody3DProps {
-  measurements?: BodyMeasurements;
-  interactive?: boolean;
-  onPartClick?: (partName: string, measurements: any) => void;
 }
 
 interface BodyPart {
   name: string;
-  position: [number, number, number];
-  size: [number, number, number];
-  color: string;
-  measurement?: string | number | null;
-  measurementLabel?: string;
+  label: string;
+  measurementKey?: keyof BodyMeasurements;
+  description: string;
 }
 
-// Componente individual para uma parte do corpo
-function BodyPartMesh({
-  part,
-  isSelected,
-  onPartClick,
-  measurements,
-}: {
-  part: BodyPart;
-  isSelected: boolean;
-  onPartClick: (name: string) => void;
-  measurements?: BodyMeasurements;
-}) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const [hovered, setHovered] = useState(false);
-
-  useFrame(() => {
-    if (meshRef.current) {
-      if (isSelected) {
-        meshRef.current.scale.setScalar(1.1);
-      } else if (hovered) {
-        meshRef.current.scale.setScalar(1.05);
-      } else {
-        meshRef.current.scale.setScalar(1);
-      }
-    }
-  });
-
-  const handleClick = (event: ThreeEvent<MouseEvent>) => {
-    event.stopPropagation();
-    onPartClick(part.name);
-  };
-
-  const baseColor = useMemo(() => {
-    // Cores mais realistas para pele
-    const skinTones = {
-      base: "#ffdbac",
-      highlight: "#ffecc7",
-      selected: "#ff6b6b",
-    };
-
-    if (isSelected) return skinTones.selected;
-    if (hovered) return skinTones.highlight;
-    return skinTones.base;
-  }, [isSelected, hovered]);
-
-  return (
-    <group position={part.position}>
-      <mesh
-        ref={meshRef}
-        onClick={handleClick}
-        onPointerOver={() => setHovered(true)}
-        onPointerOut={() => setHovered(false)}
-        castShadow
-        receiveShadow
-      >
-        <boxGeometry args={part.size} />
-        <meshPhongMaterial
-          color={baseColor}
-          shininess={30}
-          specular={0x222222}
-        />
-      </mesh>
-
-      {/* Mostrar medição quando selecionado */}
-      {isSelected && part.measurement && (
-        <Html position={[0, part.size[1] / 2 + 0.3, 0]} center>
-          <div className="bg-black/80 text-white px-2 py-1 rounded text-sm whitespace-nowrap">
-            {part.measurementLabel}:{" "}
-            {typeof part.measurement === "number"
-              ? part.measurement.toFixed(1)
-              : part.measurement}
-            cm
-          </div>
-        </Html>
-      )}
-    </group>
-  );
-}
-
-// Modelo 3D do corpo humano
-function HumanBodyModel({
+// Modelo anatômico realista em SVG
+function RealisticBodyDiagram({
   measurements,
   selectedPart,
   onPartClick,
 }: {
   measurements?: BodyMeasurements;
   selectedPart: string | null;
-  onPartClick: (name: string) => void;
+  onPartClick: (partName: string) => void;
 }) {
-  const { camera } = useThree();
-
-  // Ajustar a câmera para uma visão melhor
-  React.useEffect(() => {
-    camera.position.set(0, 2, 5);
-    camera.lookAt(0, 0, 0);
-  }, [camera]);
-
-  // Definir as partes do corpo com posições e tamanhos realistas
-  const bodyParts: BodyPart[] = useMemo(() => {
-    const isFemale = measurements?.gender === "female";
-
-    return [
-      // Cabeça
+  const bodyParts: BodyPart[] = useMemo(
+    () => [
       {
         name: "head",
-        position: [0, 3.5, 0],
-        size: [0.6, 0.8, 0.6],
-        color: "#ffdbac",
-        measurement: null,
-        measurementLabel: "Cabeça",
+        label: "Cabeça/Pescoço",
+        measurementKey: "neck",
+        description: "Circunferência do pescoço",
       },
-      // Pescoço
-      {
-        name: "neck",
-        position: [0, 2.9, 0],
-        size: [0.3, 0.4, 0.3],
-        color: "#ffdbac",
-        measurement: null,
-        measurementLabel: "Pescoço",
-      },
-      // Tórax/Peito
       {
         name: "chest",
-        position: [0, 2.2, 0],
-        size: isFemale ? [1.0, 0.8, 0.6] : [1.2, 0.9, 0.7],
-        color: "#ffdbac",
-        measurement: measurements?.chestCirc,
-        measurementLabel: "Tórax",
+        label: "Peito",
+        measurementKey: "chestCirc",
+        description: "Circunferência do peito",
       },
-      // Cintura
       {
         name: "waist",
-        position: [0, 1.2, 0],
-        size: isFemale ? [0.8, 0.6, 0.5] : [1.0, 0.7, 0.6],
-        color: "#ffdbac",
-        measurement: measurements?.waistCirc,
-        measurementLabel: "Cintura",
+        label: "Cintura",
+        measurementKey: "waistCirc",
+        description: "Circunferência da cintura",
       },
-      // Quadril
       {
-        name: "hip",
-        position: [0, 0.5, 0],
-        size: isFemale ? [1.1, 0.7, 0.7] : [1.0, 0.6, 0.6],
-        color: "#ffdbac",
-        measurement: measurements?.hipCirc,
-        measurementLabel: "Quadril",
+        name: "hips",
+        label: "Quadril",
+        measurementKey: "hipCirc",
+        description: "Circunferência do quadril",
       },
-      // Braço direito superior
       {
-        name: "rightUpperArm",
-        position: [0.9, 2.0, 0],
-        size: [0.25, 0.8, 0.25],
-        color: "#ffdbac",
-        measurement: measurements?.rightArmContractedCirc,
-        measurementLabel: "Braço D (Contraído)",
+        name: "rightArm",
+        label: "Braço Direito",
+        measurementKey: "rightArmContractedCirc",
+        description: "Circunferência do braço direito",
       },
-      // Braço esquerdo superior
       {
-        name: "leftUpperArm",
-        position: [-0.9, 2.0, 0],
-        size: [0.25, 0.8, 0.25],
-        color: "#ffdbac",
-        measurement: measurements?.leftArmContractedCirc,
-        measurementLabel: "Braço E (Contraído)",
+        name: "leftArm",
+        label: "Braço Esquerdo",
+        measurementKey: "leftArmContractedCirc",
+        description: "Circunferência do braço esquerdo",
       },
-      // Braço direito inferior
-      {
-        name: "rightForearm",
-        position: [0.9, 1.0, 0],
-        size: [0.2, 0.7, 0.2],
-        color: "#ffdbac",
-        measurement: null,
-        measurementLabel: "Antebraço D",
-      },
-      // Braço esquerdo inferior
-      {
-        name: "leftForearm",
-        position: [-0.9, 1.0, 0],
-        size: [0.2, 0.7, 0.2],
-        color: "#ffdbac",
-        measurement: null,
-        measurementLabel: "Antebraço E",
-      },
-      // Coxa direita
       {
         name: "rightThigh",
-        position: [0.3, -0.5, 0],
-        size: [0.35, 1.0, 0.35],
-        color: "#ffdbac",
-        measurement: measurements?.rightThighCirc,
-        measurementLabel: "Coxa D",
+        label: "Coxa Direita",
+        measurementKey: "rightThighCirc",
+        description: "Circunferência da coxa direita",
       },
-      // Coxa esquerda
       {
         name: "leftThigh",
-        position: [-0.3, -0.5, 0],
-        size: [0.35, 1.0, 0.35],
-        color: "#ffdbac",
-        measurement: measurements?.leftThighCirc,
-        measurementLabel: "Coxa E",
+        label: "Coxa Esquerda",
+        measurementKey: "leftThighCirc",
+        description: "Circunferência da coxa esquerda",
       },
-      // Panturrilha direita
       {
         name: "rightCalf",
-        position: [0.3, -1.8, 0],
-        size: [0.25, 0.8, 0.25],
-        color: "#ffdbac",
-        measurement: measurements?.rightCalfCirc,
-        measurementLabel: "Panturrilha D",
+        label: "Panturrilha Direita",
+        measurementKey: "rightCalfCirc",
+        description: "Circunferência da panturrilha direita",
       },
-      // Panturrilha esquerda
       {
         name: "leftCalf",
-        position: [-0.3, -1.8, 0],
-        size: [0.25, 0.8, 0.25],
-        color: "#ffdbac",
-        measurement: measurements?.leftCalfCirc,
-        measurementLabel: "Panturrilha E",
+        label: "Panturrilha Esquerda",
+        measurementKey: "leftCalfCirc",
+        description: "Circunferência da panturrilha esquerda",
       },
-      // Pés
-      {
-        name: "rightFoot",
-        position: [0.3, -2.5, 0.1],
-        size: [0.2, 0.1, 0.4],
-        color: "#ffdbac",
-        measurement: null,
-        measurementLabel: "Pé D",
-      },
-      {
-        name: "leftFoot",
-        position: [-0.3, -2.5, 0.1],
-        size: [0.2, 0.1, 0.4],
-        color: "#ffdbac",
-        measurement: null,
-        measurementLabel: "Pé E",
-      },
-    ];
-  }, [measurements]);
+    ],
+    []
+  );
 
   return (
-    <group>
-      {/* Iluminação realista */}
-      <ambientLight intensity={0.4} />
-      <directionalLight
-        position={[5, 5, 5]}
-        intensity={0.8}
-        castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-      />
-      <pointLight position={[-5, 5, 5]} intensity={0.3} />
+    <div className="flex flex-col items-center">
+      <svg
+        width="400"
+        height="700"
+        viewBox="0 0 400 700"
+        className="border rounded-lg bg-gradient-to-b from-amber-50 to-orange-100"
+        style={{ filter: "drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1))" }}
+      >
+        <defs>
+          <radialGradient id="skinGradient" cx="50%" cy="30%">
+            <stop offset="0%" stopColor="#fde4c4" />
+            <stop offset="100%" stopColor="#d4a574" />
+          </radialGradient>
+          <radialGradient id="muscleGradient" cx="30%" cy="30%">
+            <stop offset="0%" stopColor="#e8b894" />
+            <stop offset="100%" stopColor="#c4956c" />
+          </radialGradient>
+        </defs>
 
-      {/* Renderizar todas as partes do corpo */}
-      {bodyParts.map((part) => (
-        <BodyPartMesh
-          key={part.name}
-          part={part}
-          isSelected={selectedPart === part.name}
-          onPartClick={onPartClick}
-          measurements={measurements}
+        {/* Cabeça */}
+        <g
+          className="cursor-pointer hover:opacity-90 transition-all"
+          onClick={() => onPartClick("head")}
+        >
+          <ellipse
+            cx="200"
+            cy="60"
+            rx="35"
+            ry="40"
+            fill="url(#skinGradient)"
+            stroke="#8b5a2b"
+            strokeWidth="2"
+          />
+          <ellipse cx="190" cy="55" rx="3" ry="4" fill="#654321" />
+          <ellipse cx="210" cy="55" rx="3" ry="4" fill="#654321" />
+          <ellipse cx="200" cy="65" rx="2" ry="3" fill="#8b4513" />
+          <path
+            d="M 190 75 Q 200 80 210 75"
+            stroke="#8b4513"
+            strokeWidth="2"
+            fill="none"
+          />
+          {selectedPart === "head" && (
+            <ellipse
+              cx="200"
+              cy="60"
+              rx="35"
+              ry="40"
+              fill="none"
+              stroke="#ef4444"
+              strokeWidth="3"
+            />
+          )}
+        </g>
+
+        {/* Pescoço */}
+        <g
+          className="cursor-pointer hover:opacity-90 transition-all"
+          onClick={() => onPartClick("head")}
+        >
+          <ellipse
+            cx="200"
+            cy="110"
+            rx="20"
+            ry="25"
+            fill="url(#skinGradient)"
+            stroke="#8b5a2b"
+            strokeWidth="1"
+          />
+          <path
+            d="M 185 105 Q 200 100 215 105 Q 200 120 185 105"
+            fill="url(#muscleGradient)"
+            opacity="0.6"
+          />
+          {selectedPart === "head" && (
+            <ellipse
+              cx="200"
+              cy="110"
+              rx="20"
+              ry="25"
+              fill="none"
+              stroke="#ef4444"
+              strokeWidth="3"
+            />
+          )}
+        </g>
+
+        {/* Peito */}
+        <g
+          className="cursor-pointer hover:opacity-90 transition-all"
+          onClick={() => onPartClick("chest")}
+        >
+          <path
+            d="M 160 135 Q 200 125 240 135 L 245 180 Q 200 185 155 180 Z"
+            fill="url(#skinGradient)"
+            stroke="#8b5a2b"
+            strokeWidth="2"
+          />
+          <ellipse
+            cx="180"
+            cy="155"
+            rx="18"
+            ry="25"
+            fill="url(#muscleGradient)"
+            opacity="0.8"
+          />
+          <ellipse
+            cx="220"
+            cy="155"
+            rx="18"
+            ry="25"
+            fill="url(#muscleGradient)"
+            opacity="0.8"
+          />
+          <line
+            x1="200"
+            y1="140"
+            x2="200"
+            y2="175"
+            stroke="#8b5a2b"
+            strokeWidth="1"
+          />
+          <rect
+            x="190"
+            y="165"
+            width="20"
+            height="12"
+            rx="3"
+            fill="url(#muscleGradient)"
+            opacity="0.6"
+          />
+          {selectedPart === "chest" && (
+            <path
+              d="M 160 135 Q 200 125 240 135 L 245 180 Q 200 185 155 180 Z"
+              fill="none"
+              stroke="#ef4444"
+              strokeWidth="3"
+            />
+          )}
+        </g>
+
+        {/* Cintura */}
+        <g
+          className="cursor-pointer hover:opacity-90 transition-all"
+          onClick={() => onPartClick("waist")}
+        >
+          <path
+            d="M 155 180 Q 200 185 245 180 L 240 230 Q 200 235 160 230 Z"
+            fill="url(#skinGradient)"
+            stroke="#8b5a2b"
+            strokeWidth="2"
+          />
+          <rect
+            x="190"
+            y="190"
+            width="20"
+            height="12"
+            rx="3"
+            fill="url(#muscleGradient)"
+            opacity="0.7"
+          />
+          <rect
+            x="190"
+            y="205"
+            width="20"
+            height="12"
+            rx="3"
+            fill="url(#muscleGradient)"
+            opacity="0.7"
+          />
+          <path
+            d="M 175 195 Q 185 200 175 210"
+            stroke="#8b5a2b"
+            strokeWidth="1"
+            fill="none"
+          />
+          <path
+            d="M 225 195 Q 215 200 225 210"
+            stroke="#8b5a2b"
+            strokeWidth="1"
+            fill="none"
+          />
+          {selectedPart === "waist" && (
+            <path
+              d="M 155 180 Q 200 185 245 180 L 240 230 Q 200 235 160 230 Z"
+              fill="none"
+              stroke="#ef4444"
+              strokeWidth="3"
+            />
+          )}
+        </g>
+
+        {/* Quadril */}
+        <g
+          className="cursor-pointer hover:opacity-90 transition-all"
+          onClick={() => onPartClick("hips")}
+        >
+          <path
+            d="M 160 230 Q 200 235 240 230 L 245 270 Q 200 275 155 270 Z"
+            fill="url(#skinGradient)"
+            stroke="#8b5a2b"
+            strokeWidth="2"
+          />
+          {selectedPart === "hips" && (
+            <path
+              d="M 160 230 Q 200 235 240 230 L 245 270 Q 200 275 155 270 Z"
+              fill="none"
+              stroke="#ef4444"
+              strokeWidth="3"
+            />
+          )}
+        </g>
+
+        {/* Braço direito */}
+        <g
+          className="cursor-pointer hover:opacity-90 transition-all"
+          onClick={() => onPartClick("rightArm")}
+        >
+          <ellipse
+            cx="140"
+            cy="145"
+            rx="20"
+            ry="15"
+            fill="url(#muscleGradient)"
+          />
+          <ellipse
+            cx="125"
+            cy="180"
+            rx="15"
+            ry="25"
+            fill="url(#skinGradient)"
+            stroke="#8b5a2b"
+            strokeWidth="2"
+          />
+          <ellipse
+            cx="125"
+            cy="175"
+            rx="10"
+            ry="20"
+            fill="url(#muscleGradient)"
+            opacity="0.8"
+          />
+          <ellipse
+            cx="115"
+            cy="220"
+            rx="12"
+            ry="25"
+            fill="url(#skinGradient)"
+            stroke="#8b5a2b"
+            strokeWidth="2"
+          />
+          <ellipse
+            cx="110"
+            cy="250"
+            rx="8"
+            ry="12"
+            fill="url(#skinGradient)"
+            stroke="#8b5a2b"
+            strokeWidth="1"
+          />
+          {selectedPart === "rightArm" && (
+            <>
+              <ellipse
+                cx="125"
+                cy="180"
+                rx="15"
+                ry="25"
+                fill="none"
+                stroke="#ef4444"
+                strokeWidth="3"
+              />
+              <ellipse
+                cx="115"
+                cy="220"
+                rx="12"
+                ry="25"
+                fill="none"
+                stroke="#ef4444"
+                strokeWidth="3"
+              />
+            </>
+          )}
+        </g>
+
+        {/* Braço esquerdo */}
+        <g
+          className="cursor-pointer hover:opacity-90 transition-all"
+          onClick={() => onPartClick("leftArm")}
+        >
+          <ellipse
+            cx="260"
+            cy="145"
+            rx="20"
+            ry="15"
+            fill="url(#muscleGradient)"
+          />
+          <ellipse
+            cx="275"
+            cy="180"
+            rx="15"
+            ry="25"
+            fill="url(#skinGradient)"
+            stroke="#8b5a2b"
+            strokeWidth="2"
+          />
+          <ellipse
+            cx="275"
+            cy="175"
+            rx="10"
+            ry="20"
+            fill="url(#muscleGradient)"
+            opacity="0.8"
+          />
+          <ellipse
+            cx="285"
+            cy="220"
+            rx="12"
+            ry="25"
+            fill="url(#skinGradient)"
+            stroke="#8b5a2b"
+            strokeWidth="2"
+          />
+          <ellipse
+            cx="290"
+            cy="250"
+            rx="8"
+            ry="12"
+            fill="url(#skinGradient)"
+            stroke="#8b5a2b"
+            strokeWidth="1"
+          />
+          {selectedPart === "leftArm" && (
+            <>
+              <ellipse
+                cx="275"
+                cy="180"
+                rx="15"
+                ry="25"
+                fill="none"
+                stroke="#ef4444"
+                strokeWidth="3"
+              />
+              <ellipse
+                cx="285"
+                cy="220"
+                rx="12"
+                ry="25"
+                fill="none"
+                stroke="#ef4444"
+                strokeWidth="3"
+              />
+            </>
+          )}
+        </g>
+
+        {/* Coxa direita */}
+        <g
+          className="cursor-pointer hover:opacity-90 transition-all"
+          onClick={() => onPartClick("rightThigh")}
+        >
+          <ellipse
+            cx="175"
+            cy="350"
+            rx="20"
+            ry="55"
+            fill="url(#skinGradient)"
+            stroke="#8b5a2b"
+            strokeWidth="2"
+          />
+          <ellipse
+            cx="175"
+            cy="340"
+            rx="15"
+            ry="45"
+            fill="url(#muscleGradient)"
+            opacity="0.7"
+          />
+          <line
+            x1="175"
+            y1="310"
+            x2="175"
+            y2="380"
+            stroke="#8b5a2b"
+            strokeWidth="1"
+          />
+          {selectedPart === "rightThigh" && (
+            <ellipse
+              cx="175"
+              cy="350"
+              rx="20"
+              ry="55"
+              fill="none"
+              stroke="#ef4444"
+              strokeWidth="3"
+            />
+          )}
+        </g>
+
+        {/* Coxa esquerda */}
+        <g
+          className="cursor-pointer hover:opacity-90 transition-all"
+          onClick={() => onPartClick("leftThigh")}
+        >
+          <ellipse
+            cx="225"
+            cy="350"
+            rx="20"
+            ry="55"
+            fill="url(#skinGradient)"
+            stroke="#8b5a2b"
+            strokeWidth="2"
+          />
+          <ellipse
+            cx="225"
+            cy="340"
+            rx="15"
+            ry="45"
+            fill="url(#muscleGradient)"
+            opacity="0.7"
+          />
+          <line
+            x1="225"
+            y1="310"
+            x2="225"
+            y2="380"
+            stroke="#8b5a2b"
+            strokeWidth="1"
+          />
+          {selectedPart === "leftThigh" && (
+            <ellipse
+              cx="225"
+              cy="350"
+              rx="20"
+              ry="55"
+              fill="none"
+              stroke="#ef4444"
+              strokeWidth="3"
+            />
+          )}
+        </g>
+
+        {/* Panturrilha direita */}
+        <g
+          className="cursor-pointer hover:opacity-90 transition-all"
+          onClick={() => onPartClick("rightCalf")}
+        >
+          <ellipse
+            cx="175"
+            cy="450"
+            rx="15"
+            ry="40"
+            fill="url(#skinGradient)"
+            stroke="#8b5a2b"
+            strokeWidth="2"
+          />
+          <ellipse
+            cx="175"
+            cy="445"
+            rx="12"
+            ry="35"
+            fill="url(#muscleGradient)"
+            opacity="0.7"
+          />
+          {selectedPart === "rightCalf" && (
+            <ellipse
+              cx="175"
+              cy="450"
+              rx="15"
+              ry="40"
+              fill="none"
+              stroke="#ef4444"
+              strokeWidth="3"
+            />
+          )}
+        </g>
+
+        {/* Panturrilha esquerda */}
+        <g
+          className="cursor-pointer hover:opacity-90 transition-all"
+          onClick={() => onPartClick("leftCalf")}
+        >
+          <ellipse
+            cx="225"
+            cy="450"
+            rx="15"
+            ry="40"
+            fill="url(#skinGradient)"
+            stroke="#8b5a2b"
+            strokeWidth="2"
+          />
+          <ellipse
+            cx="225"
+            cy="445"
+            rx="12"
+            ry="35"
+            fill="url(#muscleGradient)"
+            opacity="0.7"
+          />
+          {selectedPart === "leftCalf" && (
+            <ellipse
+              cx="225"
+              cy="450"
+              rx="15"
+              ry="40"
+              fill="none"
+              stroke="#ef4444"
+              strokeWidth="3"
+            />
+          )}
+        </g>
+
+        {/* Pés */}
+        <ellipse
+          cx="175"
+          cy="505"
+          rx="12"
+          ry="20"
+          fill="url(#skinGradient)"
+          stroke="#8b5a2b"
+          strokeWidth="1"
         />
-      ))}
+        <ellipse
+          cx="225"
+          cy="505"
+          rx="12"
+          ry="20"
+          fill="url(#skinGradient)"
+          stroke="#8b5a2b"
+          strokeWidth="1"
+        />
+      </svg>
 
-      {/* Plano do chão para sombra */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -3, 0]} receiveShadow>
-        <planeGeometry args={[10, 10]} />
-        <shadowMaterial opacity={0.3} />
-      </mesh>
-    </group>
-  );
-}
-
-// Componente principal
-export default function HumanBody3D({
-  measurements,
-  interactive = true,
-  onPartClick,
-}: HumanBody3DProps) {
-  const [selectedPart, setSelectedPart] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"front" | "back" | "side">("front");
-
-  const handlePartClick = useCallback(
-    (partName: string) => {
-      if (!interactive) return;
-
-      setSelectedPart(partName === selectedPart ? null : partName);
-
-      if (onPartClick) {
-        const part = partName;
-        const partMeasurements = {
-          chest: measurements?.chestCirc,
-          waist: measurements?.waistCirc,
-          hip: measurements?.hipCirc,
-          rightUpperArm: measurements?.rightArmContractedCirc,
-          leftUpperArm: measurements?.leftArmContractedCirc,
-          rightThigh: measurements?.rightThighCirc,
-          leftThigh: measurements?.leftThighCirc,
-          rightCalf: measurements?.rightCalfCirc,
-          leftCalf: measurements?.leftCalfCirc,
-        };
-        onPartClick(partName, partMeasurements);
-      }
-    },
-    [selectedPart, interactive, onPartClick, measurements]
-  );
-
-  const formatValue = (value: string | number | null | undefined): string => {
-    if (value === null || value === undefined) return "-";
-    if (typeof value === "string") {
-      const numValue = parseFloat(value);
-      return isNaN(numValue) ? value : numValue.toFixed(1);
-    }
-    return value.toFixed(1);
-  };
-
-  const getBMIInfo = (bmi?: number) => {
-    if (!bmi) return null;
-
-    if (bmi < 18.5)
-      return { category: "Abaixo do peso", color: "bg-blue-100 text-blue-800" };
-    if (bmi < 25)
-      return { category: "Peso normal", color: "bg-green-100 text-green-800" };
-    if (bmi < 30)
-      return { category: "Sobrepeso", color: "bg-yellow-100 text-yellow-800" };
-    return { category: "Obesidade", color: "bg-red-100 text-red-800" };
-  };
-
-  const bmiInfo = getBMIInfo(measurements?.bmi);
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Modelo 3D */}
-      <div className="lg:col-span-2">
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle>Modelo 3D Interativo</CardTitle>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant={viewMode === "front" ? "default" : "outline"}
-                  onClick={() => setViewMode("front")}
-                >
-                  Frontal
-                </Button>
-                <Button
-                  size="sm"
-                  variant={viewMode === "side" ? "default" : "outline"}
-                  onClick={() => setViewMode("side")}
-                >
-                  Lateral
-                </Button>
-                <Button
-                  size="sm"
-                  variant={viewMode === "back" ? "default" : "outline"}
-                  onClick={() => setViewMode("back")}
-                >
-                  Posterior
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[600px] bg-gradient-to-b from-blue-50 to-blue-100 rounded-lg overflow-hidden">
-              <Canvas
-                shadows
-                camera={{ position: [0, 2, 5], fov: 50 }}
-                style={{
-                  background: "linear-gradient(to bottom, #f0f9ff, #e0f2fe)",
-                }}
-              >
-                <HumanBodyModel
-                  measurements={measurements}
-                  selectedPart={selectedPart}
-                  onPartClick={handlePartClick}
-                />
-                <OrbitControls
-                  enablePan={true}
-                  enableZoom={true}
-                  enableRotate={true}
-                  minDistance={2}
-                  maxDistance={10}
-                />
-              </Canvas>
-            </div>
-            <div className="mt-4 text-sm text-gray-600 text-center">
-              🖱️ Clique nas partes do corpo para ver as medições • 🔄 Arraste
-              para rotacionar • 🔍 Scroll para zoom
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Painel de informações */}
-      <div className="space-y-6">
-        {/* Dados básicos */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Dados Antropométricos</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {measurements?.currentWeight && measurements?.currentHeight && (
-              <div className="flex justify-between">
-                <span>Peso:</span>
-                <span className="font-medium">
-                  {formatValue(measurements.currentWeight)} kg
-                </span>
-              </div>
-            )}
-            {measurements?.currentHeight && (
-              <div className="flex justify-between">
-                <span>Altura:</span>
-                <span className="font-medium">
-                  {formatValue(measurements.currentHeight)} cm
-                </span>
-              </div>
-            )}
-            {bmiInfo && (
-              <div className="flex justify-between items-center">
-                <span>IMC:</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">
-                    {formatValue(measurements?.bmi)}
-                  </span>
-                  <Badge className={`text-xs ${bmiInfo.color}`}>
-                    {bmiInfo.category}
-                  </Badge>
-                </div>
-              </div>
-            )}
-            {measurements?.bodyFatPercentage && (
-              <div className="flex justify-between">
-                <span>% Gordura:</span>
-                <span className="font-medium">
-                  {formatValue(measurements.bodyFatPercentage)}%
-                </span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Circunferências */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Circunferências (cm)</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {measurements?.chestCirc && (
-              <div className="flex justify-between">
-                <span>Tórax:</span>
-                <span className="font-medium">
-                  {formatValue(measurements.chestCirc)}
-                </span>
-              </div>
-            )}
-            {measurements?.waistCirc && (
-              <div className="flex justify-between">
-                <span>Cintura:</span>
-                <span className="font-medium">
-                  {formatValue(measurements.waistCirc)}
-                </span>
-              </div>
-            )}
-            {measurements?.hipCirc && (
-              <div className="flex justify-between">
-                <span>Quadril:</span>
-                <span className="font-medium">
-                  {formatValue(measurements.hipCirc)}
-                </span>
-              </div>
-            )}
-            {measurements?.rightArmContractedCirc && (
-              <div className="flex justify-between">
-                <span>Braço D (Cont.):</span>
-                <span className="font-medium">
-                  {formatValue(measurements.rightArmContractedCirc)}
-                </span>
-              </div>
-            )}
-            {measurements?.leftArmContractedCirc && (
-              <div className="flex justify-between">
-                <span>Braço E (Cont.):</span>
-                <span className="font-medium">
-                  {formatValue(measurements.leftArmContractedCirc)}
-                </span>
-              </div>
-            )}
-            {measurements?.rightThighCirc && (
-              <div className="flex justify-between">
-                <span>Coxa D:</span>
-                <span className="font-medium">
-                  {formatValue(measurements.rightThighCirc)}
-                </span>
-              </div>
-            )}
-            {measurements?.leftThighCirc && (
-              <div className="flex justify-between">
-                <span>Coxa E:</span>
-                <span className="font-medium">
-                  {formatValue(measurements.leftThighCirc)}
-                </span>
-              </div>
-            )}
-            {measurements?.rightCalfCirc && (
-              <div className="flex justify-between">
-                <span>Panturrilha D:</span>
-                <span className="font-medium">
-                  {formatValue(measurements.rightCalfCirc)}
-                </span>
-              </div>
-            )}
-            {measurements?.leftCalfCirc && (
-              <div className="flex justify-between">
-                <span>Panturrilha E:</span>
-                <span className="font-medium">
-                  {formatValue(measurements.leftCalfCirc)}
-                </span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Parte selecionada */}
+      <div className="mt-4 text-center">
+        <p className="text-sm text-gray-600">
+          🖱️ Clique nas partes do corpo para ver as medições antropométricas
+        </p>
         {selectedPart && (
-          <Card className="border-blue-200 bg-blue-50">
-            <CardHeader>
-              <CardTitle className="text-lg text-blue-800">
-                Parte Selecionada
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center">
-                <p className="text-sm text-blue-600 mb-2">
-                  {selectedPart.charAt(0).toUpperCase() + selectedPart.slice(1)}
-                </p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setSelectedPart(null)}
-                  className="text-blue-600 border-blue-200"
-                >
-                  Desselecionar
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm font-medium text-red-800">
+              🎯 {bodyParts.find((p) => p.name === selectedPart)?.label}
+            </p>
+            <p className="text-xs text-red-600">
+              {bodyParts.find((p) => p.name === selectedPart)?.description}
+            </p>
+          </div>
         )}
       </div>
     </div>
+  );
+}
+
+export default function HumanBody3D({
+  measurements,
+  interactive,
+  onPartClick,
+}: {
+  measurements?: BodyMeasurements;
+  interactive?: boolean;
+  onPartClick?: (partName: string, measurements?: BodyMeasurements) => void;
+}) {
+  const [selectedPart, setSelectedPart] = useState<string | null>(null);
+
+  const handlePartClick = useCallback(
+    (partName: string) => {
+      setSelectedPart(selectedPart === partName ? null : partName);
+      if (onPartClick) {
+        onPartClick(partName, measurements);
+      }
+    },
+    [selectedPart, onPartClick, measurements]
+  );
+
+  const clearSelection = useCallback(() => {
+    setSelectedPart(null);
+  }, []);
+
+  const getMeasurementValue = useCallback(
+    (partName: string) => {
+      if (!measurements) return null;
+
+      const measurementMap: Record<string, keyof BodyMeasurements> = {
+        head: "neck",
+        chest: "chestCirc",
+        waist: "waistCirc",
+        hips: "hipCirc",
+        rightArm: "rightArmContractedCirc",
+        leftArm: "leftArmContractedCirc",
+        rightThigh: "rightThighCirc",
+        leftThigh: "leftThighCirc",
+        rightCalf: "rightCalfCirc",
+        leftCalf: "leftCalfCirc",
+      };
+
+      const key = measurementMap[partName];
+      return key ? measurements[key] : null;
+    },
+    [measurements]
+  );
+
+  return (
+    <Card className="w-full">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-xl font-bold text-gray-800">
+              🏋️ Modelo Anatômico Realista
+            </CardTitle>
+            <p className="text-sm text-gray-600 mt-1">
+              Visualização detalhada das medidas antropométricas
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {selectedPart && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearSelection}
+                className="flex items-center gap-2"
+              >
+                ✕ Limpar Seleção
+              </Button>
+            )}
+            <Badge variant="secondary" className="text-xs">
+              Realista
+            </Badge>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="flex-1 flex justify-center">
+            <RealisticBodyDiagram
+              measurements={measurements}
+              selectedPart={selectedPart}
+              onPartClick={handlePartClick}
+            />
+          </div>
+
+          <div className="flex-1 space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">📊 Dados Gerais</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {measurements?.currentWeight && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Peso atual:</span>
+                    <span className="text-sm font-medium">
+                      {measurements.currentWeight} kg
+                    </span>
+                  </div>
+                )}
+                {measurements?.currentHeight && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Altura:</span>
+                    <span className="text-sm font-medium">
+                      {measurements.currentHeight} cm
+                    </span>
+                  </div>
+                )}
+                {measurements?.bmi && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">IMC:</span>
+                    <span className="text-sm font-medium">
+                      {measurements.bmi.toFixed(1)}
+                    </span>
+                  </div>
+                )}
+                {measurements?.bodyFatPercentage && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">% Gordura:</span>
+                    <span className="text-sm font-medium">
+                      {measurements.bodyFatPercentage}%
+                    </span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {selectedPart && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">
+                    🎯 Medição Selecionada
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-red-800">
+                      {selectedPart === "head" && "Pescoço"}
+                      {selectedPart === "chest" && "Peito"}
+                      {selectedPart === "waist" && "Cintura"}
+                      {selectedPart === "hips" && "Quadril"}
+                      {selectedPart === "rightArm" && "Braço Direito"}
+                      {selectedPart === "leftArm" && "Braço Esquerdo"}
+                      {selectedPart === "rightThigh" && "Coxa Direita"}
+                      {selectedPart === "leftThigh" && "Coxa Esquerda"}
+                      {selectedPart === "rightCalf" && "Panturrilha Direita"}
+                      {selectedPart === "leftCalf" && "Panturrilha Esquerda"}
+                    </h4>
+
+                    {getMeasurementValue(selectedPart) ? (
+                      <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-lg font-bold text-green-800">
+                          {getMeasurementValue(selectedPart)} cm
+                        </p>
+                        <p className="text-sm text-green-600">
+                          Circunferência registrada
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                        <p className="text-sm text-gray-600">
+                          Medição não disponível para esta parte do corpo.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">ℹ️ Como usar</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="text-sm text-gray-600 space-y-1">
+                  <li>• Clique nas partes do corpo para ver medições</li>
+                  <li>• Músculos destacados mostram anatomia realista</li>
+                  <li>• Bordas vermelhas indicam parte selecionada</li>
+                  <li>• Use o botão "Limpar Seleção" para deselecionar</li>
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
