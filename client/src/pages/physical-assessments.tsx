@@ -14,8 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import PhysicalAssessmentModal from "@/components/modals/physical-assessment-modal";
-import BodyVisualization from "@/components/dashboard/body-visualization";
-import HumanBody3D from "@/components/dashboard/human-body-3d";
+import BodyPhotoGallery from "@/components/dashboard/body-photo-gallery";
 import type { PhysicalAssessment, Student } from "@shared/schema";
 
 export default function PhysicalAssessments() {
@@ -328,7 +327,7 @@ export default function PhysicalAssessments() {
                 </div>
               </div>
 
-              <HumanBody3D
+              <BodyPhotoGallery
                 measurements={{
                   currentWeight: viewingAssessment.currentWeight
                     ? Number(viewingAssessment.currentWeight)
@@ -339,48 +338,16 @@ export default function PhysicalAssessments() {
                   bmi: viewingAssessment.bmi
                     ? Number(viewingAssessment.bmi)
                     : undefined,
-                  chestCirc: viewingAssessment.chestCirc
-                    ? Number(viewingAssessment.chestCirc)
-                    : undefined,
-                  waistCirc: viewingAssessment.waistCirc
-                    ? Number(viewingAssessment.waistCirc)
-                    : undefined,
-                  hipCirc: viewingAssessment.hipCirc
-                    ? Number(viewingAssessment.hipCirc)
-                    : undefined,
-                  rightArmContractedCirc:
-                    viewingAssessment.rightArmContractedCirc
-                      ? Number(viewingAssessment.rightArmContractedCirc)
-                      : undefined,
-                  rightArmRelaxedCirc: viewingAssessment.rightArmRelaxedCirc
-                    ? Number(viewingAssessment.rightArmRelaxedCirc)
-                    : undefined,
-                  leftArmContractedCirc: viewingAssessment.leftArmContractedCirc
-                    ? Number(viewingAssessment.leftArmContractedCirc)
-                    : undefined,
-                  leftArmRelaxedCirc: viewingAssessment.leftArmRelaxedCirc
-                    ? Number(viewingAssessment.leftArmRelaxedCirc)
-                    : undefined,
-                  rightThighCirc: viewingAssessment.rightThighCirc
-                    ? Number(viewingAssessment.rightThighCirc)
-                    : undefined,
-                  leftThighCirc: viewingAssessment.leftThighCirc
-                    ? Number(viewingAssessment.leftThighCirc)
-                    : undefined,
-                  rightCalfCirc: viewingAssessment.rightCalfCirc
-                    ? Number(viewingAssessment.rightCalfCirc)
-                    : undefined,
-                  leftCalfCirc: viewingAssessment.leftCalfCirc
-                    ? Number(viewingAssessment.leftCalfCirc)
-                    : undefined,
-                  bodyFatPercentage: viewingAssessment.bodyFatPercentage
-                    ? Number(viewingAssessment.bodyFatPercentage)
-                    : undefined,
-                  gender: viewingAssessment.gender || undefined,
                 }}
+                photos={[]}
                 interactive={true}
-                onPartClick={(partName, measurements) => {
-                  console.log(`Visualizando ${partName}:`, measurements);
+                onPhotoAdd={(photo) => {
+                  console.log("Nova foto adicionada:", photo);
+                  // TODO: Implementar salvamento no backend
+                }}
+                onPhotoRemove={(photoId) => {
+                  console.log("Foto removida:", photoId);
+                  // TODO: Implementar remoção no backend
                 }}
               />
 

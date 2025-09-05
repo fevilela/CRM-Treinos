@@ -10,6 +10,7 @@ import {
   workoutHistory,
   workoutComments,
   physicalAssessments,
+  assessmentPhotos,
   type User,
   type InsertUser,
   type UpsertUser,
@@ -33,6 +34,8 @@ import {
   type InsertWorkoutComment,
   type PhysicalAssessment,
   type InsertPhysicalAssessment,
+  type AssessmentPhoto,
+  type InsertAssessmentPhoto,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, count } from "drizzle-orm";
@@ -149,6 +152,12 @@ export interface IStorage {
     assessment: Partial<InsertPhysicalAssessment>
   ): Promise<PhysicalAssessment>;
   deletePhysicalAssessment(id: string): Promise<void>;
+
+  // Assessment photo operations
+  getAssessmentPhotos(assessmentId: string): Promise<AssessmentPhoto[]>;
+  getAssessmentPhoto(photoId: string): Promise<AssessmentPhoto | undefined>;
+  createAssessmentPhoto(photo: InsertAssessmentPhoto): Promise<AssessmentPhoto>;
+  deleteAssessmentPhoto(photoId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -864,6 +873,39 @@ export class DatabaseStorage implements IStorage {
 
   async deletePhysicalAssessment(id: string): Promise<void> {
     await db.delete(physicalAssessments).where(eq(physicalAssessments.id, id));
+  }
+
+  // Assessment photo operations
+  async getAssessmentPhotos(assessmentId: string): Promise<AssessmentPhoto[]> {
+    return await db
+      .select()
+      .from(assessmentPhotos)
+      .where(eq(assessmentPhotos.assessmentId, assessmentId))
+      .orderBy(desc(assessmentPhotos.uploadedAt));
+  }
+
+  async getAssessmentPhoto(
+    photoId: string
+  ): Promise<AssessmentPhoto | undefined> {
+    const [photo] = await db
+      .select()
+      .from(assessmentPhotos)
+      .where(eq(assessmentPhotos.id, photoId));
+    return photo;
+  }
+
+  async createAssessmentPhoto(
+    photo: InsertAssessmentPhoto
+  ): Promise<AssessmentPhoto> {
+    const [newPhoto] = await db
+      .insert(assessmentPhotos)
+      .values(photo)
+      .returning();
+    return newPhoto;
+  }
+
+  async deleteAssessmentPhoto(photoId: string): Promise<void> {
+    await db.delete(assessmentPhotos).where(eq(assessmentPhotos.id, photoId));
   }
 }
 

@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import {
@@ -18,8 +18,12 @@ import {
   insertWorkoutHistorySchema,
   insertWorkoutCommentSchema,
   insertPhysicalAssessmentSchema,
+  insertAssessmentPhotoSchema,
 } from "@shared/schema";
 import { z } from "zod";
+import multer from "multer";
+import { promises as fs } from "fs";
+import path from "path";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -788,6 +792,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   );
+
+  // Configure multer for photo uploads
+  const uploadsDir = path.join(process.cwd(), "uploads", "assessment-photos");
+
+  // Ensure uploads directory exists
+  await fs.mkdir(uploadsDir, { recursive: true });
+
+  const storage_multer = multer.diskStorage({
+    destination: uploadsDir,
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      const ext = path.extname(file.originalname);
+      cb(null, `photo-${uniqueSuffix}${ext}`);
+    },
+  });
+
+  const upload = multer({
+    storage: storage_multer,
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      if (!file.mimetype.startsWith("image/")) {
+        return cb(new Error("Apenas arquivos de imagem são permitidos"));
+      }
+      cb(null, true);
+    },
+  });
+
+  // Assessment photo endpoints
+  app.post(
+    "/api/assessment-photos",
+    isAuthenticated,
+    upload.single("photo"),
+    async (req: any, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "Nenhuma foto enviada" });
+        }
+
+        const photoData = {
+          assessmentId: req.body.assessmentId,
+          studentId: req.body.studentId,
+          photoType: req.body.photoType,
+          photoUrl: `/uploads/assessment-photos/${req.file.filename}`,
+          fileName: req.file.filename,
+          fileSize: req.file.size,
+          mimeType: req.file.mimetype,
+        };
+
+        // Validate required fields
+        const validationResult =
+          insertAssessmentPhotoSchema.safeParse(photoData);
+        if (!validationResult.success) {
+          // Remove uploaded file if validation fails
+          await fs.unlink(req.file.path).catch(() => {});
+          return res.status(400).json({
+            message: "Dados inválidos",
+            errors: validationResult.error.errors,
+          });
+        }
+
+        const photo = await storage.createAssessmentPhoto(
+          validationResult.data
+        );
+        res.status(201).json(photo);
+      } catch (error) {
+        console.error("Error uploading photo:", error);
+        // Clean up uploaded file on error
+        if (req.file) {
+          await fs.unlink(req.file.path).catch(() => {});
+        }
+        res.status(500).json({ message: "Falha ao fazer upload da foto" });
+      }
+    }
+  );
+
+  app.get(
+    "/api/assessment-photos/:assessmentId",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const assessmentId = req.params.assessmentId;
+        const photos = await storage.getAssessmentPhotos(assessmentId);
+        res.json(photos);
+      } catch (error) {
+        console.error("Error fetching assessment photos:", error);
+        res.status(500).json({ message: "Falha ao buscar fotos" });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/assessment-photos/:photoId",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const photoId = req.params.photoId;
+
+        // Get photo info before deleting
+        const photo = await storage.getAssessmentPhoto(photoId);
+        if (!photo) {
+          return res.status(404).json({ message: "Foto não encontrada" });
+        }
+
+        // Delete from database
+        await storage.deleteAssessmentPhoto(photoId);
+
+        // Delete physical file
+        const filePath = path.join(
+          process.cwd(),
+          "uploads",
+          "assessment-photos",
+          photo.fileName
+        );
+        await fs.unlink(filePath).catch(() => {
+          // File might not exist, log but don't fail
+          console.warn(`Arquivo não encontrado: ${filePath}`);
+        });
+
+        res.status(204).send();
+      } catch (error) {
+        console.error("Error deleting photo:", error);
+        res.status(500).json({ message: "Falha ao deletar foto" });
+      }
+    }
+  );
+
+  // Serve uploaded photos statically
+  app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
   // Create HTTP server (don't start listening here)
   const httpServer = createServer(app);

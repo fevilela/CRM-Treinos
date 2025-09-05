@@ -5,7 +5,7 @@ import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import StatsCards from "@/components/dashboard/stats-cards";
 import ProgressChart from "@/components/dashboard/progress-chart";
-import BodyVisualization from "@/components/dashboard/body-visualization";
+import BodyPhotoGallery from "@/components/dashboard/body-photo-gallery";
 import StudentList from "@/components/dashboard/student-list";
 import ActivityFeed from "@/components/dashboard/activity-feed";
 
@@ -55,7 +55,7 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <ProgressChart />
-          <BodyVisualization />
+          <BodyPhotoGallery photos={[]} interactive={false} measurements={{}} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

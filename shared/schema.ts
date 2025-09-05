@@ -346,6 +346,25 @@ export const physicalAssessments = pgTable("physical_assessments", {
   gender: genderEnum("gender"),
 });
 
+// Assessment Photos table
+export const assessmentPhotos = pgTable("assessment_photos", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  assessmentId: varchar("assessment_id")
+    .notNull()
+    .references(() => physicalAssessments.id, { onDelete: "cascade" }),
+  studentId: varchar("student_id")
+    .notNull()
+    .references(() => students.id),
+  photoType: varchar("photo_type").notNull(), // 'front', 'side', 'back'
+  photoUrl: varchar("photo_url").notNull(), // Caminho para o arquivo
+  fileName: varchar("file_name").notNull(),
+  fileSize: integer("file_size"), // Tamanho em bytes
+  mimeType: varchar("mime_type").notNull(),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   students: many(students),
@@ -467,7 +486,7 @@ export const workoutCommentsRelations = relations(
 
 export const physicalAssessmentsRelations = relations(
   physicalAssessments,
-  ({ one }) => ({
+  ({ one, many }) => ({
     student: one(students, {
       fields: [physicalAssessments.studentId],
       references: [students.id],
@@ -475,6 +494,21 @@ export const physicalAssessmentsRelations = relations(
     personalTrainer: one(users, {
       fields: [physicalAssessments.personalTrainerId],
       references: [users.id],
+    }),
+    photos: many(assessmentPhotos),
+  })
+);
+
+export const assessmentPhotosRelations = relations(
+  assessmentPhotos,
+  ({ one }) => ({
+    assessment: one(physicalAssessments, {
+      fields: [assessmentPhotos.assessmentId],
+      references: [physicalAssessments.id],
+    }),
+    student: one(students, {
+      fields: [assessmentPhotos.studentId],
+      references: [students.id],
     }),
   })
 );
@@ -600,6 +634,13 @@ export const insertPhysicalAssessmentSchema = createInsertSchema(
     gender: z.enum(["male", "female"]).optional(),
   });
 
+export const insertAssessmentPhotoSchema = createInsertSchema(
+  assessmentPhotos
+).omit({
+  id: true,
+  uploadedAt: true,
+});
+
 // Types
 export type InsertUser = typeof users.$inferInsert;
 export type UpsertUser = typeof users.$inferInsert;
@@ -630,6 +671,8 @@ export type InsertPhysicalAssessment = z.infer<
   typeof insertPhysicalAssessmentSchema
 >;
 export type PhysicalAssessment = typeof physicalAssessments.$inferSelect;
+export type InsertAssessmentPhoto = z.infer<typeof insertAssessmentPhotoSchema>;
+export type AssessmentPhoto = typeof assessmentPhotos.$inferSelect;
 
 // Validation schemas
 export const studentSchema = z.object({

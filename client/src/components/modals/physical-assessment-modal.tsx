@@ -39,8 +39,7 @@ import {
 } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import BodyVisualization from "@/components/dashboard/body-visualization";
-import HumanBody3D from "@/components/dashboard/human-body-3d";
+import BodyPhotoGallery from "@/components/dashboard/body-photo-gallery";
 import { z } from "zod";
 
 const assessmentFormSchema = insertPhysicalAssessmentSchema
@@ -745,7 +744,7 @@ function PhysicalAssessmentModal({
             />
 
             <Tabs defaultValue="identification" className="w-full">
-              <TabsList className="grid w-full grid-cols-10">
+              <TabsList className="grid w-full grid-cols-9">
                 <TabsTrigger value="identification">Identificação</TabsTrigger>
                 <TabsTrigger value="health">Saúde</TabsTrigger>
                 <TabsTrigger value="physical">Física</TabsTrigger>
@@ -754,7 +753,6 @@ function PhysicalAssessmentModal({
                 <TabsTrigger value="anthropometric">Antropométrica</TabsTrigger>
                 <TabsTrigger value="performance">Desempenho</TabsTrigger>
                 <TabsTrigger value="clinical">Clínica</TabsTrigger>
-                <TabsTrigger value="visualization3d">🧬 3D</TabsTrigger>
                 <TabsTrigger value="notes">Observações</TabsTrigger>
               </TabsList>
 
@@ -1480,9 +1478,9 @@ function PhysicalAssessmentModal({
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">
-                        Circunferências corporais (cm)
-                      </Label>
+                      <CardTitle className="text-lg">
+                        ℹ️ Circunferências corporais (cm)
+                      </CardTitle>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <FormField
                           control={form.control}
@@ -1671,9 +1669,9 @@ function PhysicalAssessmentModal({
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">
-                        Circunferências adicionais dos braços (cm)
-                      </Label>
+                      <CardTitle className="text-lg">
+                        💪 Circunferências adicionais dos braços (cm)
+                      </CardTitle>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <FormField
                           control={form.control}
@@ -1790,9 +1788,9 @@ function PhysicalAssessmentModal({
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">
-                        Circunferências adicionais das pernas (cm)
-                      </Label>
+                      <CardTitle className="text-lg">
+                        🦵 Circunferências adicionais das pernas (cm)
+                      </CardTitle>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <FormField
                           control={form.control}
@@ -1900,10 +1898,13 @@ function PhysicalAssessmentModal({
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">
-                        Composição corporal e índices
-                      </Label>
+                    {/* Composição corporal e índices */}
+                    <Card className="mt-6">
+                      <CardHeader>
+                        <CardTitle className="text-lg">
+                          🏋️‍♂️ Composição corporal e índices
+                        </CardTitle>
+                      </CardHeader>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
                           control={form.control}
@@ -1961,115 +1962,274 @@ function PhysicalAssessmentModal({
                           )}
                         />
                       </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="bodyFatPercentage"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>%GC</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                placeholder="15.5"
-                                {...field}
-                                value={field.value?.toString() ?? ""}
-                                onChange={(e) =>
-                                  field.onChange(e.target.value || undefined)
-                                }
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="bodyFatPercentage"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>%GC</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  placeholder="15.5"
+                                  {...field}
+                                  value={field.value?.toString() ?? ""}
+                                  onChange={(e) =>
+                                    field.onChange(e.target.value || undefined)
+                                  }
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-                      <FormField
-                        control={form.control}
-                        name="fatMass"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Massa Gorda (kg)</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                placeholder="10.9"
-                                {...field}
-                                value={field.value?.toString() ?? ""}
-                                onChange={(e) =>
-                                  field.onChange(e.target.value || undefined)
-                                }
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                        <FormField
+                          control={form.control}
+                          name="fatMass"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Massa Gorda (kg)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  placeholder="10.9"
+                                  {...field}
+                                  value={field.value?.toString() ?? ""}
+                                  onChange={(e) =>
+                                    field.onChange(e.target.value || undefined)
+                                  }
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-                      <FormField
-                        control={form.control}
-                        name="leanMassBody"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Massa Livre de Gord. (kg)</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                placeholder="59.6"
-                                {...field}
-                                value={field.value?.toString() ?? ""}
-                                onChange={(e) =>
-                                  field.onChange(e.target.value || undefined)
-                                }
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                        <FormField
+                          control={form.control}
+                          name="leanMassBody"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Massa Livre de Gord. (kg)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  placeholder="59.6"
+                                  {...field}
+                                  value={field.value?.toString() ?? ""}
+                                  onChange={(e) =>
+                                    field.onChange(e.target.value || undefined)
+                                  }
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </Card>
 
-                    {/* Visualização Corporal */}
+                    {/* Dobras Cutâneas */}
+                    <Card className="mt-6">
+                      <CardHeader>
+                        <CardTitle className="text-lg">
+                          📊 Dobras Cutâneas (mm)
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="pectoralSkinFold"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">
+                                  Peitoral
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="8.0"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="subscapularSkinFold"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">
+                                  Subescapular
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="12.0"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="tricepsSkinFold"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">
+                                  Tríceps
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="15.0"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="axillaryMidSkinFold"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">
+                                  Axilar Média
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="10.0"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="abdominalSkinFold"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">
+                                  Abdominal
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="20.0"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="thighSkinFold"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">Coxa</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="25.0"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Visualização Corporal - Galeria de Fotos */}
                     <div className="mt-6">
-                      <BodyVisualization
-                        assessment={{
+                      <BodyPhotoGallery
+                        assessmentId={assessment?.id}
+                        studentId={assessment?.studentId || students}
+                        measurements={{
                           currentWeight: form.watch("currentWeight"),
                           currentHeight: form.watch("currentHeight"),
                           bmi: form.watch("bmi"),
-                          waistCirc: form.watch("waistCirc"),
-                          hipCirc: form.watch("hipCirc"),
-                          abdomenCirc: form.watch("abdomenCirc"),
-                          armCirc: form.watch("armCirc"),
-                          thighCirc: form.watch("thighCirc"),
-                          calfCirc: form.watch("calfCirc"),
-                          chestCirc: form.watch("chestCirc"),
-                          rightArmContractedCirc: form.watch(
-                            "rightArmContractedCirc"
-                          ),
-                          rightArmRelaxedCirc: form.watch(
-                            "rightArmRelaxedCirc"
-                          ),
-                          leftArmContractedCirc: form.watch(
-                            "leftArmContractedCirc"
-                          ),
-                          leftArmRelaxedCirc: form.watch("leftArmRelaxedCirc"),
-                          rightThighCirc: form.watch("rightThighCirc"),
-                          leftThighCirc: form.watch("leftThighCirc"),
-                          rightCalfCirc: form.watch("rightCalfCirc"),
-                          leftCalfCirc: form.watch("leftCalfCirc"),
-                          bodyFatPercentage: form.watch("bodyFatPercentage"),
-                          leanMass: form.watch("leanMass"),
-                          fatMass: form.watch("fatMass"),
-                          waistHipRatio: form.watch("waistHipRatio"),
-                          bodyWater: form.watch("bodyWater"),
-                          gender: selectedGender,
                         }}
                         interactive={true}
+                        onPhotoAdd={(photo) => {
+                          console.log("Nova foto adicionada:", photo);
+                        }}
+                        onPhotoRemove={(photoId) => {
+                          console.log("Foto removida:", photoId);
+                        }}
                       />
                     </div>
                   </CardContent>
@@ -2077,177 +2237,6 @@ function PhysicalAssessmentModal({
               </TabsContent>
 
               <TabsContent value="clinical" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">
-                      📊 Dobras Cutâneas (mm)
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="pectoralSkinFold"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm">Peitoral</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                placeholder="8.0"
-                                {...field}
-                                value={field.value?.toString() ?? ""}
-                                onChange={(e) =>
-                                  field.onChange(
-                                    e.target.value
-                                      ? parseFloat(e.target.value)
-                                      : undefined
-                                  )
-                                }
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="subscapularSkinFold"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm">
-                              Subescapular
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                placeholder="12.0"
-                                {...field}
-                                value={field.value?.toString() ?? ""}
-                                onChange={(e) =>
-                                  field.onChange(
-                                    e.target.value
-                                      ? parseFloat(e.target.value)
-                                      : undefined
-                                  )
-                                }
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="tricepsSkinFold"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm">Tríceps</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                placeholder="15.0"
-                                {...field}
-                                value={field.value?.toString() ?? ""}
-                                onChange={(e) =>
-                                  field.onChange(
-                                    e.target.value
-                                      ? parseFloat(e.target.value)
-                                      : undefined
-                                  )
-                                }
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="axillaryMidSkinFold"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm">
-                              Axilar Média
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                placeholder="10.0"
-                                {...field}
-                                value={field.value?.toString() ?? ""}
-                                onChange={(e) =>
-                                  field.onChange(
-                                    e.target.value
-                                      ? parseFloat(e.target.value)
-                                      : undefined
-                                  )
-                                }
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="abdominalSkinFold"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm">Abdominal</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                placeholder="20.0"
-                                {...field}
-                                value={field.value?.toString() ?? ""}
-                                onChange={(e) =>
-                                  field.onChange(
-                                    e.target.value
-                                      ? parseFloat(e.target.value)
-                                      : undefined
-                                  )
-                                }
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="thighSkinFold"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm">Coxa</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                placeholder="25.0"
-                                {...field}
-                                value={field.value?.toString() ?? ""}
-                                onChange={(e) =>
-                                  field.onChange(
-                                    e.target.value
-                                      ? parseFloat(e.target.value)
-                                      : undefined
-                                  )
-                                }
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">
@@ -2588,51 +2577,6 @@ function PhysicalAssessmentModal({
                           <FormMessage />
                         </FormItem>
                       )}
-                    />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="visualization3d" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      🧬 Visualização 3D do Corpo Humano
-                    </CardTitle>
-                    <p className="text-sm text-gray-600">
-                      Modelo 3D interativo baseado nas medições corporais
-                      registradas. Clique nas partes do corpo para visualizar as
-                      circunferências específicas.
-                    </p>
-                  </CardHeader>
-                  <CardContent>
-                    <HumanBody3D
-                      measurements={{
-                        currentWeight: form.watch("currentWeight"),
-                        currentHeight: form.watch("currentHeight"),
-                        bmi: form.watch("bmi"),
-                        chestCirc: form.watch("chestCirc"),
-                        waistCirc: form.watch("waistCirc"),
-                        hipCirc: form.watch("hipCirc"),
-                        rightArmContractedCirc: form.watch(
-                          "rightArmContractedCirc"
-                        ),
-                        rightArmRelaxedCirc: form.watch("rightArmRelaxedCirc"),
-                        leftArmContractedCirc: form.watch(
-                          "leftArmContractedCirc"
-                        ),
-                        leftArmRelaxedCirc: form.watch("leftArmRelaxedCirc"),
-                        rightThighCirc: form.watch("rightThighCirc"),
-                        leftThighCirc: form.watch("leftThighCirc"),
-                        rightCalfCirc: form.watch("rightCalfCirc"),
-                        leftCalfCirc: form.watch("leftCalfCirc"),
-                        bodyFatPercentage: form.watch("bodyFatPercentage"),
-                        gender: selectedGender,
-                      }}
-                      interactive={true}
-                      onPartClick={(partName, measurements) => {
-                        console.log(`Parte clicada: ${partName}`, measurements);
-                      }}
                     />
                   </CardContent>
                 </Card>
