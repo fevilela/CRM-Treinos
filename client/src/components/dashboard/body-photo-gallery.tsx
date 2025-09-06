@@ -4,6 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Trash2, Upload, Eye, Plus } from "lucide-react";
 
 interface AssessmentPhoto {
@@ -335,44 +342,37 @@ export default function BodyPhotoGallery({
           </div>
         )}
 
-        {/* Photo Viewer Modal */}
-        {viewingPhoto && (
-          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-            <div className="max-w-4xl max-h-full p-4">
-              <div className="bg-white rounded-lg overflow-hidden">
-                <div className="p-4 border-b">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold">{viewingPhoto.fileName}</h3>
-                      <p className="text-sm text-gray-600">
-                        {
-                          BODY_PARTS.find(
-                            (p) => p.value === viewingPhoto.photoType
-                          )?.label
-                        }{" "}
-                        •{" "}
-                        {new Date(viewingPhoto.uploadedAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      onClick={() => setViewingPhoto(null)}
-                    >
-                      Fechar
-                    </Button>
-                  </div>
-                </div>
-                <div className="p-4">
+        {/* Photo Viewer Dialog */}
+        <Dialog
+          open={!!viewingPhoto}
+          onOpenChange={(open) => !open && setViewingPhoto(null)}
+        >
+          <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+            {viewingPhoto && (
+              <>
+                <DialogHeader className="p-6 pb-4">
+                  <DialogTitle className="text-lg font-semibold">
+                    {viewingPhoto.fileName}
+                  </DialogTitle>
+                  <p className="text-sm text-gray-600">
+                    {
+                      BODY_PARTS.find((p) => p.value === viewingPhoto.photoType)
+                        ?.label
+                    }{" "}
+                    • {new Date(viewingPhoto.uploadedAt).toLocaleDateString()}
+                  </p>
+                </DialogHeader>
+                <div className="px-6 pb-6 flex justify-center">
                   <img
                     src={viewingPhoto.photoUrl}
                     alt={viewingPhoto.fileName}
-                    className="max-w-full max-h-96 mx-auto"
+                    className="max-w-full max-h-[60vh] object-contain rounded shadow-lg"
                   />
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

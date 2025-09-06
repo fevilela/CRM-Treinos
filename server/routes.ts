@@ -793,6 +793,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Get assessment history for a specific student
+  app.get(
+    "/api/assessment-history/:studentId",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const studentId = req.params.studentId;
+        const history = await storage.getStudentAssessmentHistory(studentId);
+        res.json(history);
+      } catch (error) {
+        console.error("Error fetching assessment history:", error);
+        res.status(500).json({ message: "Failed to fetch assessment history" });
+      }
+    }
+  );
+
+  // Get assessment history for a specific assessment
+  app.get(
+    "/api/physical-assessments/:id/history",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const assessmentId = req.params.id;
+        const history = await storage.getPhysicalAssessmentHistory(
+          assessmentId
+        );
+        res.json(history);
+      } catch (error) {
+        console.error("Error fetching assessment history:", error);
+        res.status(500).json({ message: "Failed to fetch assessment history" });
+      }
+    }
+  );
+
+  // Get all assessment history for a student
+  app.get(
+    "/api/students/:studentId/assessment-history",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const studentId = req.params.studentId;
+        const history = await storage.getStudentAssessmentHistory(studentId);
+        res.json(history);
+      } catch (error) {
+        console.error("Error fetching student assessment history:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch student assessment history" });
+      }
+    }
+  );
+
   // Configure multer for photo uploads
   const uploadsDir = path.join(process.cwd(), "uploads", "assessment-photos");
 

@@ -10,6 +10,7 @@ import {
   workoutHistory,
   workoutComments,
   physicalAssessments,
+  physicalAssessmentHistory,
   assessmentPhotos,
   type User,
   type InsertUser,
@@ -34,6 +35,8 @@ import {
   type InsertWorkoutComment,
   type PhysicalAssessment,
   type InsertPhysicalAssessment,
+  type PhysicalAssessmentHistory,
+  type InsertPhysicalAssessmentHistory,
   type AssessmentPhoto,
   type InsertAssessmentPhoto,
 } from "@shared/schema";
@@ -152,6 +155,12 @@ export interface IStorage {
     assessment: Partial<InsertPhysicalAssessment>
   ): Promise<PhysicalAssessment>;
   deletePhysicalAssessment(id: string): Promise<void>;
+  getPhysicalAssessmentHistory(
+    assessmentId: string
+  ): Promise<PhysicalAssessmentHistory[]>;
+  getStudentAssessmentHistory(
+    studentId: string
+  ): Promise<PhysicalAssessmentHistory[]>;
 
   // Assessment photo operations
   getAssessmentPhotos(assessmentId: string): Promise<AssessmentPhoto[]>;
@@ -809,7 +818,38 @@ export class DatabaseStorage implements IStorage {
     id: string,
     assessment: Partial<InsertPhysicalAssessment>
   ): Promise<PhysicalAssessment> {
-    // Remove fields that don't exist in database schema and handle assessmentDate
+    // First, get the current assessment to save to history
+    const currentAssessment = await this.getPhysicalAssessment(id);
+    if (!currentAssessment) {
+      throw new Error("Assessment not found");
+    }
+
+    // Get the next version number for this assessment's history
+    const historyCount = await db
+      .select({ count: count() })
+      .from(physicalAssessmentHistory)
+      .where(eq(physicalAssessmentHistory.originalAssessmentId, id));
+
+    const nextVersion = (historyCount[0]?.count || 0) + 1;
+
+    // Save current version to history before updating
+    await db.insert(physicalAssessmentHistory).values({
+      originalAssessmentId: id,
+      studentId: currentAssessment.studentId,
+      personalTrainerId: currentAssessment.personalTrainerId,
+      versionNumber: nextVersion,
+      currentWeight: currentAssessment.currentWeight,
+      currentHeight: currentAssessment.currentHeight,
+      bmi: currentAssessment.bmi,
+      waistCirc: currentAssessment.waistCirc,
+      hipCirc: currentAssessment.hipCirc,
+      chestCirc: currentAssessment.chestCirc,
+      bodyFatPercentage: currentAssessment.bodyFatPercentage,
+      leanMass: currentAssessment.leanMass,
+      assessmentDate: currentAssessment.assessmentDate,
+    });
+
+    // Now update the current assessment with new data
     const {
       nutritionHabits,
       substanceUse,
@@ -863,12 +903,35 @@ export class DatabaseStorage implements IStorage {
       oxygenSaturation: validAssessment.oxygenSaturation?.toString(),
       updatedAt: new Date(),
     };
+
     const [updatedAssessment] = await db
       .update(physicalAssessments)
       .set(assessmentData)
       .where(eq(physicalAssessments.id, id))
       .returning();
     return updatedAssessment;
+  }
+
+  // Get assessment history for a specific assessment
+  async getPhysicalAssessmentHistory(
+    assessmentId: string
+  ): Promise<PhysicalAssessmentHistory[]> {
+    return await db
+      .select()
+      .from(physicalAssessmentHistory)
+      .where(eq(physicalAssessmentHistory.originalAssessmentId, assessmentId))
+      .orderBy(desc(physicalAssessmentHistory.versionNumber));
+  }
+
+  // Get assessment history for a student (all assessments)
+  async getStudentAssessmentHistory(
+    studentId: string
+  ): Promise<PhysicalAssessmentHistory[]> {
+    return await db
+      .select()
+      .from(physicalAssessmentHistory)
+      .where(eq(physicalAssessmentHistory.studentId, studentId))
+      .orderBy(desc(physicalAssessmentHistory.createdAt));
   }
 
   async deletePhysicalAssessment(id: string): Promise<void> {

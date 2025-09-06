@@ -344,7 +344,42 @@ export const physicalAssessments = pgTable("physical_assessments", {
 
   // Gender
   gender: genderEnum("gender"),
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Physical Assessment History table - stores historical versions of assessments
+export const physicalAssessmentHistory = pgTable(
+  "physical_assessment_history",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    originalAssessmentId: varchar("original_assessment_id")
+      .notNull()
+      .references(() => physicalAssessments.id),
+    studentId: varchar("student_id")
+      .notNull()
+      .references(() => students.id),
+    personalTrainerId: varchar("personal_trainer_id")
+      .notNull()
+      .references(() => users.id),
+    versionNumber: integer("version_number").notNull().default(1),
+
+    // Copy of all assessment data for historical tracking
+    currentWeight: decimal("current_weight", { precision: 5, scale: 2 }),
+    currentHeight: decimal("current_height", { precision: 5, scale: 2 }),
+    bmi: decimal("bmi", { precision: 4, scale: 2 }),
+    waistCirc: text("waist_circ"),
+    hipCirc: text("hip_circ"),
+    chestCirc: text("chest_circ"),
+    bodyFatPercentage: real("body_fat_percentage"),
+    leanMass: real("lean_mass"),
+    assessmentDate: timestamp("assessment_date"),
+    createdAt: timestamp("created_at").defaultNow(),
+  }
+);
 
 // Assessment Photos table
 export const assessmentPhotos = pgTable("assessment_photos", {
@@ -641,6 +676,30 @@ export const insertAssessmentPhotoSchema = createInsertSchema(
   uploadedAt: true,
 });
 
+export const insertPhysicalAssessmentHistorySchema = createInsertSchema(
+  physicalAssessmentHistory
+)
+  .omit({
+    id: true,
+    createdAt: true,
+  })
+  .extend({
+    currentWeight: z.number().positive().optional(),
+    currentHeight: z.number().positive().optional(),
+    bmi: z.number().positive().optional(),
+    bodyFatPercentage: z.number().positive().optional(),
+    leanMass: z.number().positive().optional(),
+    assessmentDate: z
+      .string()
+      .datetime()
+      .optional()
+      .or(z.date().optional())
+      .transform((val) => {
+        if (!val) return undefined;
+        return val instanceof Date ? val : new Date(val);
+      }),
+  });
+
 // Types
 export type InsertUser = typeof users.$inferInsert;
 export type UpsertUser = typeof users.$inferInsert;
@@ -673,6 +732,11 @@ export type InsertPhysicalAssessment = z.infer<
 export type PhysicalAssessment = typeof physicalAssessments.$inferSelect;
 export type InsertAssessmentPhoto = z.infer<typeof insertAssessmentPhotoSchema>;
 export type AssessmentPhoto = typeof assessmentPhotos.$inferSelect;
+export type InsertPhysicalAssessmentHistory = z.infer<
+  typeof insertPhysicalAssessmentHistorySchema
+>;
+export type PhysicalAssessmentHistory =
+  typeof physicalAssessmentHistory.$inferSelect;
 
 // Validation schemas
 export const studentSchema = z.object({

@@ -150,6 +150,12 @@ function PhysicalAssessmentModal({
     enabled: isOpen,
   });
 
+  // Get assessment history if editing an assessment
+  const { data: assessmentHistory } = useQuery({
+    queryKey: [`/api/physical-assessments/${assessment?.id}/history`],
+    enabled: !!assessment?.id && isOpen,
+  });
+
   const form = useForm<AssessmentFormData>({
     resolver: zodResolver(assessmentFormSchema),
     defaultValues: {
@@ -744,7 +750,11 @@ function PhysicalAssessmentModal({
             />
 
             <Tabs defaultValue="identification" className="w-full">
-              <TabsList className="grid w-full grid-cols-9">
+              <TabsList
+                className={`grid w-full ${
+                  assessment ? "grid-cols-10" : "grid-cols-9"
+                }`}
+              >
                 <TabsTrigger value="identification">Identificação</TabsTrigger>
                 <TabsTrigger value="health">Saúde</TabsTrigger>
                 <TabsTrigger value="physical">Física</TabsTrigger>
@@ -754,6 +764,9 @@ function PhysicalAssessmentModal({
                 <TabsTrigger value="performance">Desempenho</TabsTrigger>
                 <TabsTrigger value="clinical">Clínica</TabsTrigger>
                 <TabsTrigger value="notes">Observações</TabsTrigger>
+                {assessment && (
+                  <TabsTrigger value="history">📊 Histórico</TabsTrigger>
+                )}
               </TabsList>
 
               <TabsContent value="identification" className="space-y-4">
@@ -2217,7 +2230,7 @@ function PhysicalAssessmentModal({
                     <div className="mt-6">
                       <BodyPhotoGallery
                         assessmentId={assessment?.id}
-                        studentId={assessment?.studentId || students}
+                        studentId={assessment?.studentId}
                         measurements={{
                           currentWeight: form.watch("currentWeight"),
                           currentHeight: form.watch("currentHeight"),
@@ -2611,6 +2624,110 @@ function PhysicalAssessmentModal({
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              {/* History Tab - only shown when editing an assessment */}
+              {assessment && (
+                <TabsContent value="history" className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">
+                        📊 Histórico de Avaliações
+                      </CardTitle>
+                      <p className="text-sm text-gray-600">
+                        Acompanhe a evolução das medidas ao longo do tempo
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      {assessmentHistory && assessmentHistory.length > 0 ? (
+                        <div className="space-y-4">
+                          <div className="text-sm font-medium text-gray-700 mb-3">
+                            Total de registros: {assessmentHistory.length}
+                          </div>
+                          <div className="space-y-3 max-h-96 overflow-y-auto">
+                            {assessmentHistory.map(
+                              (historyItem: any, index: number) => (
+                                <div
+                                  key={historyItem.id}
+                                  className="border rounded-lg p-4 bg-gray-50"
+                                >
+                                  <div className="flex justify-between items-start mb-2">
+                                    <div className="text-sm font-medium">
+                                      Versão {historyItem.versionNumber}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {new Date(
+                                        historyItem.createdAt
+                                      ).toLocaleDateString("pt-BR")}
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                                    {historyItem.currentWeight && (
+                                      <div>
+                                        <span className="font-medium">
+                                          Peso:
+                                        </span>{" "}
+                                        {historyItem.currentWeight}kg
+                                      </div>
+                                    )}
+                                    {historyItem.currentHeight && (
+                                      <div>
+                                        <span className="font-medium">
+                                          Altura:
+                                        </span>{" "}
+                                        {historyItem.currentHeight}cm
+                                      </div>
+                                    )}
+                                    {historyItem.bmi && (
+                                      <div>
+                                        <span className="font-medium">
+                                          IMC:
+                                        </span>{" "}
+                                        {historyItem.bmi}
+                                      </div>
+                                    )}
+                                    {historyItem.bodyFatPercentage && (
+                                      <div>
+                                        <span className="font-medium">
+                                          % Gordura:
+                                        </span>{" "}
+                                        {historyItem.bodyFatPercentage}%
+                                      </div>
+                                    )}
+                                    {historyItem.waistCirc && (
+                                      <div>
+                                        <span className="font-medium">
+                                          Cintura:
+                                        </span>{" "}
+                                        {historyItem.waistCirc}cm
+                                      </div>
+                                    )}
+                                    {historyItem.hipCirc && (
+                                      <div>
+                                        <span className="font-medium">
+                                          Quadril:
+                                        </span>{" "}
+                                        {historyItem.hipCirc}cm
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <p>Ainda não há histórico de avaliações.</p>
+                          <p className="text-sm mt-1">
+                            O histórico será criado quando você atualizar esta
+                            avaliação.
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              )}
             </Tabs>
 
             <div className="flex justify-end space-x-3 pt-6 border-t">

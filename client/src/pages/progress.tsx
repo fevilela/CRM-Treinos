@@ -143,6 +143,33 @@ export default function Progress() {
     enabled: isAuthenticated,
   });
 
+  // Get assessment history for selected student
+  const { data: assessmentHistory } = useQuery({
+    queryKey: [`/api/assessment-history/${selectedStudent}`],
+    enabled: isAuthenticated && selectedStudent !== "all",
+  });
+
+  // Transform assessment history into chart data format
+  const bodyMeasurements =
+    assessmentHistory && Array.isArray(assessmentHistory)
+      ? assessmentHistory.map((item: any) => ({
+          date: item.assessmentDate || item.createdAt,
+          weight: parseFloat(item.currentWeight) || 0,
+          bodyFat: parseFloat(item.bodyFatPercentage) || 0,
+          leanMass:
+            item.currentWeight && item.bodyFatPercentage
+              ? parseFloat(item.currentWeight) *
+                (1 - parseFloat(item.bodyFatPercentage) / 100)
+              : 0,
+          chest: parseFloat(item.chestCirc) || 0,
+          waist: parseFloat(item.waistCirc) || 0,
+          hips: parseFloat(item.hipCirc) || 0,
+          arms: parseFloat(item.armCirc) || 0,
+          thighs: parseFloat(item.thighCirc) || 0,
+          calves: parseFloat(item.calfCirc) || 0,
+        }))
+      : mockBodyMeasurements;
+
   const getTrend = (current: number, previous: number) => {
     if (current > previous)
       return { icon: TrendingUp, color: "text-green-600", direction: "up" };
@@ -286,19 +313,16 @@ export default function Progress() {
                 <CardContent>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-2xl font-bold">
-                      {
-                        mockBodyMeasurements[mockBodyMeasurements.length - 1]
-                          ?.weight
-                      }
+                      {bodyMeasurements[bodyMeasurements.length - 1]?.weight ||
+                        "--"}
                       kg
                     </span>
                     {(() => {
                       const current =
-                        mockBodyMeasurements[mockBodyMeasurements.length - 1]
-                          ?.weight;
+                        bodyMeasurements[bodyMeasurements.length - 1]?.weight;
                       const previous =
-                        mockBodyMeasurements[mockBodyMeasurements.length - 2]
-                          ?.weight;
+                        bodyMeasurements[bodyMeasurements.length - 2]?.weight;
+                      if (!current || !previous) return null;
                       const trend = getTrend(current, previous);
                       const TrendIcon = trend.icon;
                       return (
@@ -312,7 +336,7 @@ export default function Progress() {
                     })()}
                   </div>
                   <LineChart
-                    data={mockBodyMeasurements}
+                    data={bodyMeasurements}
                     dataKey="weight"
                     title="Evolução do Peso"
                     unit="kg"
