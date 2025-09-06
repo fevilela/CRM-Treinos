@@ -151,7 +151,7 @@ function PhysicalAssessmentModal({
   });
 
   // Get assessment history if editing an assessment
-  const { data: assessmentHistory } = useQuery({
+  const { data: assessmentHistory } = useQuery<any[]>({
     queryKey: [`/api/physical-assessments/${assessment?.id}/history`],
     enabled: !!assessment?.id && isOpen,
   });
@@ -1490,426 +1490,452 @@ function PhysicalAssessmentModal({
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <CardTitle className="text-lg">
-                        ℹ️ Circunferências corporais (cm)
-                      </CardTitle>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="waistCirc"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm">Cintura</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  placeholder="80.0"
-                                  {...field}
-                                  value={field.value?.toString() ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      e.target.value
-                                        ? parseFloat(e.target.value)
-                                        : undefined
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
+                    <Card className="mt-6">
+                      <CardHeader>
+                        <CardTitle className="text-lg">
+                          ℹ️ Circunferências corporais (cm)
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="waistCirc"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">
+                                  Cintura
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="80.0"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
 
-                        <FormField
-                          control={form.control}
-                          name="hipCirc"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm">Quadril</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  placeholder="95.0"
-                                  {...field}
-                                  value={field.value?.toString() ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      e.target.value
-                                        ? parseFloat(e.target.value)
-                                        : undefined
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
+                          <FormField
+                            control={form.control}
+                            name="hipCirc"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">
+                                  Quadril
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="95.0"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
 
-                        <FormField
-                          control={form.control}
-                          name="abdomenCirc"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm">Abdômen</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  placeholder="85"
-                                  {...field}
-                                  value={field.value?.toString() ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      e.target.value
-                                        ? parseFloat(e.target.value)
-                                        : undefined
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
+                          <FormField
+                            control={form.control}
+                            name="abdomenCirc"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">
+                                  Abdômen
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="85"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
 
-                        <FormField
-                          control={form.control}
-                          name="armCirc"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm">Braço</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  placeholder="32"
-                                  {...field}
-                                  value={field.value?.toString() ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      e.target.value
-                                        ? parseFloat(e.target.value)
-                                        : undefined
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
+                          <FormField
+                            control={form.control}
+                            name="armCirc"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">Braço</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="32"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
 
-                        <FormField
-                          control={form.control}
-                          name="thighCirc"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm">Coxa</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  placeholder="55"
-                                  {...field}
-                                  value={field.value?.toString() ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      e.target.value
-                                        ? parseFloat(e.target.value)
-                                        : undefined
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
+                          <FormField
+                            control={form.control}
+                            name="thighCirc"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">Coxa</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="55"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
 
-                        <FormField
-                          control={form.control}
-                          name="calfCirc"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm">
-                                Panturrilha
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  placeholder="36"
-                                  {...field}
-                                  value={field.value?.toString() ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      e.target.value
-                                        ? parseFloat(e.target.value)
-                                        : undefined
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
+                          <FormField
+                            control={form.control}
+                            name="calfCirc"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">
+                                  Panturrilha
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="36"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
 
-                        <FormField
-                          control={form.control}
-                          name="chestCirc"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm">Peito</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  placeholder="95"
-                                  {...field}
-                                  value={field.value?.toString() ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      e.target.value
-                                        ? parseFloat(e.target.value)
-                                        : undefined
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
+                          <FormField
+                            control={form.control}
+                            name="chestCirc"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">Peito</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="95"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
 
-                    <div className="space-y-2">
-                      <CardTitle className="text-lg">
-                        💪 Circunferências adicionais dos braços (cm)
-                      </CardTitle>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="rightArmContractedCirc"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm">
-                                Braço D (Cont.)
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  placeholder="34.0"
-                                  {...field}
-                                  value={field.value?.toString() ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      e.target.value
-                                        ? parseFloat(e.target.value)
-                                        : undefined
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
+                    <Card className="mt-6">
+                      <CardHeader>
+                        <CardTitle className="text-lg">
+                          💪 Circunferências adicionais dos braços (cm)
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="rightArmContractedCirc"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">
+                                  Braço D (Cont.)
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="34.0"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
 
-                        <FormField
-                          control={form.control}
-                          name="rightArmRelaxedCirc"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm">
-                                Braço D (Rlx.)
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  placeholder="32.0"
-                                  {...field}
-                                  value={field.value?.toString() ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      e.target.value
-                                        ? parseFloat(e.target.value)
-                                        : undefined
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
+                          <FormField
+                            control={form.control}
+                            name="rightArmRelaxedCirc"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">
+                                  Braço D (Rlx.)
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="32.0"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
 
-                        <FormField
-                          control={form.control}
-                          name="leftArmContractedCirc"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm">
-                                Braço E (Cont.)
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  placeholder="34.0"
-                                  {...field}
-                                  value={field.value?.toString() ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      e.target.value
-                                        ? parseFloat(e.target.value)
-                                        : undefined
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
+                          <FormField
+                            control={form.control}
+                            name="leftArmContractedCirc"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">
+                                  Braço E (Cont.)
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="34.0"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
 
-                        <FormField
-                          control={form.control}
-                          name="leftArmRelaxedCirc"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm">
-                                Braço E (Rlx.)
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  placeholder="32.0"
-                                  {...field}
-                                  value={field.value?.toString() ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      e.target.value
-                                        ? parseFloat(e.target.value)
-                                        : undefined
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
+                          <FormField
+                            control={form.control}
+                            name="leftArmRelaxedCirc"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">
+                                  Braço E (Rlx.)
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="32.0"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
 
-                    <div className="space-y-2">
-                      <CardTitle className="text-lg">
-                        🦵 Circunferências adicionais das pernas (cm)
-                      </CardTitle>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="rightThighCirc"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm">Coxa D</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  placeholder="56.0"
-                                  {...field}
-                                  value={field.value?.toString() ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      e.target.value
-                                        ? parseFloat(e.target.value)
-                                        : undefined
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
+                    <Card className="mt-6">
+                      <CardHeader>
+                        <CardTitle className="text-lg">
+                          🦵 Circunferências adicionais das pernas (cm)
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="rightThighCirc"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">
+                                  Coxa D
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="56.0"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
 
-                        <FormField
-                          control={form.control}
-                          name="leftThighCirc"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm">Coxa E</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  placeholder="56.0"
-                                  {...field}
-                                  value={field.value?.toString() ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      e.target.value
-                                        ? parseFloat(e.target.value)
-                                        : undefined
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
+                          <FormField
+                            control={form.control}
+                            name="leftThighCirc"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">
+                                  Coxa E
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="56.0"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
 
-                        <FormField
-                          control={form.control}
-                          name="rightCalfCirc"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm">Pant D</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  placeholder="37.0"
-                                  {...field}
-                                  value={field.value?.toString() ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      e.target.value
-                                        ? parseFloat(e.target.value)
-                                        : undefined
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
+                          <FormField
+                            control={form.control}
+                            name="rightCalfCirc"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">
+                                  Pant D
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="37.0"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
 
-                        <FormField
-                          control={form.control}
-                          name="leftCalfCirc"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm">Pant E</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  placeholder="37.0"
-                                  {...field}
-                                  value={field.value?.toString() ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      e.target.value
-                                        ? parseFloat(e.target.value)
-                                        : undefined
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
+                          <FormField
+                            control={form.control}
+                            name="leftCalfCirc"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">
+                                  Pant E
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="37.0"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
 
                     {/* Composição corporal e índices */}
                     <Card className="mt-6">
@@ -1918,134 +1944,142 @@ function PhysicalAssessmentModal({
                           🏋️‍♂️ Composição corporal e índices
                         </CardTitle>
                       </CardHeader>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="bodyWater"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm">
-                                Água Corporal (%)
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  placeholder="60.0"
-                                  {...field}
-                                  value={field.value?.toString() ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      e.target.value
-                                        ? parseFloat(e.target.value)
-                                        : undefined
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="bodyWater"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">
+                                  Água Corporal (%)
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="60.0"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
 
-                        <FormField
-                          control={form.control}
-                          name="waistHipRatio"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm">
-                                Relação Cintura/Quadril
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  placeholder="0.85"
-                                  {...field}
-                                  value={field.value?.toString() ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      e.target.value
-                                        ? parseFloat(e.target.value)
-                                        : undefined
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                          <FormField
+                            control={form.control}
+                            name="waistHipRatio"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm">
+                                  Relação Cintura/Quadril
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="0.85"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="bodyFatPercentage"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>%GC</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  placeholder="15.5"
-                                  {...field}
-                                  value={field.value?.toString() ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(e.target.value || undefined)
-                                  }
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="bodyFatPercentage"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>%GC</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="15.5"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value || undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
 
-                        <FormField
-                          control={form.control}
-                          name="fatMass"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Massa Gorda (kg)</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  placeholder="10.9"
-                                  {...field}
-                                  value={field.value?.toString() ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(e.target.value || undefined)
-                                  }
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                          <FormField
+                            control={form.control}
+                            name="fatMass"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Massa Gorda (kg)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="10.9"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value || undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
 
-                        <FormField
-                          control={form.control}
-                          name="leanMassBody"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Massa Livre de Gord. (kg)</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  placeholder="59.6"
-                                  {...field}
-                                  value={field.value?.toString() ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(e.target.value || undefined)
-                                  }
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                          <FormField
+                            control={form.control}
+                            name="leanMassBody"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Massa Livre de Gord. (kg)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="59.6"
+                                    {...field}
+                                    value={field.value?.toString() ?? ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value || undefined
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </CardContent>
                     </Card>
 
                     {/* Dobras Cutâneas */}
