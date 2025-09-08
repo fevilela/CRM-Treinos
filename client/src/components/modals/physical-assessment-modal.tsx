@@ -2019,7 +2019,9 @@ function PhysicalAssessmentModal({
                                     value={field.value?.toString() ?? ""}
                                     onChange={(e) =>
                                       field.onChange(
-                                        e.target.value || undefined
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
                                       )
                                     }
                                   />
@@ -2044,7 +2046,9 @@ function PhysicalAssessmentModal({
                                     value={field.value?.toString() ?? ""}
                                     onChange={(e) =>
                                       field.onChange(
-                                        e.target.value || undefined
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
                                       )
                                     }
                                   />
@@ -2069,7 +2073,9 @@ function PhysicalAssessmentModal({
                                     value={field.value?.toString() ?? ""}
                                     onChange={(e) =>
                                       field.onChange(
-                                        e.target.value || undefined
+                                        e.target.value
+                                          ? parseFloat(e.target.value)
+                                          : undefined
                                       )
                                     }
                                   />

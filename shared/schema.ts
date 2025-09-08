@@ -278,45 +278,45 @@ export const physicalAssessments = pgTable("physical_assessments", {
   currentHeight: decimal("current_height", { precision: 5, scale: 2 }),
   bmi: decimal("bmi", { precision: 4, scale: 2 }),
   // Medidas corporais
-  waistCirc: text("waist_circ"),
-  hipCirc: text("hip_circ"),
-  chestCirc: text("chest_circ"),
-  rightArmContractedCirc: text("right_arm_contracted_circ"),
-  rightArmRelaxedCirc: text("right_arm_relaxed_circ"),
-  leftArmContractedCirc: text("left_arm_contracted_circ"),
-  leftArmRelaxedCirc: text("left_arm_relaxed_circ"),
-  rightThighCirc: text("right_thigh_circ"),
-  leftThighCirc: text("left_thigh_circ"),
-  rightCalfCirc: text("right_calf_circ"),
-  leftCalfCirc: text("left_calf_circ"),
+  waistCirc: real("waist_circ"),
+  hipCirc: real("hip_circ"),
+  chestCirc: real("chest_circ"),
+  rightArmContractedCirc: real("right_arm_contracted_circ"),
+  rightArmRelaxedCirc: real("right_arm_relaxed_circ"),
+  leftArmContractedCirc: real("left_arm_contracted_circ"),
+  leftArmRelaxedCirc: real("left_arm_relaxed_circ"),
+  rightThighCirc: real("right_thigh_circ"),
+  leftThighCirc: real("left_thigh_circ"),
+  rightCalfCirc: real("right_calf_circ"),
+  leftCalfCirc: real("left_calf_circ"),
 
   // Dobras cutâneas
-  tricepsSkinFold: text("triceps_skin_fold"),
-  subscapularSkinFold: text("subscapular_skin_fold"),
-  axillaryMidSkinFold: text("axillary_mid_skin_fold"),
-  pectoralSkinFold: text("pectoral_skin_fold"),
-  suprailiacSkinFold: text("suprailiac_skin_fold"),
-  abdominalSkinFold: text("abdominal_skin_fold"),
-  thighSkinFold: text("thigh_skin_fold"),
+  tricepsSkinFold: real("triceps_skin_fold"),
+  subscapularSkinFold: real("subscapular_skin_fold"),
+  axillaryMidSkinFold: real("axillary_mid_skin_fold"),
+  pectoralSkinFold: real("pectoral_skin_fold"),
+  suprailiacSkinFold: real("suprailiac_skin_fold"),
+  abdominalSkinFold: real("abdominal_skin_fold"),
+  thighSkinFold: real("thigh_skin_fold"),
 
   // Composição corporal
-  fatMass: text("fat_mass"),
+  fatMass: real("fat_mass"),
 
   // RCQ
-  waistHipRatio: text("waist_hip_ratio"),
+  waistHipRatio: real("waist_hip_ratio"),
   waistHipRatioClassification: text("waist_hip_ratio_classification"),
 
   // Novos campos fisiológicos
-  bodyWater: text("body_water"),
+  bodyWater: real("body_water"),
   bloodPressure: text("blood_pressure"),
-  restingHeartRate: text("resting_heart_rate"),
+  restingHeartRate: real("resting_heart_rate"),
 
   // Testes de aptidão física
   subjectiveEffortPerception: text("subjective_effort_perception"),
-  maxPushUps: text("max_push_ups"),
-  maxSquats: text("max_squats"),
-  maxSitUps: text("max_sit_ups"),
-  plankTime: text("plank_time"),
+  maxPushUps: integer("max_push_ups"),
+  maxSquats: integer("max_squats"),
+  maxSitUps: integer("max_sit_ups"),
+  plankTime: integer("plank_time"),
   cardioTest: text("cardio_test"),
   cardioTestResult: text("cardio_test_result"),
 
@@ -684,11 +684,11 @@ export const insertPhysicalAssessmentHistorySchema = createInsertSchema(
     createdAt: true,
   })
   .extend({
-    currentWeight: z.number().positive().optional(),
-    currentHeight: z.number().positive().optional(),
-    bmi: z.number().positive().optional(),
-    bodyFatPercentage: z.number().positive().optional(),
-    leanMass: z.number().positive().optional(),
+    currentWeight: z.string().optional(),
+    currentHeight: z.string().optional(),
+    bmi: z.string().optional(),
+    bodyFatPercentage: z.string().optional(),
+    leanMass: z.string().optional(),
     assessmentDate: z
       .string()
       .datetime()

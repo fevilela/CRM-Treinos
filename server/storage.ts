@@ -1,3 +1,4 @@
+import { z } from "zod";
 import {
   users,
   students,
@@ -832,22 +833,41 @@ export class DatabaseStorage implements IStorage {
 
     const nextVersion = (historyCount[0]?.count || 0) + 1;
 
-    // Save current version to history before updating
-    await db.insert(physicalAssessmentHistory).values({
+    const historyData: InsertPhysicalAssessmentHistory = {
       originalAssessmentId: id,
       studentId: currentAssessment.studentId,
       personalTrainerId: currentAssessment.personalTrainerId,
       versionNumber: nextVersion,
-      currentWeight: currentAssessment.currentWeight,
-      currentHeight: currentAssessment.currentHeight,
-      bmi: currentAssessment.bmi,
-      waistCirc: currentAssessment.waistCirc,
-      hipCirc: currentAssessment.hipCirc,
-      chestCirc: currentAssessment.chestCirc,
-      bodyFatPercentage: currentAssessment.bodyFatPercentage,
-      leanMass: currentAssessment.leanMass,
-      assessmentDate: currentAssessment.assessmentDate,
-    });
+
+      // Campos numéricos que podem vir como string/null → number|undefined
+      currentWeight: z.string().optional(),
+      currentHeight: z
+        .number()
+        .optional()
+        .transform((val) => (val !== undefined ? val.toString() : undefined)),
+      bmi: z
+        .number()
+        .optional()
+        .transform((val) => (val !== undefined ? val.toString() : undefined)),
+      // Campos string que podem vir como number/null → string|undefined
+      waistCirc: currentAssessment.waistCirc?.toString() ?? undefined,
+      hipCirc: currentAssessment.hipCirc?.toString() ?? undefined,
+      chestCirc: currentAssessment.chestCirc?.toString() ?? undefined,
+
+      // Campos numéricos com null → number|undefined
+      bodyFatPercentage: z
+        .number()
+        .optional()
+        .transform((val) => (val !== undefined ? val.toString() : undefined)),
+      leanMass: z
+        .number()
+        .optional()
+        .transform((val) => (val !== undefined ? val.toString() : undefined)),
+      // Date com null → Date|undefined
+      assessmentDate: currentAssessment.assessmentDate ?? undefined,
+    };
+
+    await db.insert(physicalAssessmentHistory).values(historyData);
 
     // Now update the current assessment with new data
     const {
