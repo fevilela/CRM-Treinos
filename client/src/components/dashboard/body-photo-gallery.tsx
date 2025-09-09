@@ -240,6 +240,15 @@ export default function BodyPhotoGallery({
                     {isUploading ? "Enviando..." : "Enviar Foto"}
                   </Button>
                 </div>
+
+                {!assessmentId && studentId && (
+                  <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                    <p className="text-sm text-amber-800">
+                      💡 <strong>Dica:</strong> Salve a avaliação primeiro para
+                      poder adicionar fotos
+                    </p>
+                  </div>
+                )}
               </div>
 
               {uploadingFile && (

@@ -2270,7 +2270,9 @@ function PhysicalAssessmentModal({
                     <div className="mt-6">
                       <BodyPhotoGallery
                         assessmentId={assessment?.id}
-                        studentId={assessment?.studentId}
+                        studentId={
+                          form.watch("studentId") || assessment?.studentId
+                        }
                         measurements={{
                           currentWeight: form.watch("currentWeight"),
                           currentHeight: form.watch("currentHeight"),
