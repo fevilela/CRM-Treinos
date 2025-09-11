@@ -297,11 +297,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getStudentWorkouts(studentId: string): Promise<Workout[]> {
-    return await db
+    const workoutsData = await db
       .select()
       .from(workouts)
       .where(eq(workouts.studentId, studentId))
       .orderBy(desc(workouts.createdAt));
+
+    // Para cada treino, buscar seus exercícios (igual ao getWorkouts)
+    const workoutsWithExercises = await Promise.all(
+      workoutsData.map(async (workout) => {
+        const exercises = await this.getWorkoutExercises(workout.id);
+        return {
+          ...workout,
+          exercises,
+        };
+      })
+    );
+
+    return workoutsWithExercises as any;
   }
 
   async getWorkout(id: string): Promise<Workout | undefined> {
@@ -641,8 +654,12 @@ export class DatabaseStorage implements IStorage {
     password: string
   ): Promise<Student | null> {
     const student = await this.getStudentByEmail(email);
-    if (student && student.password === password) {
-      return student;
+    if (student && student.password) {
+      const bcrypt = await import("bcrypt");
+      const isPasswordValid = await bcrypt.compare(password, student.password);
+      if (isPasswordValid) {
+        return student;
+      }
     }
     return null;
   }

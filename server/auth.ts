@@ -31,29 +31,31 @@ export function getSession() {
 }
 
 // Configure passport local strategy
-passport.use(new LocalStrategy(
-  {
-    usernameField: 'email',
-    passwordField: 'password'
-  },
-  async (email, password, done) => {
-    try {
-      const user = await storage.getUserByEmail(email);
-      if (!user) {
-        return done(null, false, { message: 'Email não encontrado' });
-      }
+passport.use(
+  new LocalStrategy(
+    {
+      usernameField: "email",
+      passwordField: "password",
+    },
+    async (email, password, done) => {
+      try {
+        const user = await storage.getUserByEmail(email);
+        if (!user) {
+          return done(null, false, { message: "Email não encontrado" });
+        }
 
-      const isValidPassword = await bcrypt.compare(password, user.password);
-      if (!isValidPassword) {
-        return done(null, false, { message: 'Senha incorreta' });
-      }
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
+          return done(null, false, { message: "Senha incorreta" });
+        }
 
-      return done(null, user);
-    } catch (error) {
-      return done(error);
+        return done(null, user);
+      } catch (error) {
+        return done(error);
+      }
     }
-  }
-));
+  )
+);
 
 passport.serializeUser((user: any, done) => {
   done(null, user.id);
@@ -68,7 +70,7 @@ passport.deserializeUser(async (id: string, done) => {
     }
     done(null, user);
   } catch (error) {
-    console.error('Erro ao deserializar usuário:', error);
+    console.error("Erro ao deserializar usuário:", error);
     done(null, false); // Retorna false ao invés de error para evitar crash
   }
 });
@@ -79,39 +81,43 @@ export async function setupAuth(app: Express) {
   app.use(passport.session());
 
   // Login route
-  app.post('/api/login', passport.authenticate('local'), (req, res) => {
+  app.post("/api/login", passport.authenticate("local"), (req, res) => {
     res.json({ success: true, user: req.user });
   });
 
   // Logout route
-  app.post('/api/logout', (req, res) => {
+  app.post("/api/logout", (req, res) => {
     req.logout((err) => {
       if (err) {
-        return res.status(500).json({ message: 'Erro ao fazer logout' });
+        return res.status(500).json({ message: "Erro ao fazer logout" });
       }
       res.json({ success: true });
     });
   });
 
   // Register route
-  app.post('/api/register', async (req, res) => {
+  app.post("/api/register", async (req, res) => {
     try {
       const { email, password, firstName, lastName, role } = req.body;
 
       // Validate required fields
       if (!email || !password || !firstName || !lastName || !role) {
-        return res.status(400).json({ message: 'Todos os campos são obrigatórios' });
+        return res
+          .status(400)
+          .json({ message: "Todos os campos são obrigatórios" });
       }
 
       // Validate role
-      if (!['teacher', 'student'].includes(role)) {
-        return res.status(400).json({ message: 'Role deve ser teacher ou student' });
+      if (!["teacher", "student"].includes(role)) {
+        return res
+          .status(400)
+          .json({ message: "Role deve ser teacher ou student" });
       }
 
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(email);
       if (existingUser) {
-        return res.status(400).json({ message: 'Email já está em uso' });
+        return res.status(400).json({ message: "Email já está em uso" });
       }
 
       // Hash password
@@ -123,19 +129,38 @@ export async function setupAuth(app: Express) {
         password: hashedPassword,
         firstName,
         lastName,
-        role: role as 'teacher' | 'student',
+        role: role as "teacher" | "student",
       });
+
+      // If user is a student, also create a student record for the student area
+      if (role === "student") {
+        try {
+          await storage.createStudent({
+            personalTrainerId: user.id, // Temporarily use own ID
+            name: `${firstName} ${lastName}`,
+            email,
+            password: hashedPassword,
+            inviteToken: null,
+            isInvitePending: false, // Self-registered, no invite needed
+            gender: "male", // Default, can be updated later
+            status: "active",
+          });
+        } catch (studentError) {
+          console.error("Error creating student record:", studentError);
+          // Continue with user creation even if student creation fails
+        }
+      }
 
       // Log the user in
       req.login(user, (err) => {
         if (err) {
-          return res.status(500).json({ message: 'Erro ao fazer login' });
+          return res.status(500).json({ message: "Erro ao fazer login" });
         }
         res.json({ success: true, user });
       });
     } catch (error) {
-      console.error('Registration error:', error);
-      res.status(500).json({ message: 'Erro interno do servidor' });
+      console.error("Registration error:", error);
+      res.status(500).json({ message: "Erro interno do servidor" });
     }
   });
 }
@@ -144,31 +169,36 @@ export const isAuthenticated: RequestHandler = (req, res, next) => {
   if (req.isAuthenticated()) {
     return next();
   }
-  res.status(401).json({ message: 'Não autorizado' });
+  res.status(401).json({ message: "Não autorizado" });
 };
 
 // Middleware para verificar se o usuário é professor (acesso completo)
 export const isTeacher: RequestHandler = (req: any, res, next) => {
   if (!req.isAuthenticated()) {
-    return res.status(401).json({ message: 'Não autorizado' });
+    return res.status(401).json({ message: "Não autorizado" });
   }
-  
-  if (req.user.role !== 'teacher') {
-    return res.status(403).json({ message: 'Acesso negado. Apenas professores podem acessar esta funcionalidade.' });
+
+  if (req.user.role !== "teacher") {
+    return res
+      .status(403)
+      .json({
+        message:
+          "Acesso negado. Apenas professores podem acessar esta funcionalidade.",
+      });
   }
-  
+
   return next();
 };
 
 // Middleware para verificar se o usuário é aluno ou professor (acesso específico)
 export const isStudentOrTeacher: RequestHandler = (req: any, res, next) => {
   if (!req.isAuthenticated()) {
-    return res.status(401).json({ message: 'Não autorizado' });
+    return res.status(401).json({ message: "Não autorizado" });
   }
-  
-  if (!['teacher', 'student'].includes(req.user.role)) {
-    return res.status(403).json({ message: 'Acesso negado' });
+
+  if (!["teacher", "student"].includes(req.user.role)) {
+    return res.status(403).json({ message: "Acesso negado" });
   }
-  
+
   return next();
 };

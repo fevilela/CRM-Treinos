@@ -10,7 +10,7 @@ import Students from "@/pages/students";
 import Workouts from "@/pages/workouts";
 import PhysicalAssessments from "@/pages/physical-assessments";
 import Progress from "@/pages/progress";
-import { StudentApp } from "@/pages/student-app";
+import { StudentDashboard } from "@/pages/student-dashboard";
 import StudentSetupPassword from "@/pages/student-setup-password";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/sidebar";
@@ -77,8 +77,18 @@ function StudentInterface({
       <StudentSidebar student={student} onLogout={onLogout} />
       <main className="flex-1 p-6 bg-gray-50 min-h-screen ml-64">
         <Switch>
-          <Route path="/" component={() => <StudentApp />} />
-          <Route path="/student" component={StudentApp} />
+          <Route
+            path="/"
+            component={() => (
+              <StudentDashboard student={student} onLogout={onLogout} />
+            )}
+          />
+          <Route
+            path="/student"
+            component={() => (
+              <StudentDashboard student={student} onLogout={onLogout} />
+            )}
+          />
           <Route path="/student/progress" component={Progress} />
           <Route
             path="/student/evolution"
@@ -142,7 +152,6 @@ function Router() {
                     component={() => <PhysicalAssessments />}
                   />
                   <Route path="/progress" component={Progress} />
-                  <Route path="/student" component={StudentApp} />
                   <Route component={NotFound} />
                 </Switch>
               </main>

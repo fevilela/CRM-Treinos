@@ -149,12 +149,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/workouts/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/workouts/:id", isStudentOrTeacher, async (req: any, res) => {
     try {
       const workout = await storage.getWorkout(req.params.id);
       if (!workout) {
         return res.status(404).json({ message: "Workout not found" });
       }
+
+      // Verificar autorização: aluno só vê seus treinos, professor só vê treinos que criou
+      const user = req.user;
+      if (user.role === "student") {
+        // Para alunos, buscar o studentId pelo email
+        const student = await storage.getStudentByEmail(user.email);
+        if (!student || workout.studentId !== student.id) {
+          return res
+            .status(403)
+            .json({ message: "Access denied to this workout" });
+        }
+      }
+      if (user.role === "teacher" && workout.personalTrainerId !== user.id) {
+        return res
+          .status(403)
+          .json({ message: "Access denied to this workout" });
+      }
+
       const exercises = await storage.getWorkoutExercises(req.params.id);
       res.json({ ...workout, exercises });
     } catch (error) {
@@ -162,6 +180,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch workout" });
     }
   });
+
+  // Endpoint específico para buscar exercícios de um treino
+  app.get(
+    "/api/exercises/:workoutId",
+    isStudentOrTeacher,
+    async (req: any, res) => {
+      try {
+        // Primeiro verificar se o workout existe e se o usuário tem acesso
+        const workout = await storage.getWorkout(req.params.workoutId);
+        if (!workout) {
+          return res.status(404).json({ message: "Workout not found" });
+        }
+
+        // Verificar autorização: aluno só vê exercícios dos seus treinos
+        const user = req.user;
+        if (user.role === "student") {
+          // Para alunos, buscar o studentId pelo email
+          const student = await storage.getStudentByEmail(user.email);
+          if (!student || workout.studentId !== student.id) {
+            return res
+              .status(403)
+              .json({ message: "Access denied to this workout" });
+          }
+        }
+        if (user.role === "teacher" && workout.personalTrainerId !== user.id) {
+          return res
+            .status(403)
+            .json({ message: "Access denied to this workout" });
+        }
+
+        const exercises = await storage.getWorkoutExercises(
+          req.params.workoutId
+        );
+        res.json(exercises);
+      } catch (error) {
+        console.error("Error fetching workout exercises:", error);
+        res.status(500).json({ message: "Failed to fetch workout exercises" });
+      }
+    }
+  );
 
   app.post("/api/workouts", isTeacher, async (req: any, res) => {
     try {
@@ -312,9 +370,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(
     "/api/workouts/student/:studentId",
     isStudentOrTeacher,
-    async (req, res) => {
+    async (req: any, res) => {
       try {
         const { studentId } = req.params;
+        const user = req.user;
+
+        // Verificar autorização
+        if (user.role === "student") {
+          // Aluno só pode ver seus próprios treinos
+          const student = await storage.getStudentByEmail(user.email);
+          if (!student || student.id !== studentId) {
+            return res
+              .status(403)
+              .json({ message: "Access denied to student workouts" });
+          }
+        } else if (user.role === "teacher") {
+          // Professor só pode ver treinos de alunos que ele treina
+          const student = await storage.getStudent(studentId);
+          if (!student || student.personalTrainerId !== user.id) {
+            return res
+              .status(403)
+              .json({ message: "Access denied to student workouts" });
+          }
+        }
+
         const workouts = await storage.getStudentWorkouts(studentId);
         res.json(workouts);
       } catch (error) {
@@ -646,21 +725,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user;
 
       if (user.role !== "student") {
-        return res
-          .status(403)
-          .json({
-            message: "Access denied. Only students can access this endpoint.",
-          });
+        return res.status(403).json({
+          message: "Access denied. Only students can access this endpoint.",
+        });
       }
 
       // Busca o student record baseado no email do usuário autenticado
       const student = await storage.getStudentByEmail(user.email);
       if (!student) {
-        return res
-          .status(404)
-          .json({
-            message: "Student record not found. Please contact your trainer.",
-          });
+        return res.status(404).json({
+          message: "Student record not found. Please contact your trainer.",
+        });
       }
 
       res.json(student);
