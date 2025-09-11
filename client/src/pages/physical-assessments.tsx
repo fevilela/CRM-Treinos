@@ -314,6 +314,49 @@ export default function PhysicalAssessments() {
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
+                    onClick={async () => {
+                      try {
+                        const response = await fetch(
+                          `/api/physical-assessments/${viewingAssessment.id}/analysis-pdf`,
+                          {
+                            credentials: "include",
+                          }
+                        );
+
+                        if (!response.ok) {
+                          throw new Error("Falha ao gerar PDF");
+                        }
+
+                        // Get filename from response headers
+                        const contentDisposition = response.headers.get(
+                          "Content-Disposition"
+                        );
+                        const filename = contentDisposition
+                          ? contentDisposition
+                              .split("filename=")[1]
+                              ?.replace(/"/g, "")
+                          : "analise_progresso.pdf";
+
+                        // Convert response to blob and download
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                      } catch (error) {
+                        console.error("Erro ao baixar PDF:", error);
+                        alert("Erro ao gerar PDF de análise. Tente novamente.");
+                      }
+                    }}
+                  >
+                    📄 Baixar Análise PDF
+                  </Button>
+                  <Button
+                    variant="outline"
                     onClick={(e) => {
                       handleCloseViewModal();
                       handleEditAssessment(viewingAssessment, e);

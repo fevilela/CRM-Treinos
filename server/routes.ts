@@ -717,6 +717,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put("/api/physical-assessments/:id", isTeacher, async (req: any, res) => {
+    console.log("🔄 PUT /api/physical-assessments/:id - Requisição recebida");
+    console.log("📝 Assessment ID:", req.params.id);
+    console.log("👤 User ID:", req.user?.id);
+
     try {
       const assessmentId = req.params.id;
 
@@ -725,26 +729,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         assessmentId
       );
       if (!existingAssessment) {
+        console.log("❌ Avaliação não encontrada:", assessmentId);
         return res
           .status(404)
           .json({ message: "Physical assessment not found" });
       }
 
       if (existingAssessment.personalTrainerId !== req.user.id) {
+        console.log("❌ Acesso negado - Personal trainer não autorizado");
         return res.status(403).json({ message: "Access denied" });
       }
 
       // Remove personalTrainerId from body to prevent changes
       const { personalTrainerId, ...updateData } = req.body;
+      console.log("📊 Dados para atualização:", Object.keys(updateData));
 
       const validatedData = insertPhysicalAssessmentSchema
         .partial()
         .parse(updateData);
+
+      console.log(
+        "✅ Dados validados, chamando storage.updatePhysicalAssessment..."
+      );
       const assessment = await storage.updatePhysicalAssessment(
         assessmentId,
         validatedData
       );
 
+      console.log("🎉 Avaliação atualizada com sucesso!");
       res.json(assessment);
     } catch (error) {
       console.error("Error updating physical assessment:", error);
@@ -968,6 +980,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error("Error deleting photo:", error);
         res.status(500).json({ message: "Falha ao deletar foto" });
+      }
+    }
+  );
+
+  // Generate PDF analysis for assessment
+  app.get(
+    "/api/physical-assessments/:id/analysis-pdf",
+    isAuthenticated,
+    async (req: any, res) => {
+      console.log("📄 Gerando PDF de análise para avaliação:", req.params.id);
+
+      try {
+        const assessmentId = req.params.id;
+
+        // Get current assessment
+        const currentAssessment = await storage.getPhysicalAssessment(
+          assessmentId
+        );
+        if (!currentAssessment) {
+          console.log("❌ Avaliação não encontrada:", assessmentId);
+          return res.status(404).json({ message: "Assessment not found" });
+        }
+
+        // Check authorization
+        if (currentAssessment.personalTrainerId !== req.user.id) {
+          console.log("❌ Acesso negado - Personal trainer não autorizado");
+          return res.status(403).json({ message: "Access denied" });
+        }
+
+        // Get previous assessment version for comparison
+        const history = await storage.getPhysicalAssessmentHistory(
+          assessmentId
+        );
+        const previousAssessment = history.length > 0 ? history[0] : undefined;
+
+        console.log(
+          `📊 Comparando com versão anterior: ${
+            previousAssessment
+              ? `Versão ${previousAssessment.versionNumber}`
+              : "Primeira avaliação"
+          }`
+        );
+
+        // Generate PDF
+        const pdfBuffer = await storage.generateProgressAnalysisPDF(
+          currentAssessment,
+          previousAssessment
+        );
+
+        // Get student info for filename
+        const student = await storage.getStudent(currentAssessment.studentId);
+        const studentName =
+          student?.name.replace(/[^a-zA-Z0-9]/g, "_") || "aluno";
+        const date = new Date().toISOString().split("T")[0];
+        const filename = `analise_progresso_${studentName}_${date}.pdf`;
+
+        console.log("✅ PDF gerado com sucesso:", filename);
+
+        // Set response headers
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${filename}"`
+        );
+        res.setHeader("Content-Length", pdfBuffer.length);
+
+        // Send PDF
+        res.send(pdfBuffer);
+      } catch (error) {
+        console.error("Error generating PDF:", error);
+        res.status(500).json({ message: "Falha ao gerar PDF de análise" });
       }
     }
   );
