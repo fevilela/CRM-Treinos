@@ -19,7 +19,7 @@ import {
   LogOut,
   Play,
 } from "lucide-react";
-import { WorkoutExecution } from "@/components/workout-execution";
+import { StudentWorkoutExecution } from "@/components/student-workout-execution";
 import StudentSidebar from "@/components/layout/student-sidebar";
 import type { Student } from "@shared/schema";
 
@@ -68,9 +68,13 @@ export function StudentDashboard({ student, onLogout }: StudentDashboardProps) {
 
   if (showWorkoutExecution && selectedWorkout) {
     return (
-      <WorkoutExecution
+      <StudentWorkoutExecution
         workoutId={selectedWorkout}
-        student={student}
+        student={{
+          id: student.id,
+          name: student.name,
+          email: student.email || "",
+        }}
         onBack={handleBackFromWorkout}
       />
     );

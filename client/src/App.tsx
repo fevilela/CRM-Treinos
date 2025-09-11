@@ -1,6 +1,6 @@
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,9 +14,96 @@ import { StudentApp } from "@/pages/student-app";
 import StudentSetupPassword from "@/pages/student-setup-password";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/sidebar";
+import StudentSidebar from "@/components/layout/student-sidebar";
+import type { Student } from "@shared/schema";
+
+// Definir tipo para o usuário baseado no schema
+interface AuthUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: "teacher" | "student";
+  profileImageUrl?: string;
+}
+
+// Componente para interface de aluno que busca o student record correto
+function StudentInterface({
+  user,
+  onLogout,
+}: {
+  user: AuthUser;
+  onLogout: () => void;
+}) {
+  // Busca o student record baseado no usuário autenticado
+  const {
+    data: student,
+    isLoading: studentLoading,
+    error,
+  } = useQuery<Student>({
+    queryKey: ["/api/student/me"],
+    enabled: user.role === "student",
+  });
+
+  if (studentLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error || !student) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center p-8">
+          <h2 className="text-xl font-bold text-red-600 mb-4">
+            Erro de Ligação de Conta
+          </h2>
+          <p className="text-gray-600 mb-4">
+            Não foi possível encontrar seu registro de aluno.
+          </p>
+          <p className="text-sm text-gray-500">
+            Entre em contato com seu personal trainer para resolver este
+            problema.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex">
+      <StudentSidebar student={student} onLogout={onLogout} />
+      <main className="flex-1 p-6 bg-gray-50 min-h-screen ml-64">
+        <Switch>
+          <Route path="/" component={() => <StudentApp />} />
+          <Route path="/student" component={StudentApp} />
+          <Route path="/student/progress" component={Progress} />
+          <Route
+            path="/student/evolution"
+            component={() => (
+              <div className="text-center p-8">
+                Evolução Corporal (Em breve)
+              </div>
+            )}
+          />
+          <Route
+            path="/physical-assessments"
+            component={() => <PhysicalAssessments readOnly={true} />}
+          />
+          <Route component={NotFound} />
+        </Switch>
+      </main>
+    </div>
+  );
+}
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
+
+  // Type assertion do user baseado na estrutura do schema
+  const authUser = user as AuthUser;
 
   return (
     <Switch>
@@ -36,6 +123,12 @@ function Router() {
             return <LoginPage onSuccess={() => window.location.reload()} />;
           }
 
+          // Interface específica para alunos
+          if (authUser?.role === "student") {
+            return <StudentInterface user={authUser} onLogout={logout} />;
+          }
+
+          // Interface completa para professores
           return (
             <div className="flex">
               <Sidebar />
@@ -46,7 +139,7 @@ function Router() {
                   <Route path="/workouts" component={Workouts} />
                   <Route
                     path="/physical-assessments"
-                    component={PhysicalAssessments}
+                    component={() => <PhysicalAssessments />}
                   />
                   <Route path="/progress" component={Progress} />
                   <Route path="/student" component={StudentApp} />

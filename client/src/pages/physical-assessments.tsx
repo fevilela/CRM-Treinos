@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, FileText, Activity, Heart, Scale } from "lucide-react";
+import { Plus, FileText, Activity, Heart, Scale, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,9 +15,18 @@ import {
 } from "@/components/ui/select";
 import PhysicalAssessmentModal from "@/components/modals/physical-assessment-modal";
 import BodyPhotoGallery from "@/components/dashboard/body-photo-gallery";
+import { useAuth } from "@/hooks/useAuth";
 import type { PhysicalAssessment, Student } from "@shared/schema";
 
-export default function PhysicalAssessments() {
+interface PhysicalAssessmentsProps {
+  readOnly?: boolean;
+  studentId?: string;
+}
+
+export default function PhysicalAssessments({
+  readOnly = false,
+  studentId,
+}: PhysicalAssessmentsProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAssessment, setSelectedAssessment] =
     useState<PhysicalAssessment | null>(null);
@@ -26,16 +35,22 @@ export default function PhysicalAssessments() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStudent, setFilterStudent] = useState<string>("all");
 
+  const { user } = useAuth();
+
   const { data: assessments = [], isLoading: assessmentsLoading } = useQuery<
     PhysicalAssessment[]
   >({
-    queryKey: ["/api/physical-assessments"],
+    queryKey: readOnly
+      ? ["/api/physical-assessments/me"]
+      : ["/api/physical-assessments"],
   });
 
   const { data: students = [] } = useQuery<Student[]>({
     queryKey: ["/api/students"],
+    enabled: !readOnly, // Only fetch students if not in readonly mode
   });
 
+  // Filtrar avaliações baseado na busca e filtro de aluno
   const filteredAssessments = assessments.filter((assessment) => {
     const matchesSearch =
       assessment.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -43,6 +58,12 @@ export default function PhysicalAssessments() {
         .find((s) => s.id === assessment.studentId)
         ?.name.toLowerCase()
         .includes(searchTerm.toLowerCase());
+
+    // Em modo readOnly, não usar filtro de student pois já vem filtrado do backend
+    if (readOnly) {
+      return searchTerm === "" || matchesSearch;
+    }
+
     const matchesStudent =
       filterStudent === "all" || assessment.studentId === filterStudent;
     return matchesSearch && matchesStudent;
@@ -104,48 +125,56 @@ export default function PhysicalAssessments() {
   return (
     <div>
       <Header
-        title="Avaliações Físicas"
-        subtitle="Gerencie avaliações físicas completas dos seus alunos"
+        title={readOnly ? "Minhas Avaliações Físicas" : "Avaliações Físicas"}
+        subtitle={
+          readOnly
+            ? "Acompanhe suas avaliações físicas e evolução"
+            : "Gerencie avaliações físicas completas dos seus alunos"
+        }
       />
 
       <main className="p-6">
         <div className="mb-6 flex justify-between items-center">
           <div></div>
-          <Button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2"
-            data-testid="button-new-assessment"
-          >
-            <Plus className="h-4 w-4" />
-            Nova Avaliação
-          </Button>
+          {!readOnly && (
+            <Button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2"
+              data-testid="button-new-assessment"
+            >
+              <Plus className="h-4 w-4" />
+              Nova Avaliação
+            </Button>
+          )}
         </div>
 
         {/* Filtros */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="flex-1">
-            <Input
-              placeholder="Buscar por aluno..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full"
-              data-testid="input-search-assessments"
-            />
+        {!readOnly && (
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="flex-1">
+              <Input
+                placeholder="Buscar por aluno..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full"
+                data-testid="input-search-assessments"
+              />
+            </div>
+            <Select value={filterStudent} onValueChange={setFilterStudent}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="Filtrar por aluno" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os alunos</SelectItem>
+                {students.map((student) => (
+                  <SelectItem key={student.id} value={student.id}>
+                    {student.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={filterStudent} onValueChange={setFilterStudent}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Filtrar por aluno" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os alunos</SelectItem>
-              {students.map((student) => (
-                <SelectItem key={student.id} value={student.id}>
-                  {student.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        )}
 
         {/* Grid de Avaliações */}
         {filteredAssessments.length === 0 ? (
@@ -160,7 +189,7 @@ export default function PhysicalAssessments() {
                   ? "Tente ajustar os filtros de busca"
                   : "Comece criando a primeira avaliação física"}
               </p>
-              {!searchTerm && filterStudent === "all" && (
+              {!searchTerm && filterStudent === "all" && !readOnly && (
                 <Button onClick={() => setIsModalOpen(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Nova Avaliação
@@ -197,14 +226,29 @@ export default function PhysicalAssessments() {
                             {assessment.profession}
                           </Badge>
                         )}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs"
-                          onClick={(e) => handleEditAssessment(assessment, e)}
-                        >
-                          ✏️ Editar
-                        </Button>
+                        {!readOnly ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs"
+                            onClick={(e) => handleEditAssessment(assessment, e)}
+                          >
+                            ✏️ Editar
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewAssessment(assessment);
+                            }}
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            Ver Detalhes
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardHeader>
@@ -355,15 +399,17 @@ export default function PhysicalAssessments() {
                   >
                     📄 Baixar Análise PDF
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={(e) => {
-                      handleCloseViewModal();
-                      handleEditAssessment(viewingAssessment, e);
-                    }}
-                  >
-                    ✏️ Editar
-                  </Button>
+                  {!readOnly && (
+                    <Button
+                      variant="outline"
+                      onClick={(e) => {
+                        handleCloseViewModal();
+                        handleEditAssessment(viewingAssessment, e);
+                      }}
+                    >
+                      ✏️ Editar
+                    </Button>
+                  )}
                   <Button variant="outline" onClick={handleCloseViewModal}>
                     ✕ Fechar
                   </Button>
@@ -383,15 +429,23 @@ export default function PhysicalAssessments() {
                     : undefined,
                 }}
                 photos={[]}
-                interactive={true}
-                onPhotoAdd={(photo) => {
-                  console.log("Nova foto adicionada:", photo);
-                  // TODO: Implementar salvamento no backend
-                }}
-                onPhotoRemove={(photoId) => {
-                  console.log("Foto removida:", photoId);
-                  // TODO: Implementar remoção no backend
-                }}
+                interactive={!readOnly}
+                onPhotoAdd={
+                  !readOnly
+                    ? (photo) => {
+                        console.log("Nova foto adicionada:", photo);
+                        // TODO: Implementar salvamento no backend
+                      }
+                    : undefined
+                }
+                onPhotoRemove={
+                  !readOnly
+                    ? (photoId) => {
+                        console.log("Foto removida:", photoId);
+                        // TODO: Implementar remoção no backend
+                      }
+                    : undefined
+                }
               />
 
               {/* Informações adicionais */}

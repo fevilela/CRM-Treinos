@@ -640,6 +640,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Rota para obter o student record do usuário autenticado
+  app.get("/api/student/me", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+
+      if (user.role !== "student") {
+        return res
+          .status(403)
+          .json({
+            message: "Access denied. Only students can access this endpoint.",
+          });
+      }
+
+      // Busca o student record baseado no email do usuário autenticado
+      const student = await storage.getStudentByEmail(user.email);
+      if (!student) {
+        return res
+          .status(404)
+          .json({
+            message: "Student record not found. Please contact your trainer.",
+          });
+      }
+
+      res.json(student);
+    } catch (error) {
+      console.error("Error fetching student record:", error);
+      res.status(500).json({ message: "Failed to fetch student record" });
+    }
+  });
+
   // Physical Assessment routes
   app.get("/api/physical-assessments", isTeacher, async (req: any, res) => {
     try {
@@ -651,6 +681,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch physical assessments" });
     }
   });
+
+  // Secure endpoint for students and teachers to get their own assessments
+  app.get(
+    "/api/physical-assessments/me",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = req.user;
+
+        // Se for um professor, retorna todos os assessments seus
+        if (user.role === "teacher") {
+          const assessments = await storage.getPhysicalAssessments(user.id);
+          res.json(assessments);
+          return;
+        }
+
+        // Se for um aluno, busca o student record e retorna apenas seus assessments
+        const student = await storage.getStudentByEmail(user.email);
+        if (!student) {
+          return res.status(404).json({ message: "Student not found" });
+        }
+
+        const assessments = await storage.getStudentPhysicalAssessments(
+          student.id
+        );
+        res.json(assessments);
+      } catch (error) {
+        console.error("Error fetching my physical assessments:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch physical assessments" });
+      }
+    }
+  );
 
   app.get(
     "/api/students/:studentId/physical-assessments",
