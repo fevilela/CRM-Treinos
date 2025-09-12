@@ -654,13 +654,46 @@ export class DatabaseStorage implements IStorage {
     password: string
   ): Promise<Student | null> {
     const student = await this.getStudentByEmail(email);
-    if (student && student.password) {
-      const bcrypt = await import("bcrypt");
-      const isPasswordValid = await bcrypt.compare(password, student.password);
-      if (isPasswordValid) {
-        return student;
-      }
+
+    // Debug logging for development
+    if (process.env.NODE_ENV === "development") {
+      console.log("DEBUG validateStudentPassword:", {
+        email,
+        studentFound: !!student,
+        hasPassword: !!student?.password,
+        storedHash: student?.password?.slice(0, 20) + "...",
+      });
     }
+
+    if (!student) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("DEBUG: Student not found");
+      }
+      return null;
+    }
+
+    if (!student.password) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("DEBUG: Student has no password");
+      }
+      return null;
+    }
+
+    const bcrypt = await import("bcrypt");
+    const isPasswordValid = await bcrypt.compare(password, student.password);
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("DEBUG bcrypt comparison:", {
+        providedPassword: password,
+        hashLength: student.password.length,
+        isValid: isPasswordValid,
+      });
+    }
+
+    if (isPasswordValid) {
+      return student;
+    }
+
     return null;
   }
 
