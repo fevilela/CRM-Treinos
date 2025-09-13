@@ -88,7 +88,7 @@ function WorkoutMainTimer({
   };
 
   return (
-    <Card className="sticky top-4 z-10 bg-white border-gray-200 shadow-sm">
+    <Card className="bg-white border-gray-200">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <Timer className="h-5 w-5 text-primary" />
@@ -100,9 +100,9 @@ function WorkoutMainTimer({
           {formatTime(seconds)}
         </div>
         {isActive && (
-          <div className="mt-2 text-sm text-muted-foreground flex items-center justify-center gap-1">
-            <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-            Treino em andamento
+          <div className="mt-1 text-xs text-gray-600 flex items-center justify-center gap-1">
+            <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
+            Em andamento
           </div>
         )}
       </CardContent>
@@ -615,7 +615,7 @@ export function StudentWorkoutExecution({
             if (!currentExercise || !progress || !currentSet) return null;
 
             return (
-              <Card className="bg-white shadow-sm border border-gray-200">
+              <Card className="bg-white border border-gray-200">
                 <CardHeader className="text-center pb-6">
                   <CardTitle className="text-base text-gray-900">
                     {currentExercise.name}
@@ -665,9 +665,9 @@ export function StudentWorkoutExecution({
               <Button
                 onClick={completeWorkout}
                 variant="default"
-                className="bg-primary hover:bg-primary/90"
+                className="bg-primary hover:bg-primary/90 text-white"
               >
-                <Square className="h-5 w-5 mr-2" />
+                <CheckCircle className="h-5 w-5 mr-2" />
                 Finalizar Treino Completo
               </Button>
               <p className="text-sm text-muted-foreground mt-2">
@@ -805,7 +805,7 @@ function SetInput({
   };
 
   return (
-    <div className="bg-white border border-gray-200 text-gray-900 p-4 rounded-lg min-h-[120px] relative shadow-sm">
+    <div className="bg-white border border-gray-200 text-gray-900 p-4 rounded-lg min-h-[120px] relative">
       {/* Header com nome do exercício, vídeo e botão concluir */}
       <div className="flex justify-between items-start mb-4">
         <div className="flex flex-col gap-2">
@@ -813,11 +813,13 @@ function SetInput({
             {exercise.name}
           </h3>
           {/* Indicador de mudança de peso */}
-          <WeightChangeIndicator
-            studentId={studentId}
-            exerciseId={exerciseId}
-            currentWeight={weight}
-          />
+          {weight && (
+            <WeightChangeIndicator
+              studentId={studentId}
+              exerciseId={exerciseId}
+              currentWeight={weight}
+            />
+          )}
         </div>
         <div className="flex gap-3 items-center">
           <Button
@@ -852,7 +854,7 @@ function SetInput({
               type="number"
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
-              placeholder={exercise.weight?.toString() || "0"}
+              placeholder={exercise.weight?.toString() || "20"}
               className="bg-white border border-gray-300 text-gray-900 text-center text-sm font-medium w-16 h-10"
             />
           </div>
@@ -875,7 +877,7 @@ function SetInput({
             <Input
               value={reps}
               onChange={(e) => setReps(e.target.value)}
-              placeholder={exercise.reps || "0"}
+              placeholder={exercise.reps || "12-15"}
               className="bg-white border border-gray-300 text-gray-900 text-center text-sm font-medium w-16 h-10"
             />
           </div>
@@ -885,27 +887,31 @@ function SetInput({
       {/* Quando série está completa */}
       {disabled && (
         <div className="flex justify-center items-center mb-4">
-          <div className="text-center bg-primary/20 border border-primary rounded-lg p-4 w-full">
-            <CheckCircle className="h-8 w-8 text-primary mx-auto mb-2" />
-            <p className="text-foreground font-semibold text-base">
-              Série {setIndex + 1} Completa!
+          <div className="text-center border border-gray-200 rounded-lg p-3 w-full bg-gray-50">
+            <CheckCircle className="h-5 w-5 text-primary mx-auto mb-1" />
+            <p className="text-gray-900 font-medium text-sm">
+              Série {setIndex + 1} Completa
             </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {weight}kg × {reps} repetições
-            </p>
+            {weight && reps && (
+              <p className="text-xs text-gray-600 mt-1">
+                {weight}kg × {reps} repetições
+              </p>
+            )}
           </div>
         </div>
       )}
 
-      {/* Timer de descanso ativo - versão compacta no layout escuro */}
+      {/* Timer de descanso ativo */}
       {restTimeLeft && restTimeLeft > 0 && (
         <div className="mb-4">
-          <div className="bg-primary/20 border border-primary rounded-lg p-4 text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Coffee className="h-5 w-5 text-primary" />
-              <span className="text-foreground font-semibold">Descanso</span>
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Coffee className="h-4 w-4 text-orange-600" />
+              <span className="text-gray-900 font-medium text-sm">
+                Descanso
+              </span>
             </div>
-            <div className="text-lg font-mono font-bold text-primary mb-2">
+            <div className="text-base font-mono font-semibold text-orange-600 mb-2">
               {Math.floor(restTimeLeft / 60)}:
               {(restTimeLeft % 60).toString().padStart(2, "0")}
             </div>
@@ -915,14 +921,14 @@ function SetInput({
                   (exercise.restTime || 60)) *
                 100
               }
-              className="h-2 max-w-xs mx-auto"
+              className="h-1 max-w-xs mx-auto"
             />
           </div>
         </div>
       )}
 
-      {/* Footer com descanso e finalizar */}
-      <div className="flex justify-between items-center mt-auto">
+      {/* Footer com descanso */}
+      <div className="flex justify-start items-center mt-auto">
         <div className="text-left">
           {/* Botão de descanso */}
           {disabled &&
@@ -949,16 +955,6 @@ function SetInput({
               Parar Descanso
             </Button>
           )}
-        </div>
-
-        <div className="text-right">
-          {/* Botão Finalizar - sempre visível no canto inferior direito */}
-          <Button
-            variant="ghost"
-            className="text-destructive hover:text-destructive/80 hover:bg-destructive/10 px-0"
-          >
-            Finalizar
-          </Button>
         </div>
       </div>
     </div>
