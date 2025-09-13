@@ -5,6 +5,15 @@ import { Strategy as LocalStrategy } from "passport-local";
 import bcrypt from "bcrypt";
 import { storage } from "./storage";
 import connectPg from "connect-pg-simple";
+import type { Student } from "@shared/schema";
+
+// Utility function to sanitize student objects by removing sensitive data
+export function sanitizeStudent(
+  student: Student
+): Omit<Student, "password" | "inviteToken"> {
+  const { password, inviteToken, ...sanitizedStudent } = student;
+  return sanitizedStudent;
+}
 
 // Configure session store
 export function getSession() {
@@ -17,14 +26,23 @@ export function getSession() {
     tableName: "sessions",
   });
 
+  // Generate a strong session secret if not provided
+  const sessionSecret =
+    process.env.SESSION_SECRET || process.env.NODE_ENV === "production"
+      ? (() => {
+          throw new Error("SESSION_SECRET must be set in production!");
+        })()
+      : "dev-session-secret-" + Math.random().toString(36).substring(2, 15);
+
   return session({
-    secret: process.env.SESSION_SECRET || "your-secret-key-change-this",
+    secret: sessionSecret,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: false, // Set to true in production with HTTPS
+      secure: process.env.NODE_ENV === "production", // Secure in production
+      sameSite: "strict", // CSRF protection
       maxAge: sessionTtl,
     },
   });
@@ -135,6 +153,133 @@ export async function setupAuth(app: Express) {
   // Login route
   app.post("/api/login", passport.authenticate("local"), (req, res) => {
     res.json({ success: true, user: req.user });
+  });
+
+  // Student registration route (with invite token validation)
+  app.post("/api/student/register", async (req, res) => {
+    try {
+      const { email, password, confirmPassword, inviteToken } = req.body;
+
+      // Validate required fields
+      if (!email || !password || !confirmPassword || !inviteToken) {
+        return res.status(400).json({
+          message:
+            "Email, senha, confirmação de senha e código de convite são obrigatórios",
+        });
+      }
+
+      // Validate password confirmation
+      if (password !== confirmPassword) {
+        return res.status(400).json({
+          message: "Senha e confirmação não coincidem",
+        });
+      }
+
+      // Validate password strength
+      if (password.length < 6) {
+        return res.status(400).json({
+          message: "A senha deve ter pelo menos 6 caracteres",
+        });
+      }
+
+      // Find student by invite token AND verify email matches
+      const student = await storage.getStudentByInviteToken(inviteToken);
+
+      if (!student || student.email !== email) {
+        return res.status(400).json({
+          message: "Código de convite inválido ou email não corresponde",
+        });
+      }
+
+      if (!student.isInvitePending) {
+        return res.status(400).json({
+          message: "Este aluno já possui cadastro",
+        });
+      }
+
+      // Complete registration with token validation
+      const registeredStudent = await storage.completeStudentRegistration(
+        email,
+        password
+      );
+
+      if (!registeredStudent) {
+        return res.status(400).json({
+          message: "Erro ao completar o registro",
+        });
+      }
+
+      // Convert student to user-like object for session
+      const userLikeStudent = {
+        id: registeredStudent.id,
+        email: registeredStudent.email,
+        role: "student",
+        firstName:
+          registeredStudent.name.split(" ")[0] || registeredStudent.name,
+        lastName: registeredStudent.name.split(" ").slice(1).join(" ") || "",
+      };
+
+      // Automatically log in the student after registration
+      req.login(userLikeStudent, (err) => {
+        if (err) {
+          console.error(
+            "Error establishing student session after registration:",
+            err
+          );
+          return res
+            .status(500)
+            .json({
+              message: "Cadastro realizado, mas erro ao estabelecer sessão",
+            });
+        }
+
+        res.json({
+          success: true,
+          user: userLikeStudent,
+          message: "Cadastro realizado com sucesso!",
+        });
+      });
+    } catch (error) {
+      console.error("Student registration error:", error);
+      res.status(500).json({ message: "Erro interno do servidor" });
+    }
+  });
+
+  // Student-specific login route
+  app.post("/api/student/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+
+      const student = await storage.validateStudentPassword(email, password);
+
+      if (!student) {
+        return res.status(401).json({ message: "Email ou senha incorretos" });
+      }
+
+      // Convert student to user-like object for session
+      const userLikeStudent = {
+        id: student.id,
+        email: student.email,
+        role: "student",
+        firstName: student.name.split(" ")[0] || student.name,
+        lastName: student.name.split(" ").slice(1).join(" ") || "",
+      };
+
+      // Use passport to establish session
+      req.login(userLikeStudent, (err) => {
+        if (err) {
+          console.error("Error establishing student session:", err);
+          return res
+            .status(500)
+            .json({ message: "Erro ao estabelecer sessão" });
+        }
+
+        res.json({ success: true, user: userLikeStudent });
+      });
+    } catch (error) {
+      console.error("Student login error:", error);
+      res.status(500).json({ message: "Erro interno do servidor" });
+    }
   });
 
   // Logout route

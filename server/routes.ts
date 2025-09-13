@@ -536,6 +536,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Student authentication routes
+
+  // Verificar sessão de estudante ativa
+  app.get("/api/auth/student/me", isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== "student") {
+        return res
+          .status(403)
+          .json({ message: "Acesso negado - não é estudante" });
+      }
+
+      // Buscar o registro completo do estudante pelo email
+      const student = await storage.getStudentByEmail(req.user.email);
+      if (!student) {
+        return res
+          .status(404)
+          .json({ message: "Registro de estudante não encontrado" });
+      }
+
+      res.json({ success: true, student });
+    } catch (error) {
+      console.error("Error fetching student session:", error);
+      res.status(500).json({ message: "Erro ao verificar sessão" });
+    }
+  });
+
   app.post("/api/auth/student/login", async (req, res) => {
     try {
       const { email, password } = req.body;

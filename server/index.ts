@@ -6,7 +6,16 @@ const app = express();
 
 // CORS middleware
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
+  const origin = req.headers.origin as string | undefined;
+  const allowedOrigins = ["http://localhost:3000", "http://127.0.0.1:3000"];
+
+  if ((origin && allowedOrigins.includes(origin)) || !origin) {
+    res.header(
+      "Access-Control-Allow-Origin",
+      origin || "http://localhost:3000"
+    );
+  }
+
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.header(
     "Access-Control-Allow-Headers",
@@ -79,7 +88,7 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // Use port 3000 for Replit webview (both frontend and backend on same server)
+  // Use port 3000 for local development (both frontend and backend on same server)
   const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
   server.listen(
     {

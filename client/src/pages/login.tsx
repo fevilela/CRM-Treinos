@@ -80,12 +80,44 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
     setError("");
 
     try {
-      await apiRequest("POST", "/api/login", data);
-      toast({
-        title: "Login realizado",
-        description: "Bem-vindo ao CRM Treinos!",
-      });
-      onSuccess();
+      // Primeiro, tenta login como professor
+      try {
+        await apiRequest("POST", "/api/login", data);
+        toast({
+          title: "Login realizado",
+          description: "Bem-vindo ao CRM Treinos!",
+        });
+        onSuccess();
+        return;
+      } catch (teacherError: any) {
+        // Se falhar, tenta login como estudante
+        try {
+          const response = await fetch("/api/auth/student/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
+            credentials: "include",
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            toast({
+              title: "Login realizado",
+              description: "Bem-vindo ao seu painel de treinos!",
+            });
+            onSuccess();
+            return;
+          } else {
+            throw new Error(result.message || "Credenciais inválidas");
+          }
+        } catch (studentError: any) {
+          // Se ambos falharem, mostra erro genérico
+          setError("Email ou senha incorretos");
+        }
+      }
     } catch (error: any) {
       setError(error.message || "Erro ao fazer login");
     } finally {
