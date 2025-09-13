@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import path from "path";
 import { registerRoutes } from "./routes.ts";
 import { setupVite, serveStatic, log } from "./vite";
 
@@ -29,7 +30,7 @@ app.use((req, res, next) => {
     res.header(
       "Access-Control-Allow-Origin",
       origin ||
-        (replitDomain ? `https://${replitDomain}` : "http://localhost:3000")
+        (replitDomain ? `https://${replitDomain}` : "http://localhost:5000")
     );
   }
 
@@ -95,6 +96,9 @@ app.use((req, res, next) => {
   app.use("/api/*", (req, res) => {
     res.status(404).json({ message: "API endpoint not found" });
   });
+
+  // Serve static uploads
+  app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route

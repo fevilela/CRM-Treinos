@@ -26,7 +26,14 @@ import {
   Save,
   MessageSquare,
 } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { StudentWorkoutExecution } from "@/components/student-workout-execution";
+import { VideoModal } from "@/components/modals/video-modal";
 import { useToast } from "@/hooks/use-toast";
 import type { Student } from "@shared/schema";
 
@@ -38,8 +45,13 @@ interface StudentDashboardProps {
 export function StudentDashboard({ student }: StudentDashboardProps) {
   const [selectedWorkout, setSelectedWorkout] = useState<string | null>(null);
   const [showWorkoutExecution, setShowWorkoutExecution] = useState(false);
-  const [expandedWorkouts, setExpandedWorkouts] = useState<Set<string>>(
-    new Set()
+  const [selectedVideo, setSelectedVideo] = useState<{
+    url: string;
+    exerciseName: string;
+  } | null>(null);
+  const [workoutTimer, setWorkoutTimer] = useState<number>(0);
+  const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(
+    null
   );
   const [exerciseData, setExerciseData] = useState<
     Record<
@@ -110,21 +122,31 @@ export function StudentDashboard({ student }: StudentDashboardProps) {
   const handleStartWorkout = (workoutId: string) => {
     setSelectedWorkout(workoutId);
     setShowWorkoutExecution(true);
+    // Start workout timer
+    setWorkoutTimer(0);
+    const interval = setInterval(() => {
+      setWorkoutTimer((prev) => prev + 1);
+    }, 1000);
+    setTimerInterval(interval);
   };
 
   const handleBackFromWorkout = () => {
-    setShowWorkoutExecution(false);
     setSelectedWorkout(null);
+    setShowWorkoutExecution(false);
+    // Stop workout timer
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      setTimerInterval(null);
+    }
+    setWorkoutTimer(0);
   };
 
-  const toggleWorkoutExpansion = (workoutId: string) => {
-    const newExpanded = new Set(expandedWorkouts);
-    if (newExpanded.has(workoutId)) {
-      newExpanded.delete(workoutId);
-    } else {
-      newExpanded.add(workoutId);
-    }
-    setExpandedWorkouts(newExpanded);
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
   };
 
   const updateExerciseData = (
@@ -318,331 +340,124 @@ export function StudentDashboard({ student }: StudentDashboardProps) {
         </Card>
       </div>
 
-      {/* My Workouts */}
-      <Card data-testid="card-my-workouts">
-        <CardHeader>
-          <CardTitle>Meus Treinos</CardTitle>
-          <CardDescription>
-            Treinos criados pelo seu personal trainer
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {workoutsLoading ? (
-            <div className="flex items-center space-x-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
-              <p>Carregando treinos...</p>
-            </div>
-          ) : Array.isArray(workouts) && workouts.length ? (
-            <div className="space-y-4">
-              {workouts.map((workout: any) => {
-                const isExpanded = expandedWorkouts.has(workout.id);
-                return (
-                  <Card
-                    key={workout.id}
-                    className="hover:shadow-md transition-shadow"
-                    data-testid={`card-workout-${workout.id}`}
-                  >
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle className="text-lg">
-                            {workout.name}
-                          </CardTitle>
-                          <CardDescription>
-                            {workout.description}
-                          </CardDescription>
+      {/* My Workouts - Accordion Layout */}
+      <div className="space-y-4">
+        {workoutsLoading ? (
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                <p>Carregando treinos...</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : Array.isArray(workouts) && workouts.length ? (
+          <Card className="bg-white border-gray-200">
+            <CardContent className="p-0">
+              <Accordion type="multiple" className="w-full">
+                {workouts.map((workout: any) => {
+                  const totalExercises = workout.exercises?.length || 0;
+
+                  return (
+                    <AccordionItem
+                      key={workout.id}
+                      value={workout.id}
+                      className="border-gray-200"
+                    >
+                      <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-gray-50">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                            <Dumbbell className="h-5 w-5 text-primary" />
+                          </div>
+                          <div className="text-left">
+                            <h3 className="font-medium text-gray-900 text-sm">
+                              {workout.name}
+                            </h3>
+                            <p className="text-gray-500 text-xs">
+                              {totalExercises} exercícios
+                            </p>
+                          </div>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-4 pb-4">
+                        <div className="space-y-3">
+                          {/* Exercise List */}
                           {workout.exercises &&
                             workout.exercises.length > 0 && (
-                              <div className="flex items-center text-sm text-gray-600 mt-2">
-                                <Dumbbell className="h-4 w-4 mr-1" />
-                                {workout.exercises.length} exercício
-                                {workout.exercises.length !== 1 ? "s" : ""}
-                                <Badge variant="outline" className="ml-2">
-                                  {workout.category}
-                                </Badge>
-                              </div>
-                            )}
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => toggleWorkoutExpansion(workout.id)}
-                            data-testid={`button-toggle-${workout.id}`}
-                          >
-                            {isExpanded ? (
-                              <ChevronUp className="h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4" />
-                            )}
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleStartWorkout(workout.id)}
-                            data-testid={`button-start-workout-${workout.id}`}
-                          >
-                            <Play className="h-4 w-4 mr-1" />
-                            Iniciar
-                          </Button>
-                        </div>
-                      </div>
-                    </CardHeader>
-
-                    {isExpanded && workout.exercises && (
-                      <CardContent className="pt-0">
-                        <div className="space-y-4">
-                          <h4 className="font-medium text-gray-900 dark:text-white">
-                            Exercícios:
-                          </h4>
-                          {workout.exercises.map(
-                            (exercise: any, index: number) => {
-                              const exerciseProgress = exerciseData[
-                                exercise.id
-                              ] || {
-                                weight: exercise.weight?.toString() || "",
-                                sets: exercise.sets || 3,
-                                completedSets: 0,
-                                reps: exercise.reps || "12",
-                                exerciseName: exercise.name || "",
-                                comments: "",
-                                hasUnsavedChanges: false,
-                              };
-
-                              return (
-                                <Card
-                                  key={exercise.id}
-                                  className="bg-gray-50 dark:bg-gray-800"
-                                >
-                                  <CardContent className="p-4">
-                                    <div className="space-y-3">
-                                      {/* Exercise header */}
-                                      <div className="flex justify-between items-start">
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-medium text-gray-700">
+                                  Exercícios:
+                                </h4>
+                                <div className="space-y-1">
+                                  {workout.exercises.map(
+                                    (exercise: any, index: number) => (
+                                      <div
+                                        key={exercise.id || index}
+                                        className="flex items-center justify-between text-sm text-gray-600 bg-gray-50 rounded p-2"
+                                      >
                                         <div>
-                                          <h5 className="font-medium">
+                                          <span className="font-medium">
                                             {exercise.name}
-                                          </h5>
-                                          <p className="text-sm text-gray-600">
-                                            {exercise.reps} repetições
-                                          </p>
+                                          </span>
+                                          {exercise.sets && exercise.reps && (
+                                            <span className="text-gray-500 ml-2">
+                                              {exercise.sets} séries ×{" "}
+                                              {exercise.reps} reps
+                                            </span>
+                                          )}
                                         </div>
                                         {exercise.videoUrl && (
                                           <Button
-                                            variant="outline"
+                                            variant="ghost"
                                             size="sm"
-                                            onClick={() =>
-                                              window.open(
-                                                exercise.videoUrl,
-                                                "_blank"
-                                              )
-                                            }
-                                            data-testid={`button-video-${exercise.id}`}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSelectedVideo({
+                                                url: exercise.videoUrl,
+                                                exerciseName: exercise.name,
+                                              });
+                                            }}
+                                            className="h-6 w-6 p-1 text-primary hover:text-primary/80"
                                           >
-                                            <VideoIcon className="h-4 w-4 mr-1" />
-                                            Vídeo
+                                            <Play className="h-3 w-3" />
                                           </Button>
                                         )}
                                       </div>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            )}
 
-                                      {/* Exercise controls */}
-                                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        {/* Weight input */}
-                                        <div className="space-y-2">
-                                          <Label
-                                            htmlFor={`weight-${exercise.id}`}
-                                            className="text-sm"
-                                          >
-                                            Peso (kg)
-                                          </Label>
-                                          <Input
-                                            id={`weight-${exercise.id}`}
-                                            type="number"
-                                            value={exerciseProgress.weight}
-                                            onChange={(e) =>
-                                              updateExerciseData(
-                                                exercise.id,
-                                                "weight",
-                                                e.target.value
-                                              )
-                                            }
-                                            placeholder="0"
-                                            className="h-8"
-                                          />
-                                        </div>
-
-                                        {/* Sets control */}
-                                        <div className="space-y-2">
-                                          <Label className="text-sm">
-                                            Séries
-                                          </Label>
-                                          <div className="flex items-center gap-2">
-                                            <Button
-                                              variant="outline"
-                                              size="sm"
-                                              onClick={() =>
-                                                updateExerciseData(
-                                                  exercise.id,
-                                                  "sets",
-                                                  Math.max(
-                                                    1,
-                                                    exerciseProgress.sets - 1
-                                                  )
-                                                )
-                                              }
-                                              className="h-8 w-8 p-0"
-                                            >
-                                              -
-                                            </Button>
-                                            <span className="w-8 text-center">
-                                              {exerciseProgress.sets}
-                                            </span>
-                                            <Button
-                                              variant="outline"
-                                              size="sm"
-                                              onClick={() =>
-                                                updateExerciseData(
-                                                  exercise.id,
-                                                  "sets",
-                                                  exerciseProgress.sets + 1
-                                                )
-                                              }
-                                              className="h-8 w-8 p-0"
-                                            >
-                                              +
-                                            </Button>
-                                          </div>
-                                        </div>
-
-                                        {/* Rest time */}
-                                        <div className="space-y-2">
-                                          <Label className="text-sm">
-                                            Descanso
-                                          </Label>
-                                          <div className="flex items-center text-sm text-gray-600">
-                                            <Clock className="h-4 w-4 mr-1" />
-                                            {exercise.restTime}s
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      {/* Comments */}
-                                      <div className="space-y-2">
-                                        <Label
-                                          htmlFor={`comments-${exercise.id}`}
-                                          className="text-sm flex items-center gap-1"
-                                        >
-                                          <MessageSquare className="h-4 w-4" />
-                                          Comentários
-                                        </Label>
-                                        <Input
-                                          id={`comments-${exercise.id}`}
-                                          value={exerciseProgress.comments}
-                                          onChange={(e) =>
-                                            updateExerciseData(
-                                              exercise.id,
-                                              "comments",
-                                              e.target.value
-                                            )
-                                          }
-                                          placeholder="Adicione observações sobre o exercício..."
-                                          className="h-8"
-                                        />
-                                      </div>
-
-                                      {/* Save button */}
-                                      <div className="flex justify-end">
-                                        <Button
-                                          onClick={() =>
-                                            saveExerciseProgress(exercise.id)
-                                          }
-                                          disabled={
-                                            !exerciseProgress.hasUnsavedChanges ||
-                                            saveProgressMutation.isPending
-                                          }
-                                          size="sm"
-                                          className="gap-2"
-                                        >
-                                          <Save className="h-4 w-4" />
-                                          {saveProgressMutation.isPending
-                                            ? "Salvando..."
-                                            : "Salvar Progresso"}
-                                        </Button>
-                                      </div>
-
-                                      {/* Sets progress */}
-                                      <div className="space-y-2">
-                                        <div className="flex justify-between items-center">
-                                          <Label className="text-sm">
-                                            Progresso das Séries
-                                          </Label>
-                                          <span className="text-sm text-gray-600">
-                                            {exerciseProgress.completedSets} /{" "}
-                                            {exerciseProgress.sets} concluídas
-                                          </span>
-                                        </div>
-                                        <div className="flex gap-1">
-                                          {Array.from(
-                                            { length: exerciseProgress.sets },
-                                            (_, setIndex) => (
-                                              <Button
-                                                key={setIndex}
-                                                variant={
-                                                  setIndex <
-                                                  exerciseProgress.completedSets
-                                                    ? "default"
-                                                    : "outline"
-                                                }
-                                                size="sm"
-                                                onClick={() => {
-                                                  const newCompleted =
-                                                    setIndex <
-                                                    exerciseProgress.completedSets
-                                                      ? setIndex
-                                                      : setIndex + 1;
-                                                  updateExerciseData(
-                                                    exercise.id,
-                                                    "completedSets",
-                                                    newCompleted
-                                                  );
-                                                }}
-                                                className="h-8 w-12 p-0"
-                                              >
-                                                {setIndex <
-                                                exerciseProgress.completedSets ? (
-                                                  <Check className="h-4 w-4" />
-                                                ) : (
-                                                  setIndex + 1
-                                                )}
-                                              </Button>
-                                            )
-                                          )}
-                                        </div>
-                                        <Progress
-                                          value={
-                                            (exerciseProgress.completedSets /
-                                              exerciseProgress.sets) *
-                                            100
-                                          }
-                                          className="h-2"
-                                        />
-                                      </div>
-                                    </div>
-                                  </CardContent>
-                                </Card>
-                              );
-                            }
-                          )}
+                          {/* Start Workout Button */}
+                          <div className="pt-2">
+                            <Button
+                              onClick={() => handleStartWorkout(workout.id)}
+                              className="bg-primary hover:bg-primary/90 text-white w-full"
+                              data-testid={`button-start-workout-${workout.id}`}
+                            >
+                              <Play className="h-4 w-4 mr-2" />
+                              Iniciar Treino
+                            </Button>
+                          </div>
                         </div>
-                      </CardContent>
-                    )}
-                  </Card>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-gray-500">Nenhum treino disponível ainda</p>
-          )}
-        </CardContent>
-      </Card>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-6">
+              <p className="text-gray-500 text-center">
+                Nenhum treino disponível ainda
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {/* Recent Activity */}
       <Card data-testid="card-recent-activity">
@@ -682,6 +497,16 @@ export function StudentDashboard({ student }: StudentDashboardProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Video Modal */}
+      {selectedVideo && (
+        <VideoModal
+          isOpen={!!selectedVideo}
+          onClose={() => setSelectedVideo(null)}
+          videoUrl={selectedVideo?.url || ""}
+          exerciseName={selectedVideo?.exerciseName || ""}
+        />
+      )}
     </div>
   );
 }

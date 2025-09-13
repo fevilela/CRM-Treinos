@@ -88,20 +88,20 @@ function WorkoutMainTimer({
   };
 
   return (
-    <Card className="sticky top-4 z-10 bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+    <Card className="sticky top-4 z-10 bg-white border-gray-200 shadow-sm">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Timer className="h-5 w-5 text-green-600" />
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Timer className="h-5 w-5 text-primary" />
           Tempo Total do Treino
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="text-4xl font-mono font-bold text-green-600 text-center">
+        <div className="text-lg font-mono font-bold text-primary text-center">
           {formatTime(seconds)}
         </div>
         {isActive && (
-          <div className="mt-2 text-sm text-green-600 flex items-center justify-center gap-1">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          <div className="mt-2 text-sm text-muted-foreground flex items-center justify-center gap-1">
+            <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
             Treino em andamento
           </div>
         )}
@@ -221,7 +221,7 @@ export function StudentWorkoutExecution({
         toast({
           title: `${data.changeSymbol} Mudança de peso detectada!`,
           description: `Peso anterior: ${data.previousWeight}kg → Atual: ${data.weight}kg`,
-          variant: data.changeType === "increase" ? "default" : "destructive",
+          variant: "default",
         });
       }
       queryClient.invalidateQueries({ queryKey: ["/api/workout-history"] });
@@ -483,7 +483,7 @@ export function StudentWorkoutExecution({
   if (exercisesLoading || workoutLoading) {
     return (
       <div className="container mx-auto p-4 max-w-4xl">
-        <div className="text-center py-8">
+        <div className="text-center py-6">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
           <p className="mt-2">Carregando treino...</p>
         </div>
@@ -494,18 +494,16 @@ export function StudentWorkoutExecution({
   if (workoutCompleted) {
     return (
       <div className="container mx-auto p-4 max-w-4xl">
-        <Card className="text-center py-8">
+        <Card className="text-center py-6">
           <CardHeader>
-            <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
-            <CardTitle className="text-2xl">Parabéns!</CardTitle>
+            <CheckCircle className="h-10 w-10 text-primary mx-auto mb-3" />
+            <CardTitle className="text-lg">Parabéns!</CardTitle>
             <CardDescription>
               Você concluiu seu treino com sucesso!
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={onBack} size="lg">
-              Voltar ao Dashboard
-            </Button>
+            <Button onClick={onBack}>Voltar ao Dashboard</Button>
           </CardContent>
         </Card>
       </div>
@@ -524,7 +522,7 @@ export function StudentWorkoutExecution({
           <ArrowLeft className="h-4 w-4" />
           Voltar
         </Button>
-        <h1 className="text-xl font-bold">{workout?.name || "Treino"}</h1>
+        <h1 className="text-lg font-semibold">{workout?.name || "Treino"}</h1>
         <div></div>
       </div>
 
@@ -537,12 +535,8 @@ export function StudentWorkoutExecution({
       {/* Botão Iniciar Treino */}
       {!workoutStarted && (
         <Card>
-          <CardContent className="text-center py-8">
-            <Button
-              onClick={startWorkout}
-              size="lg"
-              className="flex items-center gap-2"
-            >
+          <CardContent className="text-center py-6">
+            <Button onClick={startWorkout} className="flex items-center gap-2">
               <Play className="h-5 w-5" />
               Iniciar Treino
             </Button>
@@ -554,23 +548,23 @@ export function StudentWorkoutExecution({
       {workoutStarted && exercises.length > 0 && (
         <div className="space-y-6">
           {/* Indicador de Progresso */}
-          <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+          <Card className="bg-white border-gray-200">
             <CardContent className="py-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-blue-900">
+                  <h3 className="text-base font-medium text-gray-900">
                     Exercício {currentExerciseIndex + 1} de {exercises.length}
                   </h3>
-                  <p className="text-sm text-blue-600">
+                  <p className="text-sm text-gray-600">
                     {exercises[currentExerciseIndex]?.name}
                   </p>
                 </div>
                 <div className="text-right">
-                  <h3 className="text-lg font-semibold text-blue-900">
+                  <h3 className="text-base font-medium text-gray-900">
                     Série {currentSetIndex + 1} de{" "}
                     {exercises[currentExerciseIndex]?.sets || 3}
                   </h3>
-                  <p className="text-sm text-blue-600">
+                  <p className="text-sm text-gray-600">
                     {exercises[currentExerciseIndex]?.weight &&
                       `${exercises[currentExerciseIndex].weight}kg • `}
                     {exercises[currentExerciseIndex]?.reps} reps
@@ -600,7 +594,7 @@ export function StudentWorkoutExecution({
 
                   return (
                     <>
-                      <div className="flex justify-between text-xs text-blue-600 mb-1">
+                      <div className="flex justify-between text-xs text-gray-600 mb-1">
                         <span>Progresso do Treino</span>
                         <span>{progressPercentage}%</span>
                       </div>
@@ -621,12 +615,12 @@ export function StudentWorkoutExecution({
             if (!currentExercise || !progress || !currentSet) return null;
 
             return (
-              <Card className="bg-white shadow-lg border-2 border-gray-200">
+              <Card className="bg-white shadow-sm border border-gray-200">
                 <CardHeader className="text-center pb-6">
-                  <CardTitle className="text-2xl text-gray-800">
+                  <CardTitle className="text-base text-gray-900">
                     {currentExercise.name}
                   </CardTitle>
-                  <CardDescription className="text-lg">
+                  <CardDescription className="text-sm">
                     Série {currentSet.setNumber}
                   </CardDescription>
                 </CardHeader>
@@ -666,18 +660,17 @@ export function StudentWorkoutExecution({
       {workoutStarted &&
         Object.values(exerciseProgress).length > 0 &&
         Object.values(exerciseProgress).every((p) => p.completed) && (
-          <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+          <Card className="bg-white border-gray-200">
             <CardContent className="text-center py-6">
               <Button
                 onClick={completeWorkout}
-                size="lg"
                 variant="default"
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-primary hover:bg-primary/90"
               >
                 <Square className="h-5 w-5 mr-2" />
                 Finalizar Treino Completo
               </Button>
-              <p className="text-sm text-green-600 mt-2">
+              <p className="text-sm text-muted-foreground mt-2">
                 Parabéns! Você completou todos os exercícios.
               </p>
             </CardContent>
@@ -736,9 +729,13 @@ function WeightChangeIndicator({
   const getSymbolAndColor = (changeType: string) => {
     switch (changeType) {
       case "increase":
-        return { symbol: "↗", color: "text-green-400", bg: "bg-green-600/20" };
+        return { symbol: "↗", color: "text-primary", bg: "bg-primary/20" };
       case "decrease":
-        return { symbol: "↘", color: "text-red-400", bg: "bg-red-600/20" };
+        return {
+          symbol: "↘",
+          color: "text-muted-foreground",
+          bg: "bg-gray-100",
+        };
       case "maintain":
         return { symbol: "→", color: "text-gray-400", bg: "bg-gray-600/20" };
       default:
@@ -808,11 +805,13 @@ function SetInput({
   };
 
   return (
-    <div className="bg-black text-white p-6 rounded-lg min-h-[200px] relative">
+    <div className="bg-white border border-gray-200 text-gray-900 p-4 rounded-lg min-h-[120px] relative shadow-sm">
       {/* Header com nome do exercício, vídeo e botão concluir */}
-      <div className="flex justify-between items-start mb-8">
+      <div className="flex justify-between items-start mb-4">
         <div className="flex flex-col gap-2">
-          <h3 className="text-red-500 text-lg font-bold">{exercise.name}</h3>
+          <h3 className="text-gray-900 text-base font-semibold">
+            {exercise.name}
+          </h3>
           {/* Indicador de mudança de peso */}
           <WeightChangeIndicator
             studentId={studentId}
@@ -824,7 +823,7 @@ function SetInput({
           <Button
             variant="ghost"
             size="sm"
-            className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
+            className="text-muted-foreground hover:text-primary hover:bg-primary/10"
           >
             Vídeo
           </Button>
@@ -833,7 +832,7 @@ function SetInput({
               onClick={handleComplete}
               disabled={!weight || !reps}
               size="sm"
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-primary hover:bg-primary/90 text-white"
             >
               Concluir
             </Button>
@@ -843,35 +842,41 @@ function SetInput({
 
       {/* Área principal com os campos */}
       {!disabled && (
-        <div className="flex justify-center items-center gap-8 mb-8">
+        <div className="flex justify-center items-center gap-4 mb-6">
           {/* Peso */}
           <div className="text-center">
-            <label className="block text-sm mb-2">Peso</label>
+            <label className="block text-xs font-medium text-gray-600 mb-2">
+              Peso
+            </label>
             <Input
               type="number"
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
               placeholder={exercise.weight?.toString() || "0"}
-              className="bg-gray-800 border-gray-600 text-white text-center text-xl font-bold w-20 h-12"
+              className="bg-white border border-gray-300 text-gray-900 text-center text-sm font-medium w-16 h-10"
             />
           </div>
 
           {/* Série */}
           <div className="text-center">
-            <label className="block text-sm mb-2">Série</label>
-            <div className="bg-gray-800 border border-gray-600 rounded-md p-3 text-xl font-bold w-20 h-12 flex items-center justify-center">
+            <label className="block text-xs font-medium text-gray-600 mb-2">
+              Série
+            </label>
+            <div className="bg-gray-100 border border-gray-300 rounded-md p-2 text-sm font-medium w-16 h-10 flex items-center justify-center">
               {setIndex + 1}
             </div>
           </div>
 
           {/* Repetições */}
           <div className="text-center">
-            <label className="block text-sm mb-2">Repetições</label>
+            <label className="block text-xs font-medium text-gray-600 mb-2">
+              Repetições
+            </label>
             <Input
               value={reps}
               onChange={(e) => setReps(e.target.value)}
               placeholder={exercise.reps || "0"}
-              className="bg-gray-800 border-gray-600 text-white text-center text-xl font-bold w-20 h-12"
+              className="bg-white border border-gray-300 text-gray-900 text-center text-sm font-medium w-16 h-10"
             />
           </div>
         </div>
@@ -879,13 +884,13 @@ function SetInput({
 
       {/* Quando série está completa */}
       {disabled && (
-        <div className="flex justify-center items-center mb-8">
-          <div className="text-center bg-green-600/20 border border-green-500 rounded-lg p-6 w-full">
-            <CheckCircle className="h-8 w-8 text-green-400 mx-auto mb-2" />
-            <p className="text-green-300 font-semibold text-lg">
+        <div className="flex justify-center items-center mb-4">
+          <div className="text-center bg-primary/20 border border-primary rounded-lg p-4 w-full">
+            <CheckCircle className="h-8 w-8 text-primary mx-auto mb-2" />
+            <p className="text-foreground font-semibold text-base">
               Série {setIndex + 1} Completa!
             </p>
-            <p className="text-sm text-green-400 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               {weight}kg × {reps} repetições
             </p>
           </div>
@@ -894,13 +899,13 @@ function SetInput({
 
       {/* Timer de descanso ativo - versão compacta no layout escuro */}
       {restTimeLeft && restTimeLeft > 0 && (
-        <div className="mb-8">
-          <div className="bg-orange-600/20 border border-orange-500 rounded-lg p-4 text-center">
+        <div className="mb-4">
+          <div className="bg-primary/20 border border-primary rounded-lg p-4 text-center">
             <div className="flex items-center justify-center gap-2 mb-2">
-              <Coffee className="h-5 w-5 text-orange-400" />
-              <span className="text-orange-300 font-semibold">Descanso</span>
+              <Coffee className="h-5 w-5 text-primary" />
+              <span className="text-foreground font-semibold">Descanso</span>
             </div>
-            <div className="text-2xl font-mono font-bold text-orange-400 mb-2">
+            <div className="text-lg font-mono font-bold text-primary mb-2">
               {Math.floor(restTimeLeft / 60)}:
               {(restTimeLeft % 60).toString().padStart(2, "0")}
             </div>
@@ -926,7 +931,7 @@ function SetInput({
               <Button
                 variant="ghost"
                 onClick={onStartRest}
-                className="text-red-500 hover:text-red-400 hover:bg-red-500/10 px-0"
+                className="text-primary hover:text-primary/80 hover:bg-primary/10 px-0"
               >
                 <Coffee className="h-4 w-4 mr-2" />
                 Descanso
@@ -938,7 +943,7 @@ function SetInput({
             <Button
               variant="ghost"
               onClick={onStopRest}
-              className="text-red-500 hover:text-red-400 hover:bg-red-500/10 px-0"
+              className="text-primary hover:text-primary/80 hover:bg-primary/10 px-0"
             >
               <Square className="h-4 w-4 mr-2" />
               Parar Descanso
@@ -950,7 +955,7 @@ function SetInput({
           {/* Botão Finalizar - sempre visível no canto inferior direito */}
           <Button
             variant="ghost"
-            className="text-red-500 hover:text-red-400 hover:bg-red-500/10 px-0"
+            className="text-destructive hover:text-destructive/80 hover:bg-destructive/10 px-0"
           >
             Finalizar
           </Button>

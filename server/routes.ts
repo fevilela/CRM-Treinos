@@ -1192,6 +1192,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   });
 
+  // Configure multer for video uploads
+  const videoUploadsDir = path.join(
+    process.cwd(),
+    "uploads",
+    "exercise-videos"
+  );
+
+  // Ensure video uploads directory exists
+  await fs.mkdir(videoUploadsDir, { recursive: true });
+
+  const videoStorage = multer.diskStorage({
+    destination: videoUploadsDir,
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      const ext = path.extname(file.originalname);
+      cb(null, `video-${uniqueSuffix}${ext}`);
+    },
+  });
+
+  const uploadVideo = multer({
+    storage: videoStorage,
+    limits: {
+      fileSize: 100 * 1024 * 1024, // 100MB limit for videos
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = [
+        "video/mp4",
+        "video/mpeg",
+        "video/quicktime",
+        "video/webm",
+        "video/ogg",
+      ];
+      if (!allowedTypes.includes(file.mimetype)) {
+        return cb(
+          new Error(
+            "Apenas arquivos de vídeo são permitidos (MP4, MPEG, MOV, WebM, OGG)"
+          )
+        );
+      }
+      cb(null, true);
+    },
+  });
+
   // Assessment photo endpoints
   app.post(
     "/api/assessment-photos",
@@ -1236,6 +1279,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await fs.unlink(req.file.path).catch(() => {});
         }
         res.status(500).json({ message: "Falha ao fazer upload da foto" });
+      }
+    }
+  );
+
+  // Video upload endpoint for exercises
+  app.post(
+    "/api/exercise-videos",
+    isTeacher,
+    uploadVideo.single("video"),
+    async (req: any, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "Nenhum vídeo enviado" });
+        }
+
+        const videoUrl = `/uploads/exercise-videos/${req.file.filename}`;
+
+        res.status(201).json({
+          videoUrl,
+          fileName: req.file.filename,
+          fileSize: req.file.size,
+          mimeType: req.file.mimetype,
+        });
+      } catch (error) {
+        console.error("Error uploading video:", error);
+        // Clean up uploaded file on error
+        if (req.file) {
+          await fs.unlink(req.file.path).catch(() => {});
+        }
+        res.status(500).json({ message: "Falha ao fazer upload do vídeo" });
       }
     }
   );

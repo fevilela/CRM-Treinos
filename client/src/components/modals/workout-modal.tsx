@@ -38,6 +38,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
+import { VideoSelector } from "@/components/video-selector";
 import { z } from "zod";
 
 const workoutFormSchema = insertWorkoutSchema
@@ -67,6 +68,7 @@ export default function WorkoutModal({
   const [exercises, setExercises] = useState<any[]>([]);
   const [exerciseSearch, setExerciseSearch] = useState("");
   const [showNewExerciseForm, setShowNewExerciseForm] = useState(false);
+  const [newExerciseVideoUrl, setNewExerciseVideoUrl] = useState("");
 
   const { data: students } = useQuery<Student[]>({
     queryKey: ["/api/students"],
@@ -223,11 +225,11 @@ export default function WorkoutModal({
     setShowNewExerciseForm(false);
   };
 
-  const createNewExerciseTemplate = async (name: string, videoUrl: string) => {
+  const createNewExerciseTemplate = async (name: string) => {
     try {
       const response = await apiRequest("POST", "/api/exercise-templates", {
         name,
-        videoUrl,
+        videoUrl: newExerciseVideoUrl,
         description: `Exercício criado pelo usuário: ${name}`,
         muscleGroups: ["custom"],
         equipment: "Vários",
@@ -534,22 +536,17 @@ export default function WorkoutModal({
                           value={exerciseSearch}
                           onChange={(e) => setExerciseSearch(e.target.value)}
                         />
-                        <Input
-                          placeholder="URL do vídeo (opcional)"
-                          id="new-exercise-video"
+                        <VideoSelector
+                          value={newExerciseVideoUrl}
+                          onChange={setNewExerciseVideoUrl}
+                          placeholder="URL do vídeo ou fazer upload"
                         />
                         <div className="flex space-x-2">
                           <Button
                             type="button"
                             size="sm"
                             onClick={() => {
-                              const videoInput = document.getElementById(
-                                "new-exercise-video"
-                              ) as HTMLInputElement;
-                              createNewExerciseTemplate(
-                                exerciseSearch,
-                                videoInput?.value || ""
-                              );
+                              createNewExerciseTemplate(exerciseSearch);
                             }}
                           >
                             Criar e Adicionar
@@ -558,7 +555,10 @@ export default function WorkoutModal({
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => setShowNewExerciseForm(false)}
+                            onClick={() => {
+                              setShowNewExerciseForm(false);
+                              setNewExerciseVideoUrl("");
+                            }}
                           >
                             Cancelar
                           </Button>
@@ -705,18 +705,12 @@ export default function WorkoutModal({
                       />
                     </div>
                     <div>
-                      <Label>URL do Vídeo (opcional)</Label>
-                      <Input
-                        placeholder="https://youtube.com/..."
+                      <VideoSelector
                         value={exercise.videoUrl || ""}
-                        onChange={(e) =>
-                          updateExercise(
-                            exercise.id,
-                            "videoUrl",
-                            e.target.value
-                          )
+                        onChange={(url) =>
+                          updateExercise(exercise.id, "videoUrl", url)
                         }
-                        data-testid={`input-exercise-video-${exercise.id}`}
+                        placeholder="URL do vídeo ou fazer upload"
                       />
                     </div>
                     <div>
