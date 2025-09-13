@@ -41,7 +41,20 @@ function StudentInterface({
     isLoading: studentLoading,
     error,
   } = useQuery<Student>({
-    queryKey: ["/api/student/me"],
+    queryKey: ["/api/auth/student/me"],
+    queryFn: async () => {
+      const response = await fetch("/api/auth/student/me", {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const result = await response.json();
+      if (result.success && result.student) {
+        return result.student;
+      }
+      throw new Error("Invalid response format");
+    },
     enabled: user.role === "student",
   });
 

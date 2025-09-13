@@ -189,6 +189,13 @@ export const bodyMeasurements = pgTable("body_measurements", {
   measuredAt: timestamp("measured_at").defaultNow(),
 });
 
+// Enum para tipos de mudança de peso
+export const weightChangeEnum = pgEnum("weight_change_type", [
+  "increase",
+  "decrease",
+  "maintain",
+]);
+
 // Historical workout data - rastrea evolução de cargas ao longo do tempo
 export const workoutHistory = pgTable("workout_history", {
   id: varchar("id")
@@ -205,6 +212,8 @@ export const workoutHistory = pgTable("workout_history", {
   reps: varchar("reps").notNull(),
   weight: decimal("weight", { precision: 5, scale: 2 }).notNull(),
   previousWeight: decimal("previous_weight", { precision: 5, scale: 2 }), // Carga anterior
+  changeType: weightChangeEnum("change_type"), // Tipo de mudança (aumento, diminuição, manutenção)
+  percentageChange: decimal("percentage_change", { precision: 5, scale: 2 }), // Porcentagem da mudança
   comments: text("comments"), // Comentários do aluno
   completedAt: timestamp("completed_at").defaultNow(),
   workoutSessionId: varchar("workout_session_id").references(
@@ -615,6 +624,8 @@ export const insertWorkoutHistorySchema = createInsertSchema(workoutHistory)
   .extend({
     weight: z.string().optional(),
     previousWeight: z.string().optional(),
+    changeType: z.enum(["increase", "decrease", "maintain"]).optional(),
+    percentageChange: z.string().optional(),
   });
 
 export const insertWorkoutCommentSchema = createInsertSchema(

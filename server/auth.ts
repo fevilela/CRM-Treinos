@@ -27,12 +27,24 @@ export function getSession() {
   });
 
   // Generate a strong session secret if not provided
-  const sessionSecret =
-    process.env.SESSION_SECRET || process.env.NODE_ENV === "production"
-      ? (() => {
-          throw new Error("SESSION_SECRET must be set in production!");
-        })()
-      : "dev-session-secret-" + Math.random().toString(36).substring(2, 15);
+  let sessionSecret = process.env.SESSION_SECRET;
+
+  if (!sessionSecret) {
+    // More defensive check for production environment
+    const isProduction =
+      process.env.NODE_ENV === "production" || process.env.NODE_ENV === "prod";
+    console.log(
+      `Ambiente detectado: NODE_ENV=${process.env.NODE_ENV}, isProduction=${isProduction}`
+    );
+
+    if (isProduction) {
+      throw new Error("SESSION_SECRET must be set in production!");
+    }
+
+    console.log("Usando SESSION_SECRET temporário para desenvolvimento");
+    sessionSecret =
+      "dev-session-secret-" + Math.random().toString(36).substring(2, 15);
+  }
 
   return session({
     secret: sessionSecret,
@@ -42,7 +54,7 @@ export function getSession() {
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Secure in production
-      sameSite: "strict", // CSRF protection
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax", // More flexible in dev
       maxAge: sessionTtl,
     },
   });
@@ -226,11 +238,9 @@ export async function setupAuth(app: Express) {
             "Error establishing student session after registration:",
             err
           );
-          return res
-            .status(500)
-            .json({
-              message: "Cadastro realizado, mas erro ao estabelecer sessão",
-            });
+          return res.status(500).json({
+            message: "Cadastro realizado, mas erro ao estabelecer sessão",
+          });
         }
 
         res.json({
@@ -245,42 +255,7 @@ export async function setupAuth(app: Express) {
     }
   });
 
-  // Student-specific login route
-  app.post("/api/student/login", async (req, res) => {
-    try {
-      const { email, password } = req.body;
-
-      const student = await storage.validateStudentPassword(email, password);
-
-      if (!student) {
-        return res.status(401).json({ message: "Email ou senha incorretos" });
-      }
-
-      // Convert student to user-like object for session
-      const userLikeStudent = {
-        id: student.id,
-        email: student.email,
-        role: "student",
-        firstName: student.name.split(" ")[0] || student.name,
-        lastName: student.name.split(" ").slice(1).join(" ") || "",
-      };
-
-      // Use passport to establish session
-      req.login(userLikeStudent, (err) => {
-        if (err) {
-          console.error("Error establishing student session:", err);
-          return res
-            .status(500)
-            .json({ message: "Erro ao estabelecer sessão" });
-        }
-
-        res.json({ success: true, user: userLikeStudent });
-      });
-    } catch (error) {
-      console.error("Student login error:", error);
-      res.status(500).json({ message: "Erro interno do servidor" });
-    }
-  });
+  // Note: Student login route is handled in routes.ts at /api/auth/student/login
 
   // Logout route
   app.post("/api/logout", (req, res) => {
@@ -329,24 +304,8 @@ export async function setupAuth(app: Express) {
         role: role as "teacher" | "student",
       });
 
-      // If user is a student, also create a student record for the student area
-      if (role === "student") {
-        try {
-          await storage.createStudent({
-            personalTrainerId: user.id, // Temporarily use own ID
-            name: `${firstName} ${lastName}`,
-            email,
-            password: hashedPassword,
-            inviteToken: null,
-            isInvitePending: false, // Self-registered, no invite needed
-            gender: "male", // Default, can be updated later
-            status: "active",
-          });
-        } catch (studentError) {
-          console.error("Error creating student record:", studentError);
-          // Continue with user creation even if student creation fails
-        }
-      }
+      // Note: Students who self-register only exist in the 'users' table.
+      // Students in the 'students' table are only those registered by teachers.
 
       // Log the user in
       req.login(user, (err) => {

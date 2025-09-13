@@ -744,6 +744,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Rota para rastrear mudanças de peso quando série é completada
+  app.post(
+    "/api/exercise-weight-change",
+    isStudentOrTeacher,
+    async (req, res) => {
+      try {
+        const {
+          studentId,
+          exerciseId,
+          exerciseName,
+          sets,
+          reps,
+          currentWeight,
+          workoutSessionId,
+          comments,
+        } = req.body;
+
+        // Buscar o peso anterior do mesmo exercício
+        const previousHistory = await storage.getExerciseProgress(
+          studentId,
+          exerciseId
+        );
+        const previousWeight =
+          previousHistory.length > 0
+            ? parseFloat(previousHistory[0].weight)
+            : null;
+
+        const currentWeightFloat = parseFloat(currentWeight);
+
+        // Calcular tipo de mudança e porcentagem
+        let changeType: "increase" | "decrease" | "maintain" = "maintain";
+        let percentageChange = 0;
+
+        if (previousWeight && currentWeightFloat !== previousWeight) {
+          if (currentWeightFloat > previousWeight) {
+            changeType = "increase";
+          } else if (currentWeightFloat < previousWeight) {
+            changeType = "decrease";
+          }
+
+          // Calcular porcentagem da mudança
+          percentageChange =
+            ((currentWeightFloat - previousWeight) / previousWeight) * 100;
+        }
+
+        // Salvar no histórico com comparação
+        const historyData = {
+          studentId,
+          exerciseId,
+          exerciseName,
+          sets: parseInt(sets),
+          reps: reps.toString(),
+          weight: currentWeight.toString(),
+          previousWeight: previousWeight ? previousWeight.toString() : null,
+          changeType,
+          percentageChange: percentageChange.toString(),
+          comments,
+          workoutSessionId,
+        };
+
+        const validatedData = insertWorkoutHistorySchema.parse(historyData);
+        const history = await storage.createWorkoutHistory(validatedData);
+
+        // Retornar com informações da mudança para a interface
+        res.json({
+          ...history,
+          hasChange: previousWeight !== null,
+          changeSymbol:
+            changeType === "increase"
+              ? "↑"
+              : changeType === "decrease"
+              ? "↓"
+              : "→",
+          changeColor:
+            changeType === "increase"
+              ? "green"
+              : changeType === "decrease"
+              ? "red"
+              : "gray",
+        });
+      } catch (error) {
+        console.error("Error tracking weight change:", error);
+        res.status(500).json({ message: "Failed to track weight change" });
+      }
+    }
+  );
+
   // Workout comments routes
   app.get(
     "/api/workout-comments/:workoutSessionId",

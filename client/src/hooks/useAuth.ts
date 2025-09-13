@@ -14,7 +14,7 @@ export function useAuth() {
       // Primeiro tenta verificar professor
       try {
         const response = await apiRequest("GET", "/api/auth/user");
-        return response;
+        return await response.json();
       } catch (teacherError) {
         // Se falhar, tenta verificar estudante
         try {
@@ -44,7 +44,7 @@ export function useAuth() {
       }
     },
     retry: false,
-    staleTime: 0,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   const logoutMutation = useMutation({
