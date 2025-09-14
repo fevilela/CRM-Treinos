@@ -1268,7 +1268,7 @@ export default function BodyVisualization({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Visualização corporal */}
           <div className="space-y-4">
-            <div className="relative bg-gray-50 rounded-lg p-4 min-h-[450px]">
+            <div className="relative bg-muted rounded-lg p-4 min-h-[450px]">
               <div className="w-full h-[450px] flex items-center justify-center">
                 {selectedGender === "male" ? (
                   <MaleBodySVG />
@@ -1290,7 +1290,7 @@ export default function BodyVisualization({
             {assessment && (
               <div className="grid grid-cols-2 gap-4">
                 {assessment.currentWeight && (
-                  <div className="text-center p-3 bg-blue-50 rounded-lg">
+                  <div className="text-center p-3 bg-accent rounded-lg">
                     <p className="text-sm text-gray-600">Peso</p>
                     <p className="text-lg font-semibold text-blue-600">
                       {assessment.currentWeight.toFixed(1)} kg
@@ -1332,8 +1332,8 @@ export default function BodyVisualization({
                     key={key}
                     className={`flex justify-between items-center p-2 rounded border transition-colors ${
                       selectedPart === key
-                        ? "bg-blue-50 border-blue-200"
-                        : "bg-gray-50 hover:bg-gray-100"
+                        ? "bg-accent border-border"
+                        : "bg-muted hover:bg-muted/80"
                     } ${interactive ? "cursor-pointer" : ""}`}
                     onClick={() =>
                       interactive &&
@@ -1428,7 +1428,7 @@ export default function BodyVisualization({
                       </div>
                     )}
                     {assessment.bodyWater && (
-                      <div className="flex justify-between items-center p-2 bg-blue-50 rounded">
+                      <div className="flex justify-between items-center p-2 bg-accent rounded">
                         <span className="text-sm font-medium">% Água</span>
                         <span className="text-sm text-blue-600 font-semibold">
                           {formatValue(assessment.bodyWater)}%
@@ -1443,7 +1443,7 @@ export default function BodyVisualization({
 
         {/* Parte selecionada */}
         {selectedPart && interactive && (
-          <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="mt-4 p-4 bg-accent rounded-lg border">
             <h4 className="font-semibold text-blue-800 mb-2">
               {bodyParts[selectedPart as keyof typeof bodyParts]?.label}
             </h4>

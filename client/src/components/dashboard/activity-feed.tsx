@@ -14,9 +14,21 @@ export default function ActivityFeed() {
   const getActivityIcon = (index: number) => {
     const icons = [
       { icon: "fas fa-user-plus", bg: "bg-blue-100", color: "text-primary" },
-      { icon: "fas fa-clipboard-check", bg: "bg-green-100", color: "text-green-600" },
-      { icon: "fas fa-chart-line", bg: "bg-yellow-100", color: "text-yellow-600" },
-      { icon: "fas fa-dumbbell", bg: "bg-purple-100", color: "text-purple-600" },
+      {
+        icon: "fas fa-clipboard-check",
+        bg: "bg-green-100",
+        color: "text-green-600",
+      },
+      {
+        icon: "fas fa-chart-line",
+        bg: "bg-yellow-100",
+        color: "text-yellow-600",
+      },
+      {
+        icon: "fas fa-dumbbell",
+        bg: "bg-purple-100",
+        color: "text-purple-600",
+      },
     ];
     return icons[index % icons.length];
   };
@@ -29,11 +41,11 @@ export default function ActivityFeed() {
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
     if (diffDays > 0) {
-      return `${diffDays} dia${diffDays > 1 ? 's' : ''} atrás`;
+      return `${diffDays} dia${diffDays > 1 ? "s" : ""} atrás`;
     } else if (diffHours > 0) {
-      return `${diffHours} hora${diffHours > 1 ? 's' : ''} atrás`;
+      return `${diffHours} hora${diffHours > 1 ? "s" : ""} atrás`;
     } else {
-      return 'Há pouco tempo';
+      return "Há pouco tempo";
     }
   };
 
@@ -66,7 +78,7 @@ export default function ActivityFeed() {
   ];
 
   return (
-    <Card className="bg-white rounded-xl shadow-sm border border-gray-100">
+    <Card className="bg-card rounded-xl shadow-sm border">
       <CardHeader className="border-b border-gray-100">
         <CardTitle className="text-lg font-semibold text-gray-900">
           Atividades Recentes
@@ -77,11 +89,11 @@ export default function ActivityFeed() {
           <div className="space-y-4">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="flex items-start space-x-3 animate-pulse">
-                <div className="w-8 h-8 bg-gray-200 rounded-lg"></div>
+                <div className="w-8 h-8 bg-muted rounded-lg"></div>
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-gray-200 rounded w-32"></div>
-                  <div className="h-3 bg-gray-200 rounded w-48"></div>
-                  <div className="h-3 bg-gray-200 rounded w-20"></div>
+                  <div className="h-4 bg-muted rounded w-32"></div>
+                  <div className="h-3 bg-muted rounded w-48"></div>
+                  <div className="h-3 bg-muted rounded w-20"></div>
                 </div>
               </div>
             ))}
@@ -93,29 +105,42 @@ export default function ActivityFeed() {
               return (
                 <div key={index} className="flex items-start space-x-3">
                   <div className={`${iconConfig.bg} p-2 rounded-lg`}>
-                    <i className={`${iconConfig.icon} ${iconConfig.color} text-sm`}></i>
+                    <i
+                      className={`${iconConfig.icon} ${iconConfig.color} text-sm`}
+                    ></i>
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900" data-testid={`text-activity-title-${index}`}>
+                    <p
+                      className="text-sm font-medium text-gray-900"
+                      data-testid={`text-activity-title-${index}`}
+                    >
                       {activity.title}
                     </p>
-                    <p className="text-xs text-gray-600" data-testid={`text-activity-description-${index}`}>
+                    <p
+                      className="text-xs text-gray-600"
+                      data-testid={`text-activity-description-${index}`}
+                    >
                       {activity.description}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1" data-testid={`text-activity-time-${index}`}>
+                    <p
+                      className="text-xs text-gray-500 mt-1"
+                      data-testid={`text-activity-time-${index}`}
+                    >
                       {activity.time}
                     </p>
                   </div>
                 </div>
               );
             })}
-            
+
             {recentSessions?.map((session, index) => {
               const iconConfig = getActivityIcon(index + 4);
               return (
                 <div key={session.id} className="flex items-start space-x-3">
                   <div className={`${iconConfig.bg} p-2 rounded-lg`}>
-                    <i className={`${iconConfig.icon} ${iconConfig.color} text-sm`}></i>
+                    <i
+                      className={`${iconConfig.icon} ${iconConfig.color} text-sm`}
+                    ></i>
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">
