@@ -58,72 +58,20 @@ passport.use(
 );
 
 passport.serializeUser((user: any, done) => {
-  // Store both ID and role to know which table to query during deserialization
-  done(null, { id: user.id, role: user.role });
+  done(null, user.id);
 });
 
-passport.deserializeUser(async (sessionData: any, done) => {
+passport.deserializeUser(async (id: string, done) => {
   try {
-    let user;
-
-    if (process.env.NODE_ENV === "development") {
-      console.log("DEBUG deserializeUser - sessionData:", sessionData);
-    }
-
-    // Handle legacy sessions that only have ID (assume teacher/user)
-    if (typeof sessionData === "string") {
-      user = await storage.getUser(sessionData);
-      if (process.env.NODE_ENV === "development") {
-        console.log("DEBUG deserializeUser - legacy user lookup:", !!user);
-      }
-    } else {
-      // New sessions have {id, role}
-      if (sessionData.role === "student") {
-        const student = await storage.getStudent(sessionData.id);
-        if (process.env.NODE_ENV === "development") {
-          console.log("DEBUG deserializeUser - student lookup:", !!student);
-        }
-        if (student) {
-          // Convert student to user-like object for consistency
-          user = {
-            id: student.id,
-            email: student.email,
-            role: "student",
-            firstName: student.name.split(" ")[0] || student.name,
-            lastName: student.name.split(" ").slice(1).join(" ") || "",
-          };
-          if (process.env.NODE_ENV === "development") {
-            console.log(
-              "DEBUG deserializeUser - converted student to user:",
-              user
-            );
-          }
-        }
-      } else {
-        user = await storage.getUser(sessionData.id);
-        if (process.env.NODE_ENV === "development") {
-          console.log("DEBUG deserializeUser - teacher/user lookup:", !!user);
-        }
-      }
-    }
-
+    const user = await storage.getUser(id);
     if (!user) {
-      if (process.env.NODE_ENV === "development") {
-        console.log("DEBUG deserializeUser - no user found, returning false");
-      }
+      // Usuário foi excluído, limpar a sessão
       return done(null, false);
-    }
-
-    if (process.env.NODE_ENV === "development") {
-      console.log(
-        "DEBUG deserializeUser - success, returning user with role:",
-        user.role
-      );
     }
     done(null, user);
   } catch (error) {
     console.error("Erro ao deserializar usuário:", error);
-    done(null, false);
+    done(null, false); // Retorna false ao invés de error para evitar crash
   }
 });
 
@@ -340,10 +288,12 @@ export const isTeacher: RequestHandler = (req: any, res, next) => {
   }
 
   if (req.user.role !== "teacher") {
-    return res.status(403).json({
-      message:
-        "Acesso negado. Apenas professores podem acessar esta funcionalidade.",
-    });
+    return res
+      .status(403)
+      .json({
+        message:
+          "Acesso negado. Apenas professores podem acessar esta funcionalidade.",
+      });
   }
 
   return next();
@@ -352,20 +302,12 @@ export const isTeacher: RequestHandler = (req: any, res, next) => {
 // Middleware para verificar se o usuário é aluno ou professor (acesso específico)
 export const isStudentOrTeacher: RequestHandler = (req: any, res, next) => {
   if (!req.isAuthenticated()) {
-    console.log("[DEBUG] Authentication failed - user not authenticated");
     return res.status(401).json({ message: "Não autorizado" });
   }
 
-  console.log("[DEBUG] User authenticated:", {
-    id: req.user?.id,
-    role: req.user?.role,
-  });
-
   if (!["teacher", "student"].includes(req.user.role)) {
-    console.log("[DEBUG] Access denied - invalid role:", req.user.role);
     return res.status(403).json({ message: "Acesso negado" });
   }
 
-  console.log("[DEBUG] Authorization successful for role:", req.user.role);
   return next();
 };

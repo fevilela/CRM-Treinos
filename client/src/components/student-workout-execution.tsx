@@ -16,13 +16,14 @@ import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft,
   Play,
+  Pause,
+  Square,
   Timer,
   CheckCircle,
   Clock,
+  Target,
+  TrendingUp,
   Coffee,
-  ChevronDown,
-  ChevronUp,
-  Square,
 } from "lucide-react";
 import type { Student, Exercise } from "@shared/schema";
 
@@ -37,12 +38,14 @@ interface ExerciseSet {
   weight: string;
   reps: string;
   completed: boolean;
-  isResting?: boolean;
+  restStartTime?: number;
+  restDuration?: number;
 }
 
 interface ExerciseProgress {
   exerciseId: string;
   sets: ExerciseSet[];
+  currentSet: number;
   completed: boolean;
 }
 
@@ -110,6 +113,66 @@ function WorkoutMainTimer({
   );
 }
 
+// Componente de cronômetro de descanso
+function RestTimer({
+  isActive,
+  duration,
+  onComplete,
+}: {
+  isActive: boolean;
+  duration: number;
+  onComplete: () => void;
+}) {
+  const [timeLeft, setTimeLeft] = useState(duration);
+
+  useEffect(() => {
+    if (isActive && timeLeft > 0) {
+      const timer = setTimeout(() => {
+        setTimeLeft(timeLeft - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (timeLeft === 0 && isActive) {
+      onComplete();
+    }
+  }, [isActive, timeLeft, onComplete]);
+
+  useEffect(() => {
+    if (isActive) {
+      setTimeLeft(duration);
+    }
+  }, [isActive, duration]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const progress = ((duration - timeLeft) / duration) * 100;
+
+  if (!isActive) return null;
+
+  return (
+    <Card className="bg-orange-50 border-orange-200">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-lg text-orange-700">
+          <Coffee className="h-5 w-5" />
+          Tempo de Descanso
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-mono font-bold text-orange-600 text-center mb-2">
+          {formatTime(timeLeft)}
+        </div>
+        <Progress value={progress} className="h-2" />
+        <div className="mt-2 text-sm text-orange-600 text-center">
+          {timeLeft === 0 ? "Descanso concluído!" : "Descansando..."}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function StudentWorkoutExecution({
   workoutId,
   student,
@@ -121,13 +184,9 @@ export function StudentWorkoutExecution({
     Record<string, ExerciseProgress>
   >({});
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
-  const [currentSetIndex, setCurrentSetIndex] = useState(0);
-  const [restTimers, setRestTimers] = useState<
-    Record<
-      string,
-      { startedAt: number; duration: number; autoAdvanced?: boolean }
-    >
-  >({});
+  const [isResting, setIsResting] = useState(false);
+  const [currentRestDuration, setCurrentRestDuration] = useState(60);
+  const [manualRestActive, setManualRestActive] = useState(false);
   const [workoutCompleted, setWorkoutCompleted] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -135,17 +194,6 @@ export function StudentWorkoutExecution({
   // Buscar detalhes do treino
   const { data: workout, isLoading: workoutLoading } = useQuery<any>({
     queryKey: [`/api/workouts/${workoutId}`],
-    queryFn: async () => {
-      const response = await fetch(`/api/workouts/${workoutId}`, {
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch workout: ${response.status}`);
-      }
-
-      return response.json();
-    },
     enabled: !!workoutId,
   });
 
@@ -154,20 +202,7 @@ export function StudentWorkoutExecution({
     Exercise[]
   >({
     queryKey: [`/api/exercises/${workoutId}`],
-    queryFn: async () => {
-      const response = await fetch(`/api/exercises/${workoutId}`, {
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch exercises: ${response.status}`);
-      }
-
-      return response.json();
-    },
     enabled: !!workoutId,
-    retry: 3,
-    retryDelay: 1000,
   });
 
   // Mutation para salvar sessão de treino
@@ -197,170 +232,6 @@ export function StudentWorkoutExecution({
     },
   });
 
-  // Mutation para rastrear mudanças de peso
-  const trackWeightChangeMutation = useMutation({
-    mutationFn: async (changeData: any) => {
-      const response = await fetch("/api/exercise-weight-change", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(changeData),
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error("Erro ao rastrear mudança de peso");
-      }
-
-      return response.json();
-    },
-    onSuccess: (data) => {
-      // Mostrar notificação visual da mudança de peso
-      if (data.hasChange) {
-        toast({
-          title: `${data.changeSymbol} Mudança de peso detectada!`,
-          description: `Peso anterior: ${data.previousWeight}kg → Atual: ${data.weight}kg`,
-          variant: "default",
-        });
-      }
-      queryClient.invalidateQueries({ queryKey: ["/api/workout-history"] });
-    },
-  });
-
-  // Função para avançar para próxima série (lógica simplificada e robusta)
-  const advanceToNextSet = () => {
-    if (!exercises.length) return;
-
-    // Use um estado combinado para evitar problemas de closure
-    setCurrentSetIndex((prevSetIndex) => {
-      setCurrentExerciseIndex((prevExerciseIndex) => {
-        const currentExercise = exercises[prevExerciseIndex];
-        const totalSetsInCurrentExercise = currentExercise?.sets || 3;
-
-        // Se não é a última série do exercício atual
-        if (prevSetIndex < totalSetsInCurrentExercise - 1) {
-          // Mantém exercício, só avança série
-          return prevExerciseIndex;
-        }
-        // Se é a última série, avançar para o próximo exercício
-        else if (prevExerciseIndex < exercises.length - 1) {
-          return prevExerciseIndex + 1;
-        }
-
-        // Se é o último exercício e última série, não avança
-        return prevExerciseIndex;
-      });
-
-      // Lógica do setIndex
-      const currentExercise = exercises[currentExerciseIndex];
-      const totalSetsInCurrentExercise = currentExercise?.sets || 3;
-
-      // Se não é a última série do exercício atual
-      if (prevSetIndex < totalSetsInCurrentExercise - 1) {
-        return prevSetIndex + 1;
-      }
-      // Se é a última série, resetar para 0 (próximo exercício)
-      else {
-        return 0;
-      }
-    });
-  };
-
-  // Função para iniciar timer de descanso para uma série específica
-  const startRestTimer = (
-    exerciseId: string,
-    setIndex: number,
-    restTime: number
-  ) => {
-    const key = `${exerciseId}-${setIndex}`;
-    setRestTimers((prev) => ({
-      ...prev,
-      [key]: {
-        startedAt: Date.now(),
-        duration: restTime,
-      },
-    }));
-  };
-
-  // Função para parar timer de descanso
-  const stopRestTimer = (exerciseId: string, setIndex: number) => {
-    const key = `${exerciseId}-${setIndex}`;
-    setRestTimers((prev) => {
-      const updated = { ...prev };
-      delete updated[key];
-      return updated;
-    });
-  };
-
-  // Função para calcular tempo restante do timer (sem side effects)
-  const getTimeLeft = (key: string) => {
-    const timer = restTimers[key];
-    if (!timer) return 0;
-
-    const elapsed = Math.floor((Date.now() - timer.startedAt) / 1000);
-    return Math.max(0, timer.duration - elapsed);
-  };
-
-  // Timer global que atualiza todos os timers de descanso e faz auto-advance
-  useEffect(() => {
-    if (Object.keys(restTimers).length === 0) return;
-
-    const interval = setInterval(() => {
-      setRestTimers((prevTimers) => {
-        const updatedTimers = { ...prevTimers };
-        let shouldAdvance = false;
-        let advanceKey = "";
-
-        // Verificar cada timer
-        Object.keys(updatedTimers).forEach((key) => {
-          const timer = updatedTimers[key];
-          if (!timer) return;
-
-          const elapsed = Math.floor((Date.now() - timer.startedAt) / 1000);
-          const timeLeft = Math.max(0, timer.duration - elapsed);
-
-          // Se o tempo acabou e ainda não fez auto-advance
-          if (timeLeft === 0 && !timer.autoAdvanced) {
-            // Verificar se a série está realmente completa antes de avançar
-            const [exerciseId, setIndexStr] = key.split("-");
-            const setIndex = parseInt(setIndexStr);
-            const progress = exerciseProgress[exerciseId];
-            const currentSet = progress?.sets[setIndex];
-
-            // Só avança se a série estiver marcada como completa
-            if (currentSet?.completed) {
-              timer.autoAdvanced = true; // Marcar como processado
-              shouldAdvance = true;
-              advanceKey = key;
-            }
-          }
-        });
-
-        // Executar auto-advance fora do loop se necessário
-        if (shouldAdvance) {
-          const [exerciseId, setIndex] = advanceKey.split("-");
-
-          // Cleanup timer
-          delete updatedTimers[advanceKey];
-
-          // Schedule advance for next tick to avoid state update during render
-          setTimeout(() => {
-            advanceToNextSet();
-            toast({
-              title: "Descanso concluído!",
-              description: "Próxima série liberada automaticamente.",
-            });
-          }, 50);
-        }
-
-        return updatedTimers;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [restTimers, advanceToNextSet, toast]);
-
   // Inicializar progresso dos exercícios
   useEffect(() => {
     if (exercises.length > 0) {
@@ -374,6 +245,7 @@ export function StudentWorkoutExecution({
             reps: "",
             completed: false,
           })),
+          currentSet: 0,
           completed: false,
         };
       });
@@ -385,7 +257,7 @@ export function StudentWorkoutExecution({
     setWorkoutStarted(true);
     toast({
       title: "Treino iniciado!",
-      description: "Boa sorte no seu treino!",
+      description: "Cronômetro ativado. Boa sorte!",
     });
   };
 
@@ -395,22 +267,6 @@ export function StudentWorkoutExecution({
     weight: string,
     reps: string
   ) => {
-    const exercise = exercises.find((e) => e.id === exerciseId);
-
-    // Rastrear mudança de peso quando série é completada
-    if (student?.id && exercise && weight) {
-      trackWeightChangeMutation.mutate({
-        studentId: student.id,
-        exerciseId,
-        exerciseName: exercise.name,
-        sets: exercise.sets || 3,
-        reps,
-        currentWeight: weight,
-        workoutSessionId: null, // Será definido quando o treino for salvo
-        comments: null,
-      });
-    }
-
     setExerciseProgress((prev) => {
       const updated = { ...prev };
       updated[exerciseId].sets[setIndex] = {
@@ -420,346 +276,371 @@ export function StudentWorkoutExecution({
         completed: true,
       };
 
-      // Check if all sets for this exercise are completed
-      const allSetsCompleted = updated[exerciseId].sets.every(
-        (set) => set.completed
+      // Verificar se ainda há séries neste exercício
+      const incompleteSets = updated[exerciseId].sets.filter(
+        (set) => !set.completed
       );
-      if (allSetsCompleted) {
+
+      if (incompleteSets.length > 0) {
+        // Iniciar descanso se não for a última série usando o tempo do exercício
+        const exercise = exercises.find((e) => e.id === exerciseId);
+        const restTime = exercise?.restTime || 60; // Fallback para 60s
+        setCurrentRestDuration(restTime);
+        setIsResting(true);
+      } else {
+        // Exercício completo, passar para o próximo
         updated[exerciseId].completed = true;
+
+        // Verificar se há mais exercícios
+        const nextExerciseIndex = currentExerciseIndex + 1;
+        if (nextExerciseIndex < exercises.length) {
+          setCurrentExerciseIndex(nextExerciseIndex);
+          toast({
+            title: "Exercício concluído!",
+            description: `Passando para: ${exercises[nextExerciseIndex]?.name}`,
+          });
+        } else {
+          // Treino completo!
+          completeWorkout();
+        }
       }
 
       return updated;
     });
+  };
 
-    toast({
-      title: "Série concluída!",
-      description: `Série ${setIndex + 1} do ${exercise?.name} foi registrada.`,
+  const completeWorkout = () => {
+    setWorkoutCompleted(true);
+    setWorkoutStarted(false);
+
+    // Preparar performances dos exercícios no formato correto para o backend
+    const performances: any[] = [];
+    Object.values(exerciseProgress).forEach((progress) => {
+      const completedSets = progress.sets.filter((set) => set.completed);
+
+      if (completedSets.length > 0) {
+        // Criar uma performance por exercício com dados agregados
+        performances.push({
+          exerciseId: progress.exerciseId,
+          actualSets: completedSets.length,
+          actualReps: completedSets.map((set) => set.reps).join(","), // Exemplo: "12,10,8"
+          actualWeight: Math.max(
+            ...completedSets.map((set) => parseFloat(set.weight) || 0)
+          ), // Peso máximo usado
+          exerciseTimeSeconds: null, // Poderemos adicionar isso depois
+          restTimeSeconds: currentRestDuration, // Tempo de descanso usado
+          completed: true,
+        });
+      }
     });
 
-    // Verificar se é a última série do último exercício
-    const isLastExercise = currentExerciseIndex === exercises.length - 1;
-    const totalSetsInCurrentExercise = exercise?.sets || 3;
-    const isLastSetOfExercise = setIndex === totalSetsInCurrentExercise - 1;
-
-    if (isLastExercise && isLastSetOfExercise) {
-      // Workout completado - não iniciar descanso nem avançar
-      return;
-    }
-
-    // Iniciar timer de descanso se não for a última série
-    if (exercise?.restTime && !isLastSetOfExercise) {
-      startRestTimer(exerciseId, setIndex, exercise.restTime);
-    } else {
-      // Se não tem descanso, avançar imediatamente
-      advanceToNextSet();
-    }
-  };
-
-  const completeWorkout = async () => {
-    // Salvar dados do treino
-    const workoutData = {
+    // Salvar sessão do treino
+    const sessionData = {
       studentId: student.id,
-      workoutId,
-      duration: workoutDuration,
-      exercises: Object.values(exerciseProgress).map((progress) => ({
-        exerciseId: progress.exerciseId,
-        sets: progress.sets,
-      })),
+      workoutId: workoutId,
+      duration: Math.ceil(workoutDuration / 60), // Converter para minutos
+      notes: `Treino realizado com ${getCompletedSetsCount()} séries completadas`,
+      performances: performances, // Backend espera este campo
     };
 
-    try {
-      await saveWorkoutSessionMutation.mutateAsync(workoutData);
-      setWorkoutCompleted(true);
-    } catch (error) {
-      console.error("Error completing workout:", error);
-      toast({
-        title: "Erro",
-        description: "Erro ao finalizar treino. Tente novamente.",
-        variant: "destructive",
-      });
-    }
+    saveWorkoutSessionMutation.mutate(sessionData);
   };
 
-  if (exercisesLoading || workoutLoading) {
+  const getTotalSetsRemaining = () => {
+    return Object.values(exerciseProgress).reduce((total, progress) => {
+      return total + progress.sets.filter((set) => !set.completed).length;
+    }, 0);
+  };
+
+  const getCompletedSetsCount = () => {
+    return Object.values(exerciseProgress).reduce((total, progress) => {
+      return total + progress.sets.filter((set) => set.completed).length;
+    }, 0);
+  };
+
+  const getTotalSetsCount = () => {
+    return Object.values(exerciseProgress).reduce((total, progress) => {
+      return total + progress.sets.length;
+    }, 0);
+  };
+
+  if (workoutLoading || exercisesLoading) {
     return (
-      <div className="container mx-auto p-4 max-w-4xl">
-        <div className="text-center py-6">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-2">Carregando treino...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   if (workoutCompleted) {
     return (
-      <div className="container mx-auto p-4 max-w-4xl">
-        <Card className="text-center py-6">
-          <CardHeader>
-            <CheckCircle className="h-10 w-10 text-primary mx-auto mb-3" />
-            <CardTitle className="text-lg">Parabéns!</CardTitle>
-            <CardDescription>
-              Você concluiu seu treino com sucesso!
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={onBack}>Voltar ao Dashboard</Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-2xl mx-auto">
+          <Card className="bg-green-50 border-green-200">
+            <CardHeader className="text-center">
+              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              </div>
+              <CardTitle className="text-2xl text-green-700">
+                Parabéns! Treino Concluído
+              </CardTitle>
+              <CardDescription>
+                Você completou seu treino em {Math.floor(workoutDuration / 60)}{" "}
+                minutos
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <div className="font-semibold text-gray-700">
+                    Séries Completas
+                  </div>
+                  <div className="text-2xl font-bold text-green-600">
+                    {getCompletedSetsCount()}
+                  </div>
+                </div>
+                <div>
+                  <div className="font-semibold text-gray-700">Tempo Total</div>
+                  <div className="text-2xl font-bold text-green-600">
+                    {Math.floor(workoutDuration / 60)}min
+                  </div>
+                </div>
+              </div>
+              <Button onClick={onBack} className="w-full">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Voltar aos Treinos
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-4 max-w-4xl space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <Button
-          variant="outline"
-          onClick={onBack}
-          className="flex items-center gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Voltar
-        </Button>
-        <h1 className="text-lg font-semibold">{workout?.name || "Treino"}</h1>
-        <div></div>
-      </div>
-
-      {/* Timer Principal */}
-      <WorkoutMainTimer
-        isActive={workoutStarted && !workoutCompleted}
-        onTimeUpdate={setWorkoutDuration}
-      />
-
-      {/* Botão Iniciar Treino */}
-      {!workoutStarted && (
-        <Card>
-          <CardContent className="text-center py-6">
-            <Button onClick={startWorkout} className="flex items-center gap-2">
-              <Play className="h-5 w-5" />
-              Iniciar Treino
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" onClick={onBack}>
+              <ArrowLeft className="h-4 w-4" />
             </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Interface Minimalista - Uma Série por Vez */}
-      {workoutStarted && exercises.length > 0 && (
-        <div className="space-y-6">
-          {/* Indicador de Progresso */}
-          <Card className="bg-white border-gray-200">
-            <CardContent className="py-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-base font-medium text-gray-900">
-                    Exercício {currentExerciseIndex + 1} de {exercises.length}
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    {exercises[currentExerciseIndex]?.name}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <h3 className="text-base font-medium text-gray-900">
-                    Série {currentSetIndex + 1} de{" "}
-                    {exercises[currentExerciseIndex]?.sets || 3}
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    {exercises[currentExerciseIndex]?.weight &&
-                      `${exercises[currentExerciseIndex].weight}kg • `}
-                    {exercises[currentExerciseIndex]?.reps} reps
-                    {exercises[currentExerciseIndex]?.restTime &&
-                      ` • ${exercises[currentExerciseIndex].restTime}s rest`}
-                  </p>
-                </div>
-              </div>
-
-              {/* Barra de Progresso Geral */}
-              <div className="mt-4">
-                {(() => {
-                  // Calcular total de séries e séries completadas de forma precisa
-                  const totalSets = exercises.reduce(
-                    (sum, ex) => sum + (ex.sets || 3),
-                    0
-                  );
-                  const completedSets =
-                    exercises
-                      .slice(0, currentExerciseIndex)
-                      .reduce((sum, ex) => sum + (ex.sets || 3), 0) +
-                    currentSetIndex;
-                  const progressPercentage =
-                    totalSets > 0
-                      ? Math.round((completedSets / totalSets) * 100)
-                      : 0;
-
-                  return (
-                    <>
-                      <div className="flex justify-between text-xs text-gray-600 mb-1">
-                        <span>Progresso do Treino</span>
-                        <span>{progressPercentage}%</span>
-                      </div>
-                      <Progress value={progressPercentage} className="h-2" />
-                    </>
-                  );
-                })()}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Série Atual */}
-          {(() => {
-            const currentExercise = exercises[currentExerciseIndex];
-            const progress = exerciseProgress[currentExercise?.id];
-            const currentSet = progress?.sets[currentSetIndex];
-
-            if (!currentExercise || !progress || !currentSet) return null;
-
-            return (
-              <Card className="bg-white border border-gray-200">
-                <CardHeader className="text-center pb-6">
-                  <CardTitle className="text-base text-gray-900">
-                    {currentExercise.name}
-                  </CardTitle>
-                  <CardDescription className="text-sm">
-                    Série {currentSet.setNumber}
-                  </CardDescription>
-                </CardHeader>
-
-                <CardContent>
-                  <SetInput
-                    set={currentSet}
-                    exercise={currentExercise}
-                    exerciseId={currentExercise.id}
-                    setIndex={currentSetIndex}
-                    onComplete={completeSet}
-                    disabled={currentSet.completed}
-                    restTimeLeft={getTimeLeft(
-                      `${currentExercise.id}-${currentSetIndex}`
-                    )}
-                    studentId={student?.id || null}
-                    onStartRest={() =>
-                      startRestTimer(
-                        currentExercise.id,
-                        currentSetIndex,
-                        currentExercise.restTime || 60
-                      )
-                    }
-                    onStopRest={() => {
-                      stopRestTimer(currentExercise.id, currentSetIndex);
-                      advanceToNextSet();
-                    }}
-                  />
-                </CardContent>
-              </Card>
-            );
-          })()}
-        </div>
-      )}
-
-      {/* Botão Finalizar Treino - só aparece quando TODOS os exercícios estão completos */}
-      {workoutStarted &&
-        Object.values(exerciseProgress).length > 0 &&
-        Object.values(exerciseProgress).every((p) => p.completed) && (
-          <Card className="bg-white border-gray-200">
-            <CardContent className="text-center py-6">
-              <Button
-                onClick={completeWorkout}
-                variant="default"
-                className="bg-primary hover:bg-primary/90 text-white"
-              >
-                <CheckCircle className="h-5 w-5 mr-2" />
-                Finalizar Treino Completo
-              </Button>
-              <p className="text-sm text-muted-foreground mt-2">
-                Parabéns! Você completou todos os exercícios.
+            <div>
+              <h1 className="text-2xl font-bold">
+                {workout?.name || "Treino"}
+              </h1>
+              <p className="text-gray-500">
+                {workout?.description || "Treino personalizado"}
               </p>
+            </div>
+          </div>
+          <Badge variant="secondary">{workout?.category || "Treino"}</Badge>
+        </div>
+
+        {/* Cronômetro Principal */}
+        <WorkoutMainTimer
+          isActive={workoutStarted}
+          onTimeUpdate={setWorkoutDuration}
+        />
+
+        {/* Cronômetro de Descanso */}
+        <RestTimer
+          isActive={isResting || manualRestActive}
+          duration={currentRestDuration}
+          onComplete={() => {
+            setIsResting(false);
+            setManualRestActive(false);
+          }}
+        />
+
+        {/* Botão de Descanso Manual */}
+        {workoutStarted && !isResting && !manualRestActive && (
+          <Card>
+            <CardContent className="pt-4">
+              <Button
+                onClick={() => {
+                  const currentExercise = exercises[currentExerciseIndex];
+                  const restTime = currentExercise?.restTime || 60;
+                  setCurrentRestDuration(restTime);
+                  setManualRestActive(true);
+                }}
+                variant="outline"
+                className="w-full"
+              >
+                <Coffee className="h-4 w-4 mr-2" />
+                Iniciar Descanso (
+                {exercises[currentExerciseIndex]?.restTime || 60}s)
+              </Button>
             </CardContent>
           </Card>
         )}
-    </div>
-  );
-}
 
-// Hook para buscar histórico de peso de um exercício
-function useExerciseWeightHistory(
-  studentId: string | null,
-  exerciseId: string
-) {
-  return useQuery({
-    queryKey: [`/api/workout-history/${studentId}`, exerciseId],
-    queryFn: async () => {
-      if (!studentId) return [];
-      const response = await fetch(
-        `/api/workout-history/${studentId}?exerciseId=${exerciseId}`,
-        { credentials: "include" }
-      );
-      if (!response.ok) return [];
-      return response.json();
-    },
-    enabled: !!studentId,
-    staleTime: 30000, // Cache por 30 segundos
-  });
-}
+        {/* Progresso Geral */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Progresso do Treino
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex justify-between text-sm">
+                <span>Séries Completadas</span>
+                <span>
+                  {getCompletedSetsCount()} / {getTotalSetsCount()}
+                </span>
+              </div>
+              <Progress
+                value={
+                  getTotalSetsCount()
+                    ? (getCompletedSetsCount() / getTotalSetsCount()) * 100
+                    : 0
+                }
+              />
+              <div className="text-sm text-gray-600 text-center">
+                {getTotalSetsRemaining()} séries restantes
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-// Componente para mostrar mudança de peso com símbolos
-function WeightChangeIndicator({
-  studentId,
-  exerciseId,
-  currentWeight,
-}: {
-  studentId: string | null;
-  exerciseId: string;
-  currentWeight: string;
-}) {
-  const { data: history = [] } = useExerciseWeightHistory(
-    studentId,
-    exerciseId
-  );
+        {/* Botão Iniciar Treino */}
+        {!workoutStarted && (
+          <Card>
+            <CardContent className="pt-6">
+              <Button onClick={startWorkout} className="w-full" size="lg">
+                <Play className="h-5 w-5 mr-2" />
+                Iniciar Treino
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
-  if (!history.length || history.length < 2) {
-    return null; // Sem histórico suficiente para comparar
-  }
+        {/* Lista de Exercícios - Mostrar todos */}
+        {exercises.map((exercise, exerciseIndex) => {
+          const progress = exerciseProgress[exercise.id];
+          if (!progress) return null;
 
-  const lastRecord = history[0]; // Mais recente
+          const isCurrentExercise = exerciseIndex === currentExerciseIndex;
+          const isCompleted = progress.completed;
+          const canInteract =
+            workoutStarted && (isCurrentExercise || isCompleted);
+          const completedSets = progress.sets.filter(
+            (set) => set.completed
+          ).length;
+          const totalSets = progress.sets.length;
 
-  if (!lastRecord.changeType || !lastRecord.previousWeight) {
-    return null;
-  }
+          return (
+            <Card
+              key={exercise.id}
+              className={
+                isCurrentExercise
+                  ? "border-blue-500 bg-blue-50"
+                  : isCompleted
+                  ? "border-green-500 bg-green-50"
+                  : workoutStarted
+                  ? "border-gray-200"
+                  : "opacity-50"
+              }
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {isCompleted ? (
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    ) : isCurrentExercise ? (
+                      <Clock className="h-5 w-5 text-blue-600" />
+                    ) : (
+                      <Timer className="h-5 w-5 text-gray-400" />
+                    )}
+                    {exercise.name}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">
+                      {completedSets}/{totalSets} séries
+                    </Badge>
+                    <Badge
+                      variant={
+                        isCompleted
+                          ? "default"
+                          : isCurrentExercise
+                          ? "secondary"
+                          : "outline"
+                      }
+                    >
+                      {isCompleted
+                        ? "Concluído"
+                        : isCurrentExercise
+                        ? "Atual"
+                        : "Pendente"}
+                    </Badge>
+                  </div>
+                </CardTitle>
 
-  const getSymbolAndColor = (changeType: string) => {
-    switch (changeType) {
-      case "increase":
-        return { symbol: "↗", color: "text-primary", bg: "bg-primary/20" };
-      case "decrease":
-        return {
-          symbol: "↘",
-          color: "text-muted-foreground",
-          bg: "bg-gray-100",
-        };
-      case "maintain":
-        return { symbol: "→", color: "text-gray-400", bg: "bg-gray-600/20" };
-      default:
-        return { symbol: "→", color: "text-gray-400", bg: "bg-gray-600/20" };
-    }
-  };
+                {/* Informações Planejadas */}
+                <CardDescription className="space-y-1">
+                  <div className="flex items-center gap-4 text-sm">
+                    <span>
+                      <strong>Planejado:</strong> {exercise.sets} ×{" "}
+                      {exercise.reps} reps
+                    </span>
+                    {exercise.weight && (
+                      <span>
+                        <strong>Peso sugerido:</strong> {exercise.weight}kg
+                      </span>
+                    )}
+                    {exercise.restTime && (
+                      <span>
+                        <strong>Descanso:</strong> {exercise.restTime}s
+                      </span>
+                    )}
+                  </div>
+                  {exercise.notes && (
+                    <div className="text-gray-600 mt-2">{exercise.notes}</div>
+                  )}
+                </CardDescription>
+              </CardHeader>
 
-  const { symbol, color, bg } = getSymbolAndColor(lastRecord.changeType);
-  const percentageChange = parseFloat(lastRecord.percentageChange || "0");
+              {canInteract && (
+                <CardContent>
+                  <div className="space-y-4">
+                    {progress.sets.map((set, setIndex) => {
+                      const isCurrentSet = isCurrentExercise && !set.completed;
+                      return (
+                        <SetInput
+                          key={setIndex}
+                          set={set}
+                          exercise={exercise}
+                          exerciseId={exercise.id}
+                          setIndex={setIndex}
+                          onComplete={completeSet}
+                          disabled={set.completed}
+                          isActive={
+                            isCurrentSet &&
+                            setIndex ===
+                              progress.sets.findIndex((s) => !s.completed)
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              )}
 
-  return (
-    <div
-      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${bg} border border-current/20`}
-    >
-      <span className={`${color} font-bold text-sm`}>{symbol}</span>
-      <span className={`${color} font-medium text-xs`}>
-        {lastRecord.previousWeight}→{lastRecord.weight}kg
-      </span>
-      {percentageChange !== 0 && (
-        <span className={`${color} text-xs`}>
-          ({percentageChange > 0 ? "+" : ""}
-          {percentageChange.toFixed(1)}%)
-        </span>
-      )}
+              {/* Mostrar resumo para exercícios não atuais */}
+              {!canInteract && workoutStarted && (
+                <CardContent>
+                  <div className="text-sm text-gray-600">
+                    Aguardando para liberar...
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -772,10 +653,7 @@ function SetInput({
   setIndex,
   onComplete,
   disabled,
-  restTimeLeft,
-  onStartRest,
-  onStopRest,
-  studentId,
+  isActive,
 }: {
   set: ExerciseSet;
   exercise: Exercise;
@@ -788,10 +666,7 @@ function SetInput({
     reps: string
   ) => void;
   disabled: boolean;
-  restTimeLeft?: number;
-  onStartRest: () => void;
-  onStopRest: () => void;
-  studentId: string | null;
+  isActive?: boolean;
 }) {
   const [weight, setWeight] = useState(
     set.weight || exercise.weight?.toString() || ""
@@ -805,158 +680,69 @@ function SetInput({
   };
 
   return (
-    <div className="bg-white border border-gray-200 text-gray-900 p-4 rounded-lg min-h-[120px] relative">
-      {/* Header com nome do exercício, vídeo e botão concluir */}
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex flex-col gap-2">
-          <h3 className="text-gray-900 text-base font-semibold">
-            {exercise.name}
-          </h3>
-          {/* Indicador de mudança de peso */}
-          {weight && (
-            <WeightChangeIndicator
-              studentId={studentId}
-              exerciseId={exerciseId}
-              currentWeight={weight}
-            />
-          )}
-        </div>
-        <div className="flex gap-3 items-center">
+    <Card
+      className={
+        disabled
+          ? "bg-green-50 border-green-200"
+          : isActive
+          ? "bg-blue-50 border-blue-200"
+          : ""
+      }
+    >
+      <CardContent className="pt-4">
+        <div className="flex items-center gap-4">
+          <div className="font-semibold min-w-[80px]">
+            Série {set.setNumber}
+            {isActive && (
+              <span className="text-blue-600 text-xs ml-1">(atual)</span>
+            )}
+          </div>
+          <div className="flex gap-2 flex-1">
+            <div className="flex-1">
+              <label className="text-sm text-gray-600">
+                Peso (kg)
+                {exercise.weight && (
+                  <span className="text-xs text-gray-500">
+                    {" "}
+                    - sugerido: {exercise.weight}kg
+                  </span>
+                )}
+              </label>
+              <Input
+                type="number"
+                value={weight}
+                onChange={(e) => setWeight(e.target.value)}
+                disabled={disabled}
+                placeholder={exercise.weight?.toString() || "0"}
+              />
+            </div>
+            <div className="flex-1">
+              <label className="text-sm text-gray-600">
+                Repetições
+                <span className="text-xs text-gray-500">
+                  {" "}
+                  - meta: {exercise.reps}
+                </span>
+              </label>
+              <Input
+                type="number"
+                value={reps}
+                onChange={(e) => setReps(e.target.value)}
+                disabled={disabled}
+                placeholder={exercise.reps || "0"}
+              />
+            </div>
+          </div>
           <Button
-            variant="ghost"
+            onClick={handleComplete}
+            disabled={disabled || !weight || !reps}
+            variant={disabled ? "outline" : "default"}
             size="sm"
-            className="text-muted-foreground hover:text-primary hover:bg-primary/10"
           >
-            Vídeo
+            {disabled ? <CheckCircle className="h-4 w-4" /> : "Concluir"}
           </Button>
-          {!disabled && (
-            <Button
-              onClick={handleComplete}
-              disabled={!weight || !reps}
-              size="sm"
-              className="bg-primary hover:bg-primary/90 text-white"
-            >
-              Concluir
-            </Button>
-          )}
         </div>
-      </div>
-
-      {/* Área principal com os campos */}
-      {!disabled && (
-        <div className="flex justify-center items-center gap-4 mb-6">
-          {/* Peso */}
-          <div className="text-center">
-            <label className="block text-xs font-medium text-gray-600 mb-2">
-              Peso
-            </label>
-            <Input
-              type="number"
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-              placeholder={exercise.weight?.toString() || "20"}
-              className="bg-white border border-gray-300 text-gray-900 text-center text-sm font-medium w-16 h-10"
-            />
-          </div>
-
-          {/* Série */}
-          <div className="text-center">
-            <label className="block text-xs font-medium text-gray-600 mb-2">
-              Série
-            </label>
-            <div className="bg-gray-100 border border-gray-300 rounded-md p-2 text-sm font-medium w-16 h-10 flex items-center justify-center">
-              {setIndex + 1}
-            </div>
-          </div>
-
-          {/* Repetições */}
-          <div className="text-center">
-            <label className="block text-xs font-medium text-gray-600 mb-2">
-              Repetições
-            </label>
-            <Input
-              value={reps}
-              onChange={(e) => setReps(e.target.value)}
-              placeholder={exercise.reps || "12-15"}
-              className="bg-white border border-gray-300 text-gray-900 text-center text-sm font-medium w-16 h-10"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Quando série está completa */}
-      {disabled && (
-        <div className="flex justify-center items-center mb-4">
-          <div className="text-center border border-gray-200 rounded-lg p-3 w-full bg-gray-50">
-            <CheckCircle className="h-5 w-5 text-primary mx-auto mb-1" />
-            <p className="text-gray-900 font-medium text-sm">
-              Série {setIndex + 1} Completa
-            </p>
-            {weight && reps && (
-              <p className="text-xs text-gray-600 mt-1">
-                {weight}kg × {reps} repetições
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Timer de descanso ativo */}
-      {restTimeLeft && restTimeLeft > 0 && (
-        <div className="mb-4">
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <Coffee className="h-4 w-4 text-orange-600" />
-              <span className="text-gray-900 font-medium text-sm">
-                Descanso
-              </span>
-            </div>
-            <div className="text-base font-mono font-semibold text-orange-600 mb-2">
-              {Math.floor(restTimeLeft / 60)}:
-              {(restTimeLeft % 60).toString().padStart(2, "0")}
-            </div>
-            <Progress
-              value={
-                (((exercise.restTime || 60) - restTimeLeft) /
-                  (exercise.restTime || 60)) *
-                100
-              }
-              className="h-1 max-w-xs mx-auto"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Footer com descanso */}
-      <div className="flex justify-start items-center mt-auto">
-        <div className="text-left">
-          {/* Botão de descanso */}
-          {disabled &&
-            exercise.restTime &&
-            (!restTimeLeft || restTimeLeft === 0) && (
-              <Button
-                variant="ghost"
-                onClick={onStartRest}
-                className="text-primary hover:text-primary/80 hover:bg-primary/10 px-0"
-              >
-                <Coffee className="h-4 w-4 mr-2" />
-                Descanso
-              </Button>
-            )}
-
-          {/* Timer de descanso ativo */}
-          {restTimeLeft && restTimeLeft > 0 && (
-            <Button
-              variant="ghost"
-              onClick={onStopRest}
-              className="text-primary hover:text-primary/80 hover:bg-primary/10 px-0"
-            >
-              <Square className="h-4 w-4 mr-2" />
-              Parar Descanso
-            </Button>
-          )}
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

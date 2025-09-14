@@ -542,25 +542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const student = await storage.validateStudentPassword(email, password);
 
       if (student) {
-        // Log the student into the Passport session as a 'student' role user
-        const sessionUser = {
-          id: student.id,
-          email: student.email,
-          role: "student" as const,
-          firstName: student.name.split(" ")[0] || student.name,
-          lastName: student.name.split(" ").slice(1).join(" ") || "",
-        };
-
-        req.login(sessionUser, (err) => {
-          if (err) {
-            console.error("Error creating student session:", err);
-            return res
-              .status(500)
-              .json({ message: "Failed to create session" });
-          }
-          console.log("Student session created successfully");
-          res.json({ success: true, student });
-        });
+        res.json({ success: true, student });
       } else {
         res
           .status(401)
@@ -571,44 +553,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to login" });
     }
   });
-
-  // Debug route for bcrypt testing (development only)
-  if (process.env.NODE_ENV === "development") {
-    app.post("/api/debug/bcrypt", async (req, res) => {
-      try {
-        const { email, password } = req.body;
-        const student = await storage.getStudentByEmail(email);
-
-        if (!student) {
-          return res.json({ error: "Student not found", email });
-        }
-
-        if (!student.password) {
-          return res.json({
-            error: "Student has no password",
-            student: { id: student.id, email: student.email },
-          });
-        }
-
-        const bcrypt = await import("bcrypt");
-        const match = await bcrypt.compare(password, student.password);
-
-        res.json({
-          email,
-          providedPassword: password,
-          storedHashPrefix: student.password.slice(0, 30) + "...",
-          hashLength: student.password.length,
-          bcryptMatch: match,
-        });
-      } catch (error) {
-        if (error instanceof Error) {
-          res.status(500).json({ error: error.message });
-        } else {
-          res.status(500).json({ error: String(error) });
-        }
-      }
-    });
-  }
 
   // Student invite verification and password setup
   app.get("/api/students/invite/:token", async (req, res) => {
