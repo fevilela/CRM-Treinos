@@ -17,14 +17,6 @@ export function getSession() {
     tableName: "sessions",
   });
 
-  // Generate a strong session secret if not provided
-  const sessionSecret =
-    process.env.SESSION_SECRET || process.env.NODE_ENV === "production"
-      ? (() => {
-          throw new Error("SESSION_SECRET must be set in production!");
-        })()
-      : "dev-session-secret-" + Math.random().toString(36).substring(2, 15);
-
   return session({
     secret: process.env.SESSION_SECRET || "your-secret-key-change-this",
     store: sessionStore,
@@ -32,8 +24,7 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // Secure in production
-      sameSite: "strict", // CSRF protection
+      secure: false, // Set to true in production with HTTPS
       maxAge: sessionTtl,
     },
   });
