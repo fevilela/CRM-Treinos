@@ -11,26 +11,12 @@ app.set("trust proxy", 1);
 // CORS middleware
 app.use((req, res, next) => {
   const origin = req.headers.origin as string | undefined;
-  const replitDomain =
-    process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN;
-  const allowedOrigins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-  ];
-
-  // Add Replit domains
-  if (replitDomain) {
-    allowedOrigins.push(`https://${replitDomain}`);
-    allowedOrigins.push(`http://${replitDomain}`);
-  }
+  const allowedOrigins = ["http://localhost:3000", "http://127.0.0.1:3000"];
 
   if ((origin && allowedOrigins.includes(origin)) || !origin) {
     res.header(
       "Access-Control-Allow-Origin",
-      origin ||
-        (replitDomain ? `https://${replitDomain}` : "http://localhost:3000")
+      origin || "http://localhost:3000"
     );
   }
 
@@ -110,7 +96,7 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // Use port 3000 for Replit environment (both frontend and backend on same server)
+  // Use port 3000 for local development (both frontend and backend on same server)
   const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
   server.listen(
     {

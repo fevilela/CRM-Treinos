@@ -128,20 +128,20 @@ function Router() {
   // Type assertion do user baseado na estrutura do schema
   const authUser = user as AuthUser;
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
   return (
     <Switch>
       <Route path="/student/setup-password" component={StudentSetupPassword} />
 
       <Route>
         {() => {
+          if (isLoading) {
+            return (
+              <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+              </div>
+            );
+          }
+
           if (!isAuthenticated) {
             return <LoginPage onSuccess={() => window.location.reload()} />;
           }

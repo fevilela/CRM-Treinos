@@ -51,28 +51,15 @@ export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
-  getUsersCount(): Promise<number>;
   createUser(user: InsertUser): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
 
   // Student operations
   getStudents(personalTrainerId: string): Promise<Student[]>;
   getStudent(id: string): Promise<Student | undefined>;
-  getStudentByEmail(email: string): Promise<Student | undefined>;
-  getStudentsCount(): Promise<number>;
   createStudent(student: InsertStudent): Promise<Student>;
   updateStudent(id: string, student: Partial<InsertStudent>): Promise<Student>;
   deleteStudent(id: string): Promise<void>;
-
-  // Student authentication
-  validateStudentPassword(
-    email: string,
-    password: string
-  ): Promise<Student | null>;
-  completeStudentRegistration(
-    email: string,
-    password: string
-  ): Promise<Student | null>;
 
   // Workout operations
   getWorkouts(personalTrainerId: string): Promise<Workout[]>;
@@ -198,16 +185,6 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getUsersCount(): Promise<number> {
-    const result = await db.select({ count: sql`count(*)` }).from(users);
-    return Number(result[0].count);
-  }
-
-  async getStudentsCount(): Promise<number> {
-    const result = await db.select({ count: sql`count(*)` }).from(students);
-    return Number(result[0].count);
-  }
-
   async createUser(userData: InsertUser): Promise<User> {
     const [user] = await db.insert(users).values(userData).returning();
     return user;
@@ -263,18 +240,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createStudent(student: InsertStudent): Promise<Student> {
-    let studentData = {
+    const studentData = {
       ...student,
       weight: student.weight?.toString() || null,
       height: student.height?.toString() || null,
     };
-
-    // Generate invite token only if student requires registration
-    if (student.isInvitePending) {
-      const crypto = require("crypto");
-      const inviteToken = crypto.randomBytes(32).toString("hex");
-      studentData.inviteToken = inviteToken;
-    }
     const [newStudent] = await db
       .insert(students)
       .values(studentData)
@@ -762,47 +732,6 @@ export class DatabaseStorage implements IStorage {
       ...student,
       weight: student.weight ? parseFloat(student.weight as string) : null,
       height: student.height ? parseFloat(student.height as string) : null,
-    } as any;
-  }
-
-  async completeStudentRegistration(
-    email: string,
-    password: string
-  ): Promise<Student | null> {
-    const student = await this.getStudentByEmail(email);
-
-    if (!student) {
-      return null;
-    }
-
-    // Check if student is pending registration
-    if (!student.isInvitePending) {
-      return null; // Student already registered
-    }
-
-    const bcrypt = await import("bcrypt");
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const [updatedStudent] = await db
-      .update(students)
-      .set({
-        password: hashedPassword,
-        isInvitePending: false,
-        inviteToken: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(students.id, student.id))
-      .returning();
-
-    // Convert decimal strings back to numbers for frontend
-    return {
-      ...updatedStudent,
-      weight: updatedStudent.weight
-        ? parseFloat(updatedStudent.weight as string)
-        : null,
-      height: updatedStudent.height
-        ? parseFloat(updatedStudent.height as string)
-        : null,
     } as any;
   }
 

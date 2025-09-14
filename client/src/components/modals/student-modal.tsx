@@ -47,7 +47,6 @@ const studentFormSchema = insertStudentSchema
     gender: z.enum(["male", "female"], {
       required_error: "Gênero é obrigatório",
     }),
-    requiresRegistration: z.boolean().optional().default(false),
   });
 
 type StudentFormData = z.infer<typeof studentFormSchema>;
@@ -77,7 +76,6 @@ export default function StudentModal({
       goal: "",
       medicalConditions: "",
       status: "active",
-      requiresRegistration: false,
     },
   });
 
@@ -93,7 +91,6 @@ export default function StudentModal({
         goal: student.goal || "",
         medicalConditions: student.medicalConditions || "",
         status: student.status || "active",
-        requiresRegistration: false, // Always false for existing students
       });
     } else if (isOpen) {
       form.reset({
@@ -106,19 +103,25 @@ export default function StudentModal({
         goal: "",
         medicalConditions: "",
         status: "active",
-        requiresRegistration: false,
+      });
+    } else if (isOpen) {
+      form.reset({
+        name: "",
+        email: "",
+        phone: "",
+        gender: "male",
+        weight: undefined,
+        height: undefined,
+        goal: "",
+        medicalConditions: "",
+        status: "active",
       });
     }
   }, [student, isOpen, form]);
 
   const createStudentMutation = useMutation({
     mutationFn: async (data: StudentFormData) => {
-      const { requiresRegistration, ...studentData } = data;
-      const payload = {
-        ...studentData,
-        isInvitePending: requiresRegistration || false,
-      };
-      const response = await apiRequest("POST", "/api/students", payload);
+      const response = await apiRequest("POST", "/api/students", data);
       return response.json();
     },
     onSuccess: (result) => {
@@ -135,11 +138,10 @@ export default function StudentModal({
 
   const updateStudentMutation = useMutation({
     mutationFn: async (data: StudentFormData) => {
-      const { requiresRegistration, ...studentData } = data;
       const response = await apiRequest(
         "PUT",
         `/api/students/${student!.id}`,
-        studentData
+        data
       );
       return response.json();
     },
@@ -394,33 +396,6 @@ export default function StudentModal({
                 </FormItem>
               )}
             />
-
-            {/* Convite de Registro - Apenas para novos alunos */}
-            {!student && (
-              <FormField
-                control={form.control}
-                name="requiresRegistration"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>
-                        Enviar convite de registro para o aluno
-                      </FormLabel>
-                      <FormDescription>
-                        O aluno receberá um token de convite para criar sua
-                        própria conta e acessar os treinos personalizados.
-                      </FormDescription>
-                    </div>
-                  </FormItem>
-                )}
-              />
-            )}
 
             <div className="flex justify-end space-x-3 pt-6 border-t">
               <Button type="button" variant="outline" onClick={onClose}>

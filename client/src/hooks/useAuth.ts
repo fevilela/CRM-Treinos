@@ -14,7 +14,7 @@ export function useAuth() {
       // Primeiro tenta verificar professor
       try {
         const response = await apiRequest("GET", "/api/auth/user");
-        return await response.json();
+        return response;
       } catch (teacherError) {
         // Se falhar, tenta verificar estudante
         try {
@@ -49,7 +49,6 @@ export function useAuth() {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      // Logout funciona para ambos professores e estudantes
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {

@@ -5,15 +5,6 @@ import { Strategy as LocalStrategy } from "passport-local";
 import bcrypt from "bcrypt";
 import { storage } from "./storage";
 import connectPg from "connect-pg-simple";
-import type { Student } from "@shared/schema";
-
-// Utility function to sanitize student objects by removing sensitive data
-export function sanitizeStudent(
-  student: Student
-): Omit<Student, "password" | "inviteToken"> {
-  const { password, inviteToken, ...sanitizedStudent } = student;
-  return sanitizedStudent;
-}
 
 // Configure session store
 export function getSession() {
@@ -27,34 +18,22 @@ export function getSession() {
   });
 
   // Generate a strong session secret if not provided
-  let sessionSecret = process.env.SESSION_SECRET;
-
-  if (!sessionSecret) {
-    // More defensive check for production environment
-    const isProduction =
-      process.env.NODE_ENV === "production" || process.env.NODE_ENV === "prod";
-    console.log(
-      `Ambiente detectado: NODE_ENV=${process.env.NODE_ENV}, isProduction=${isProduction}`
-    );
-
-    if (isProduction) {
-      throw new Error("SESSION_SECRET must be set in production!");
-    }
-
-    console.log("Usando SESSION_SECRET temporário para desenvolvimento");
-    sessionSecret =
-      "dev-session-secret-" + Math.random().toString(36).substring(2, 15);
-  }
+  const sessionSecret =
+    process.env.SESSION_SECRET || process.env.NODE_ENV === "production"
+      ? (() => {
+          throw new Error("SESSION_SECRET must be set in production!");
+        })()
+      : "dev-session-secret-" + Math.random().toString(36).substring(2, 15);
 
   return session({
-    secret: sessionSecret,
+    secret: process.env.SESSION_SECRET || "your-secret-key-change-this",
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Secure in production
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax", // More flexible in dev
+      sameSite: "strict", // CSRF protection
       maxAge: sessionTtl,
     },
   });
@@ -255,7 +234,42 @@ export async function setupAuth(app: Express) {
     }
   });
 
-  // Note: Student login route is handled in routes.ts at /api/auth/student/login
+  // Student-specific login route
+  app.post("/api/student/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+
+      const student = await storage.validateStudentPassword(email, password);
+
+      if (!student) {
+        return res.status(401).json({ message: "Email ou senha incorretos" });
+      }
+
+      // Convert student to user-like object for session
+      const userLikeStudent = {
+        id: student.id,
+        email: student.email,
+        role: "student",
+        firstName: student.name.split(" ")[0] || student.name,
+        lastName: student.name.split(" ").slice(1).join(" ") || "",
+      };
+
+      // Use passport to establish session
+      req.login(userLikeStudent, (err) => {
+        if (err) {
+          console.error("Error establishing student session:", err);
+          return res
+            .status(500)
+            .json({ message: "Erro ao estabelecer sessão" });
+        }
+
+        res.json({ success: true, user: userLikeStudent });
+      });
+    } catch (error) {
+      console.error("Student login error:", error);
+      res.status(500).json({ message: "Erro interno do servidor" });
+    }
+  });
 
   // Logout route
   app.post("/api/logout", (req, res) => {
