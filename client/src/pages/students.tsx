@@ -55,6 +55,37 @@ export default function Students() {
     },
   });
 
+  const resendInviteMutation = useMutation({
+    mutationFn: async (studentId: string) => {
+      await apiRequest("POST", `/api/students/${studentId}/resend-invite`);
+    },
+    onSuccess: (_, studentId) => {
+      const student = students?.find((s) => s.id === studentId);
+      toast({
+        title: "Sucesso",
+        description: `Convite reenviado para ${student?.email || "o aluno"}!`,
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Erro",
+        description: "Erro ao reenviar convite",
+        variant: "destructive",
+      });
+    },
+  });
+
   const filteredStudents =
     students?.filter((student) =>
       student.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -73,6 +104,14 @@ export default function Students() {
   const handleDeleteStudent = (studentId: string) => {
     if (window.confirm("Tem certeza que deseja remover este aluno?")) {
       deleteStudentMutation.mutate(studentId);
+    }
+  };
+
+  const handleResendInvite = (studentId: string) => {
+    if (
+      window.confirm("Deseja reenviar o convite por email para este aluno?")
+    ) {
+      resendInviteMutation.mutate(studentId);
     }
   };
 
@@ -196,11 +235,18 @@ export default function Students() {
                       </h3>
                       <p className="text-sm text-gray-600">{student.email}</p>
                     </div>
-                    <Badge
-                      className={getStatusColor(student.status || "active")}
-                    >
-                      {getStatusText(student.status || "active")}
-                    </Badge>
+                    <div className="flex flex-col gap-1">
+                      <Badge
+                        className={getStatusColor(student.status || "active")}
+                      >
+                        {getStatusText(student.status || "active")}
+                      </Badge>
+                      {student.isInvitePending && (
+                        <Badge className="bg-yellow-100 text-yellow-800 text-xs">
+                          Convite Pendente
+                        </Badge>
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-2 text-sm text-gray-600 mb-4">
@@ -225,6 +271,21 @@ export default function Students() {
                   </div>
 
                   <div className="flex justify-end space-x-2">
+                    {student.isInvitePending && student.email && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleResendInvite(student.id)}
+                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                        disabled={resendInviteMutation.isPending}
+                        data-testid={`button-resend-invite-${student.id}`}
+                      >
+                        <i className="fas fa-envelope mr-1"></i>
+                        {resendInviteMutation.isPending
+                          ? "..."
+                          : "Reenviar Convite"}
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"

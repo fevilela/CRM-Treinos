@@ -68,6 +68,8 @@ export const students = pgTable("students", {
   password: varchar("password"), // Para login do aluno
   inviteToken: varchar("invite_token"), // Token para convite por email
   isInvitePending: boolean("is_invite_pending").default(true), // Se ainda está pendente de criar senha
+  verificationCode: varchar("verification_code"), // Código de verificação de 6 dígitos
+  verificationCodeExpiry: timestamp("verification_code_expiry"), // Quando o código expira
   phone: varchar("phone"),
   dateOfBirth: timestamp("date_of_birth"),
   gender: genderEnum("gender").notNull(),

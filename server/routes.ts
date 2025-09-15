@@ -770,6 +770,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Primeiro acesso do aluno - verificar email e enviar código
+  app.post("/api/auth/student/first-access", async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email é obrigatório" });
+      }
+
+      // Buscar aluno pelo email
+      const student = await storage.getStudentByEmail(email);
+
+      // Normalizar resposta para evitar enumeração de usuários
+      // Sempre retornar sucesso, mesmo se email não existe ou já está ativo
+      if (!student || !student.isInvitePending) {
+        // Retornar sucesso mesmo quando email não existe para evitar enumeração
+        return res.json({
+          success: true,
+          message:
+            "Se o email estiver cadastrado e pendente de primeiro acesso, você receberá um código de verificação.",
+        });
+      }
+
+      // Gerar código de verificação
+      const {
+        generateVerificationCode,
+        hashVerificationCode,
+        generateVerificationEmail,
+        sendEmail,
+      } = await import("./email-independent");
+      const verificationCode = generateVerificationCode();
+      const hashedCode = await hashVerificationCode(verificationCode);
+      const codeExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
+
+      // Salvar código hasheado no banco
+      await storage.updateStudent(student.id, {
+        verificationCode: hashedCode,
+        verificationCodeExpiry: codeExpiry,
+      });
+
+      // Enviar email com código
+      const { subject, html } = generateVerificationEmail(
+        student.name,
+        verificationCode
+      );
+      const emailSent = await sendEmail({
+        to: email,
+        subject,
+        html,
+      });
+
+      if (emailSent) {
+        res.json({
+          success: true,
+          message: "Código de verificação enviado para seu email",
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: "Erro ao enviar email. Tente novamente.",
+        });
+      }
+    } catch (error) {
+      console.error("Error in first access:", error);
+      res.status(500).json({
+        success: false,
+        message: "Erro interno do servidor",
+      });
+    }
+  });
+
+  // Verificar código e criar senha
+  app.post("/api/auth/student/verify-and-create-password", async (req, res) => {
+    try {
+      const { email, code, password } = req.body;
+
+      if (!email || !code || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Email, código e senha são obrigatórios",
+        });
+      }
+
+      // Buscar aluno pelo email
+      const student = await storage.getStudentByEmail(email);
+      if (!student) {
+        return res.status(404).json({
+          success: false,
+          message: "Aluno não encontrado",
+        });
+      }
+
+      // Verificar se código não expirou PRIMEIRO
+      if (
+        !student.verificationCodeExpiry ||
+        new Date() > student.verificationCodeExpiry
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Código de verificação expirado. Solicite um novo código.",
+        });
+      }
+
+      // Verificar código de verificação
+      const { verifyCode } = await import("./email-independent");
+      if (
+        !student.verificationCode ||
+        !(await verifyCode(code, student.verificationCode))
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Código de verificação inválido",
+        });
+      }
+
+      // Criar hash da senha
+      const bcrypt = await import("bcryptjs");
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Atualizar senha e marcar como ativo, limpando campos de verificação
+      await storage.updateStudent(student.id, {
+        password: hashedPassword,
+        isInvitePending: false,
+        verificationCode: null, // Limpar código usado
+        verificationCodeExpiry: null,
+        inviteToken: null, // Limpar token se houver
+      });
+
+      // Fazer login automático após criar senha
+      const updatedStudent = await storage.getStudent(student.id);
+      res.json({
+        success: true,
+        message: "Senha criada com sucesso",
+        student: updatedStudent,
+      });
+    } catch (error) {
+      console.error("Error in verify and create password:", error);
+      res.status(500).json({
+        success: false,
+        message: "Erro interno do servidor",
+      });
+    }
+  });
+
   // Workout history routes (for student progress tracking)
   app.get(
     "/api/workout-history/:studentId",
