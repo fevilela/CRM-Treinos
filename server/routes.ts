@@ -24,6 +24,7 @@ import { z } from "zod";
 import multer from "multer";
 import { promises as fs } from "fs";
 import path from "path";
+import crypto from "crypto";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -79,12 +80,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/students/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/students/:id", isAuthenticated, async (req: any, res) => {
     try {
       const student = await storage.getStudent(req.params.id);
       if (!student) {
         return res.status(404).json({ message: "Student not found" });
       }
+
+      // Verificar autorização: professor deve ser dono do aluno OU o próprio aluno acessando
+      if (
+        req.user.role === "teacher" &&
+        student.personalTrainerId !== req.user.id
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Você não tem permissão para este aluno" });
+      } else if (req.user.role === "student" && student.id !== req.user.id) {
+        return res
+          .status(403)
+          .json({ message: "Você só pode acessar seus próprios dados" });
+      }
+
       res.json(student);
     } catch (error) {
       console.error("Error fetching student:", error);
@@ -97,15 +113,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const { sendInviteEmail, ...studentData } = req.body;
 
+      // Gerar token de convite único
+      const inviteToken = crypto.randomUUID();
+
       const validatedData = insertStudentSchema.parse({
         ...studentData,
         personalTrainerId: userId,
-        inviteToken: null,
-        isInvitePending: false,
-        password: null, // Alunos não precisam de senha inicialmente
+        inviteToken: inviteToken,
+        isInvitePending: true, // Aluno deve configurar senha via convite
+        password: null, // Será definida via convite
       });
 
       const student = await storage.createStudent(validatedData);
+
+      // Enviar email de convite se solicitado
+      if (sendInviteEmail && student.email) {
+        try {
+          const teacher = await storage.getUser(userId);
+          const { generateInviteEmail, sendEmail } = await import("./email");
+          const { subject, html } = generateInviteEmail(
+            student.name,
+            inviteToken,
+            teacher?.firstName || "Seu Personal Trainer"
+          );
+
+          await sendEmail({
+            to: student.email,
+            from: process.env.GMAIL_USER || "noreply@crmtreinos.com",
+            subject,
+            html,
+          });
+
+          console.log(`Convite enviado para: ${student.email}`);
+        } catch (emailError) {
+          console.error("Erro ao enviar email de convite:", emailError);
+          // Não falha a criação do aluno se o email falhar
+        }
+      }
+
       res.json(student);
     } catch (error) {
       console.error("Error creating student:", error);
@@ -113,13 +158,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/students/:id", isTeacher, async (req, res) => {
+  app.put("/api/students/:id", isTeacher, async (req: any, res) => {
     try {
-      const validatedData = insertStudentSchema.partial().parse(req.body);
-      const student = await storage.updateStudent(req.params.id, validatedData);
-      if (!student) {
+      const userId = req.user.id;
+      const studentId = req.params.id;
+
+      // Verificar se o professor é dono do aluno antes de atualizar
+      const existingStudent = await storage.getStudent(studentId);
+      if (!existingStudent) {
         return res.status(404).json({ message: "Student not found" });
       }
+
+      if (existingStudent.personalTrainerId !== userId) {
+        return res
+          .status(403)
+          .json({ message: "Você não tem permissão para este aluno" });
+      }
+
+      const validatedData = insertStudentSchema.partial().parse(req.body);
+      const student = await storage.updateStudent(studentId, validatedData);
       res.json(student);
     } catch (error) {
       console.error("Error updating student:", error);
@@ -127,15 +184,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/students/:id", isTeacher, async (req, res) => {
+  app.delete("/api/students/:id", isTeacher, async (req: any, res) => {
     try {
-      await storage.deleteStudent(req.params.id);
+      const userId = req.user.id;
+      const studentId = req.params.id;
+
+      // Verificar se o professor é dono do aluno antes de deletar
+      const existingStudent = await storage.getStudent(studentId);
+      if (!existingStudent) {
+        return res.status(404).json({ message: "Student not found" });
+      }
+
+      if (existingStudent.personalTrainerId !== userId) {
+        return res
+          .status(403)
+          .json({ message: "Você não tem permissão para este aluno" });
+      }
+
+      await storage.deleteStudent(studentId);
       res.json({ message: "Student deleted successfully" });
     } catch (error) {
       console.error("Error deleting student:", error);
       res.status(500).json({ message: "Failed to delete student" });
     }
   });
+
+  // Rota para reenviar convite de aluno
+  app.post(
+    "/api/students/:id/resend-invite",
+    isTeacher,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.id;
+        const studentId = req.params.id;
+
+        const student = await storage.getStudent(studentId);
+        if (!student) {
+          return res.status(404).json({ message: "Aluno não encontrado" });
+        }
+
+        // Verificar se o professor é dono do aluno (CRÍTICO para segurança)
+        if (student.personalTrainerId !== userId) {
+          return res
+            .status(403)
+            .json({ message: "Você não tem permissão para este aluno" });
+        }
+
+        if (!student.email) {
+          return res
+            .status(400)
+            .json({ message: "Aluno não tem email cadastrado" });
+        }
+
+        if (!student.isInvitePending) {
+          return res.status(400).json({ message: "Aluno já ativou sua conta" });
+        }
+
+        // Sempre gerar novo token para segurança (rotação de token)
+        const inviteToken = crypto.randomUUID();
+        await storage.updateStudent(studentId, {
+          inviteToken: inviteToken,
+          isInvitePending: true,
+        });
+
+        try {
+          const teacher = await storage.getUser(userId);
+          const { generateInviteEmail, sendEmail } = await import("./email");
+          const { subject, html } = generateInviteEmail(
+            student.name,
+            inviteToken,
+            teacher?.firstName || "Seu Personal Trainer"
+          );
+
+          await sendEmail({
+            to: student.email,
+            from: process.env.GMAIL_USER || "noreply@crmtreinos.com",
+            subject,
+            html,
+          });
+
+          res.json({
+            success: true,
+            message: `Convite reenviado para ${student.email}`,
+          });
+        } catch (emailError) {
+          console.error("Erro ao reenviar email de convite:", emailError);
+          res.status(500).json({ message: "Erro ao enviar email de convite" });
+        }
+      } catch (error) {
+        console.error("Error resending invite:", error);
+        res.status(500).json({ message: "Failed to resend invite" });
+      }
+    }
+  );
 
   // Workout routes (apenas professores podem criar/gerenciar treinos)
   app.get("/api/workouts", isTeacher, async (req: any, res) => {
