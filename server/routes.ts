@@ -19,12 +19,21 @@ import {
   insertWorkoutCommentSchema,
   insertPhysicalAssessmentSchema,
   insertAssessmentPhotoSchema,
+  type Student,
 } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import { promises as fs } from "fs";
 import path from "path";
 import crypto from "crypto";
+
+// Helper function to sanitize student objects by removing sensitive fields
+function sanitizeStudent(
+  student: Student
+): Omit<Student, "password" | "inviteToken"> {
+  const { password, inviteToken, ...sanitizedStudent } = student;
+  return sanitizedStudent;
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -47,7 +56,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      const student = await storage.getStudent(req.user.id);
+      // Look up student by email since user ID and student ID are different
+      const student = await storage.getStudentByEmail(req.user.email);
       if (!student) {
         return res.status(404).json({
           success: false,
@@ -55,7 +65,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      res.json({ success: true, student });
+      res.json({ success: true, student: sanitizeStudent(student) });
     } catch (error) {
       console.error("Error fetching student data:", error);
       res.status(500).json({
@@ -98,7 +108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const students = await storage.getStudents(userId);
-      res.json(students);
+      res.json(students.map(sanitizeStudent));
     } catch (error) {
       console.error("Error fetching students:", error);
       res.status(500).json({ message: "Failed to fetch students" });
@@ -126,7 +136,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .json({ message: "Você só pode acessar seus próprios dados" });
       }
 
-      res.json(student);
+      res.json(sanitizeStudent(student));
     } catch (error) {
       console.error("Error fetching student:", error);
       res.status(500).json({ message: "Failed to fetch student" });
@@ -176,7 +186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      res.json(student);
+      res.json(sanitizeStudent(student));
     } catch (error) {
       console.error("Error creating student:", error);
       res.status(500).json({ message: "Failed to create student" });
@@ -202,7 +212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validatedData = insertStudentSchema.partial().parse(req.body);
       const student = await storage.updateStudent(studentId, validatedData);
-      res.json(student);
+      res.json(sanitizeStudent(student));
     } catch (error) {
       console.error("Error updating student:", error);
       res.status(500).json({ message: "Failed to update student" });
@@ -722,7 +732,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (err) {
             return res.status(500).json({ message: "Erro ao criar sessão" });
           }
-          res.json({ success: true, student });
+          res.json({ success: true, student: sanitizeStudent(student) });
         });
       } else {
         res
@@ -787,7 +797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         message: "Senha configurada com sucesso",
-        student: updatedStudent,
+        student: sanitizeStudent(updatedStudent),
       });
     } catch (error) {
       console.error("Error setting up password:", error);
@@ -1150,7 +1160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      res.json(student);
+      res.json(sanitizeStudent(student));
     } catch (error) {
       console.error("Error fetching student record:", error);
       res.status(500).json({ message: "Failed to fetch student record" });
