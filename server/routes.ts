@@ -40,6 +40,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Student auth route - get current student data
+  app.get("/api/auth/student/me", isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== "student") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const student = await storage.getStudent(req.user.id);
+      if (!student) {
+        return res.status(404).json({
+          success: false,
+          message: "Student record not found",
+        });
+      }
+
+      res.json({ success: true, student });
+    } catch (error) {
+      console.error("Error fetching student data:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch student data",
+      });
+    }
+  });
+
   // Rota para limpar sessões órfãs (desenvolvimento)
   app.post("/api/auth/clear-sessions", async (req, res) => {
     if (process.env.NODE_ENV !== "development") {
@@ -800,7 +825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         generateVerificationEmail,
         sendEmail,
       } = await import("./email-independent");
-      const verificationCode = generateVerificationCode();
+      const verificationCode = await generateVerificationCode();
       const hashedCode = await hashVerificationCode(verificationCode);
       const codeExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
 

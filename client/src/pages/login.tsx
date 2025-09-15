@@ -306,7 +306,7 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
             </form>
           )}
 
-          <div className="text-center">
+          <div className="text-center space-y-2">
             <Button
               variant="link"
               onClick={() => setIsRegistering(!isRegistering)}
@@ -317,6 +317,17 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
                 ? "Já tem uma conta? Faça login"
                 : "Não tem uma conta? Registre-se"}
             </Button>
+            <div className="border-t pt-4">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => (window.location.href = "/student-area")}
+                disabled={isLoading}
+                data-testid="button-student-area"
+              >
+                Área do Aluno - Primeiro Acesso
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

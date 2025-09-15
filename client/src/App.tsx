@@ -12,6 +12,7 @@ import PhysicalAssessments from "@/pages/physical-assessments";
 import Progress from "@/pages/progress";
 import { StudentDashboard } from "@/pages/student-dashboard";
 import StudentSetupPassword from "@/pages/student-setup-password";
+import { StudentApp } from "@/pages/student-app";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/sidebar";
 import StudentSidebar from "@/components/layout/student-sidebar";
@@ -131,6 +132,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/student/setup-password" component={StudentSetupPassword} />
+      <Route path="/student-area" component={StudentApp} />
 
       <Route>
         {() => {

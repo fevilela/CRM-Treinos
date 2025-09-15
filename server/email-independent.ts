@@ -9,8 +9,8 @@ interface EmailParams {
 }
 
 // Função para gerar código de verificação de 6 dígitos usando crypto seguro
-export function generateVerificationCode(): string {
-  const crypto = require("crypto");
+export async function generateVerificationCode(): Promise<string> {
+  const crypto = await import("crypto");
   return crypto.randomInt(0, 1000000).toString().padStart(6, "0");
 }
 
@@ -29,33 +29,38 @@ export async function verifyCode(
   return await bcrypt.compare(code, hashedCode);
 }
 
-// Função principal de envio de email
+// Função principal de envio de email usando Replit Mail
 export async function sendEmail(params: EmailParams): Promise<boolean> {
   try {
-    // Como você quer um sistema independente da Replit, vou implementar um fallback
-    // que mostra o email no console para desenvolvimento/teste
+    // Usar Replit Mail para envio real
+    const { sendEmail: sendReplitEmail } = await import("./utils/replitmail");
 
-    // Apenas mostrar em desenvolvimento, não em produção
+    const result = await sendReplitEmail({
+      to: params.to,
+      subject: params.subject,
+      text: params.text,
+      html: params.html,
+    });
+
+    console.log("✅ EMAIL ENVIADO COM SUCESSO!");
+    console.log("Para:", params.to);
+    console.log("Assunto:", params.subject);
+    console.log("Message ID:", result.messageId);
+
+    return true;
+  } catch (error) {
+    console.error("❌ Erro ao enviar email:", error);
+
+    // Fallback para desenvolvimento - mostrar no console
     if (process.env.NODE_ENV !== "production") {
-      console.log("=== EMAIL INDEPENDENTE ===");
+      console.log("=== FALLBACK - EMAIL NO CONSOLE ===");
       console.log("Para:", params.to);
       console.log("Assunto:", params.subject);
-      console.log("Conteúdo (código de verificação oculto em produção)");
-      if (params.html && !params.html.includes('style="font-size: 32px')) {
-        console.log(params.html || params.text);
-      } else {
-        console.log("Email com código de verificação enviado (código oculto)");
-      }
-      console.log("========================");
+      console.log("Conteúdo:");
+      console.log(params.html || params.text);
+      console.log("====================================");
     }
 
-    // Para produção, você pode configurar SMTP aqui
-    // Por exemplo, com Gmail, SendGrid, Mailgun, etc.
-    // Não usando Replit para manter independência
-
-    return true; // Simula envio bem-sucedido
-  } catch (error) {
-    console.error("Erro ao enviar email independente:", error);
     return false;
   }
 }
