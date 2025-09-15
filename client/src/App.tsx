@@ -41,9 +41,9 @@ function StudentInterface({
     isLoading: studentLoading,
     error,
   } = useQuery<Student>({
-    queryKey: ["/api/auth/student/me"],
+    queryKey: ["/api/student/me"],
     queryFn: async () => {
-      const response = await fetch("/api/auth/student/me", {
+      const response = await fetch("/api/student/me", {
         credentials: "include",
       });
       if (!response.ok) {

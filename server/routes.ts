@@ -818,14 +818,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Busca o student record baseado no email do usuário autenticado
-      const student = await storage.getStudentByEmail(user.email);
+      let student = await storage.getStudentByEmail(user.email);
+
       if (!student) {
-        return res.status(404).json({
-          message: "Student record not found. Please contact your trainer.",
-        });
+        // Se não encontrar, cria automaticamente um registro de estudante
+        // para usuários que se auto-registraram
+        try {
+          const studentData = {
+            personalTrainerId: user.id, // Associa ao próprio usuário temporariamente
+            name: `${user.firstName} ${user.lastName}`,
+            email: user.email,
+            password: null, // Não precisa de senha separada, usa a do user
+            inviteToken: null,
+            isInvitePending: false,
+            phone: null,
+            dateOfBirth: null,
+            gender: "male" as const, // Valor padrão, pode ser atualizado depois
+            weight: undefined,
+            height: undefined,
+            goal: null,
+            medicalConditions: null,
+            status: "active" as const,
+            profileImage: user.profileImageUrl,
+          };
+
+          student = await storage.createStudent(studentData);
+        } catch (createError) {
+          console.error("Error auto-creating student record:", createError);
+          return res.status(500).json({
+            message: "Error creating student profile. Please try again.",
+          });
+        }
       }
 
-      res.json(student);
+      res.json({ success: true, student });
     } catch (error) {
       console.error("Error fetching student record:", error);
       res.status(500).json({ message: "Failed to fetch student record" });
