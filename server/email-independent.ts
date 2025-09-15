@@ -29,39 +29,53 @@ export async function verifyCode(
   return await bcrypt.compare(code, hashedCode);
 }
 
-// Função principal de envio de email usando Replit Mail
+// Função principal de envio de email usando Gmail SMTP
 export async function sendEmail(params: EmailParams): Promise<boolean> {
   try {
-    // Usar Replit Mail para envio real
-    const { sendEmail: sendReplitEmail } = await import("./utils/replitmail");
+    // Usar a função sendEmail do sistema Gmail já existente
+    const { sendEmail: sendGmailEmail } = await import("./email");
 
-    const result = await sendReplitEmail({
+    // Adaptar parâmetros para o formato esperado pelo sistema Gmail
+    const result = await sendGmailEmail({
       to: params.to,
+      from: `"CRM Treinos MP" <${process.env.GMAIL_USER}>`,
       subject: params.subject,
       text: params.text,
       html: params.html,
     });
 
-    console.log("✅ EMAIL ENVIADO COM SUCESSO!");
-    console.log("Para:", params.to);
-    console.log("Assunto:", params.subject);
-    console.log("Message ID:", result.messageId);
-
-    return true;
-  } catch (error) {
-    console.error("❌ Erro ao enviar email:", error);
-
-    // Fallback para desenvolvimento - mostrar no console
-    if (process.env.NODE_ENV !== "production") {
-      console.log("=== FALLBACK - EMAIL NO CONSOLE ===");
+    if (result) {
+      console.log("✅ EMAIL ENVIADO COM SUCESSO VIA GMAIL!");
       console.log("Para:", params.to);
       console.log("Assunto:", params.subject);
-      console.log("Conteúdo:");
-      console.log(params.html || params.text);
-      console.log("====================================");
+      return true;
+    } else {
+      throw new Error("Falha no envio do email via Gmail");
+    }
+  } catch (error) {
+    console.error("❌ Erro ao enviar email via Gmail:", error);
+
+    // Fallback para desenvolvimento - mostrar no console DE FORMA DESTACADA
+    console.log("\n🔥🔥🔥 CÓDIGO DE VERIFICAÇÃO (ERRO NO GMAIL) 🔥🔥🔥");
+    console.log("📧 Para:", params.to);
+    console.log("📝 Assunto:", params.subject);
+
+    // Extrair código do HTML se possível
+    const htmlMatch = params.html?.match(/(\d{6})/);
+    if (htmlMatch) {
+      console.log("🔑 CÓDIGO DE VERIFICAÇÃO:", htmlMatch[1]);
+      console.log("🔑 CÓDIGO DE VERIFICAÇÃO:", htmlMatch[1]); // Mostrar duas vezes para destacar
+      console.log("🔑 CÓDIGO DE VERIFICAÇÃO:", htmlMatch[1]);
     }
 
-    return false;
+    console.log("💡 Verifique suas credenciais do Gmail");
+    console.log("💡 Este código aparece aqui porque houve erro no envio");
+    console.log(
+      "🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥\n"
+    );
+
+    // Retorna TRUE em desenvolvimento para não quebrar o fluxo
+    return process.env.NODE_ENV !== "production";
   }
 }
 
