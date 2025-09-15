@@ -532,69 +532,54 @@ export function StudentWorkoutExecution({
           ).length;
           const totalSets = progress.sets.length;
 
-            return (
-              <Card className="bg-white shadow-sm border border-gray-200">
-                <CardHeader className="text-center pb-6">
-                  <CardTitle className="text-base text-gray-900">
-                    {currentExercise.name}
-                  </CardTitle>
-                  <CardDescription className="text-sm">
-                    Série {currentSet.setNumber}
-                  </CardDescription>
-                </CardHeader>
+          return (
+            <Card
+              key={exercise.id}
+              className="bg-white shadow-sm border border-gray-200"
+            >
+              <CardHeader className="text-center pb-6">
+                <CardTitle className="text-base text-gray-900">
+                  {exercise.name}
+                </CardTitle>
+                <CardDescription className="text-sm">
+                  {completedSets}/{totalSets} séries completadas
+                </CardDescription>
+              </CardHeader>
 
               {canInteract && (
                 <CardContent>
-                  <SetInput
-                    set={currentSet}
-                    exercise={currentExercise}
-                    exerciseId={currentExercise.id}
-                    setIndex={currentSetIndex}
-                    onComplete={completeSet}
-                    disabled={currentSet.completed}
-                    restTimeLeft={getTimeLeft(
-                      `${currentExercise.id}-${currentSetIndex}`
-                    )}
-                    studentId={student?.id || null}
-                    onStartRest={() =>
-                      startRestTimer(
-                        currentExercise.id,
-                        currentSetIndex,
-                        currentExercise.restTime || 60
-                      )
-                    }
-                    onStopRest={() => {
-                      stopRestTimer(currentExercise.id, currentSetIndex);
-                      advanceToNextSet();
-                    }}
-                  />
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600 mb-4">
+                      Exercício {isCurrentExercise ? "atual" : "completo"}
+                    </p>
+                  </div>
                 </CardContent>
-              </Card>
-            );
-          })()}
-        </div>
-      )}
+              )}
+            </Card>
+          );
+        })}
 
-      {/* Botão Finalizar Treino - só aparece quando TODOS os exercícios estão completos */}
-      {workoutStarted &&
-        Object.values(exerciseProgress).length > 0 &&
-        Object.values(exerciseProgress).every((p) => p.completed) && (
-          <Card className="bg-white border-gray-200">
-            <CardContent className="text-center py-6">
-              <Button
-                onClick={completeWorkout}
-                variant="default"
-                className="bg-primary hover:bg-primary/90"
-              >
-                <Square className="h-5 w-5 mr-2" />
-                Finalizar Treino Completo
-              </Button>
-              <p className="text-sm text-muted-foreground mt-2">
-                Parabéns! Você completou todos os exercícios.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+        {/* Botão Finalizar Treino - só aparece quando TODOS os exercícios estão completos */}
+        {workoutStarted &&
+          Object.values(exerciseProgress).length > 0 &&
+          Object.values(exerciseProgress).every((p) => p.completed) && (
+            <Card className="bg-white border-gray-200">
+              <CardContent className="text-center py-6">
+                <Button
+                  onClick={completeWorkout}
+                  variant="default"
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  <Square className="h-5 w-5 mr-2" />
+                  Finalizar Treino Completo
+                </Button>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Parabéns! Você completou todos os exercícios.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+      </div>
     </div>
   );
 }
@@ -692,6 +677,10 @@ function SetInput({
   onComplete,
   disabled,
   isActive,
+  studentId,
+  restTimeLeft,
+  onStartRest,
+  onStopRest,
 }: {
   set: ExerciseSet;
   exercise: Exercise;
@@ -705,6 +694,10 @@ function SetInput({
   ) => void;
   disabled: boolean;
   isActive?: boolean;
+  studentId?: string | null;
+  restTimeLeft?: number;
+  onStartRest?: () => void;
+  onStopRest?: () => void;
 }) {
   const [weight, setWeight] = useState(
     set.weight || exercise.weight?.toString() || ""
@@ -727,7 +720,7 @@ function SetInput({
           </h3>
           {/* Indicador de mudança de peso */}
           <WeightChangeIndicator
-            studentId={studentId}
+            studentId={studentId || null}
             exerciseId={exerciseId}
             currentWeight={weight}
           />

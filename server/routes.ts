@@ -542,7 +542,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const student = await storage.validateStudentPassword(email, password);
 
       if (student) {
-        res.json({ success: true, student });
+        // Create a session for the student by creating a temporary user object
+        const studentUser = {
+          id: student.id,
+          email: student.email,
+          firstName: student.name.split(" ")[0],
+          lastName: student.name.split(" ").slice(1).join(" ") || "",
+          role: "student" as const,
+        };
+
+        // Log the student in using passport session
+        req.login(studentUser, (err) => {
+          if (err) {
+            return res.status(500).json({ message: "Erro ao criar sessão" });
+          }
+          res.json({ success: true, student });
+        });
       } else {
         res
           .status(401)
