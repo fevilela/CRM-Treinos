@@ -158,6 +158,7 @@ export const workoutSessions = pgTable("workout_sessions", {
   studentId: varchar("student_id")
     .notNull()
     .references(() => students.id),
+  startTime: timestamp("start_time"), // when the workout was started
   completedAt: timestamp("completed_at").defaultNow(),
   duration: integer("duration"), // in minutes
   notes: text("notes"),

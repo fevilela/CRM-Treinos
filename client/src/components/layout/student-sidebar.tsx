@@ -3,16 +3,18 @@ import { Button } from "@/components/ui/button";
 import type { Student } from "@shared/schema";
 
 const studentMenuItems = [
-  { name: "Meus Treinos", path: "/student", icon: "fas fa-dumbbell" },
+  { name: "Dashboard", path: "/student", icon: "fas fa-home" },
+  { name: "Treinos", path: "/student/workouts", icon: "fas fa-clipboard-list" },
   {
-    name: "Meu Progresso",
-    path: "/student/progress",
-    icon: "fas fa-chart-line",
+    name: "Avaliações Físicas",
+    path: "/student/physical-assessments",
+    icon: "fas fa-clipboard-check",
   },
+  { name: "Progresso", path: "/student/progress", icon: "fas fa-chart-line" },
   {
     name: "Evolução Corporal",
-    path: "/student/evolution",
-    icon: "fas fa-user",
+    path: "/student/body-evolution",
+    icon: "fas fa-male",
   },
 ];
 
@@ -35,7 +37,7 @@ export default function StudentSidebar({
             <i className="fas fa-dumbbell text-white text-xl"></i>
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Meus Treinos</h1>
+            <h1 className="text-xl font-bold text-gray-900">CRM Treinos</h1>
             <p className="text-sm text-gray-500">MP System</p>
           </div>
         </div>

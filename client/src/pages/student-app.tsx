@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { StudentLogin } from "./student-login";
-import { StudentDashboard } from "./student-dashboard";
+import { StudentLayout } from "@/components/layout/student-layout";
 import type { Student } from "@shared/schema";
 
 export function StudentApp() {
@@ -15,7 +15,7 @@ export function StudentApp() {
   };
 
   if (student) {
-    return <StudentDashboard student={student} onLogout={handleLogout} />;
+    return <StudentLayout student={student} onLogout={handleLogout} />;
   }
 
   return <StudentLogin onLoginSuccess={handleLoginSuccess} />;
