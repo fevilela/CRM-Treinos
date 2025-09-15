@@ -24,7 +24,12 @@ import {
   Target,
   TrendingUp,
   Coffee,
+  PlayCircle,
+  Calendar,
+  CheckCircle2,
+  Dumbbell,
 } from "lucide-react";
+import { VideoModal } from "./modals/video-modal";
 import type { Student, Exercise } from "@shared/schema";
 
 interface StudentWorkoutExecutionProps {
@@ -47,6 +52,7 @@ interface ExerciseProgress {
   sets: ExerciseSet[];
   currentSet: number;
   completed: boolean;
+  allSetsCompleted: boolean;
 }
 
 // Componente de cronômetro principal do treino
@@ -91,20 +97,20 @@ function WorkoutMainTimer({
   };
 
   return (
-    <Card className="sticky top-4 z-10 bg-white border-gray-200 shadow-sm">
+    <Card className="sticky top-4 z-10 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 shadow-lg">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Timer className="h-5 w-5 text-primary" />
+        <CardTitle className="flex items-center gap-2 text-lg text-blue-700">
+          <Timer className="h-6 w-6" />
           Tempo Total do Treino
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="text-lg font-mono font-bold text-primary text-center">
+        <div className="text-2xl font-mono font-bold text-blue-600 text-center mb-2">
           {formatTime(seconds)}
         </div>
         {isActive && (
-          <div className="mt-2 text-sm text-muted-foreground flex items-center justify-center gap-1">
-            <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+          <div className="flex items-center justify-center gap-2 text-sm text-blue-600">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
             Treino em andamento
           </div>
         )}
@@ -118,10 +124,14 @@ function RestTimer({
   isActive,
   duration,
   onComplete,
+  onSkip,
+  setsRemaining,
 }: {
   isActive: boolean;
   duration: number;
   onComplete: () => void;
+  onSkip: () => void;
+  setsRemaining: number;
 }) {
   const [timeLeft, setTimeLeft] = useState(duration);
 
@@ -153,24 +163,53 @@ function RestTimer({
   if (!isActive) return null;
 
   return (
-    <Card className="bg-orange-50 border-orange-200">
+    <Card className="bg-gradient-to-r from-orange-50 to-red-50 border-orange-200 shadow-lg animate-pulse">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg text-orange-700">
-          <Coffee className="h-5 w-5" />
-          Tempo de Descanso
+        <CardTitle className="flex items-center justify-between text-lg text-orange-700">
+          <div className="flex items-center gap-2">
+            <Coffee className="h-6 w-6" />
+            Tempo de Descanso
+          </div>
+          <Badge variant="secondary" className="bg-orange-100 text-orange-700">
+            {setsRemaining} séries restantes
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-mono font-bold text-orange-600 text-center mb-2">
+        <div className="text-3xl font-mono font-bold text-orange-600 text-center mb-3">
           {formatTime(timeLeft)}
         </div>
-        <Progress value={progress} className="h-2" />
-        <div className="mt-2 text-sm text-orange-600 text-center">
-          {timeLeft === 0 ? "Descanso concluído!" : "Descansando..."}
+        <Progress value={progress} className="h-3 mb-3" />
+        <div className="flex justify-between items-center">
+          <div className="text-sm text-orange-600">
+            {timeLeft === 0 ? "Descanso concluído!" : "Descansando..."}
+          </div>
+          <Button
+            onClick={onSkip}
+            variant="outline"
+            size="sm"
+            className="border-orange-300 text-orange-600 hover:bg-orange-50"
+          >
+            Pular Descanso
+          </Button>
         </div>
       </CardContent>
     </Card>
   );
+}
+
+// Função para obter o nome em português do dia da semana
+function getWeekdayName(weekday: string | null) {
+  const weekdays: Record<string, string> = {
+    monday: "Segunda-feira",
+    tuesday: "Terça-feira",
+    wednesday: "Quarta-feira",
+    thursday: "Quinta-feira",
+    friday: "Sexta-feira",
+    saturday: "Sábado",
+    sunday: "Domingo",
+  };
+  return weekday ? weekdays[weekday] || weekday : "Não definido";
 }
 
 export function StudentWorkoutExecution({
@@ -186,8 +225,11 @@ export function StudentWorkoutExecution({
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [isResting, setIsResting] = useState(false);
   const [currentRestDuration, setCurrentRestDuration] = useState(60);
-  const [manualRestActive, setManualRestActive] = useState(false);
   const [workoutCompleted, setWorkoutCompleted] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<{
+    url: string;
+    exerciseName: string;
+  } | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -229,6 +271,7 @@ export function StudentWorkoutExecution({
         description: "Seus resultados foram salvos com sucesso.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/workout-history"] });
+      setWorkoutCompleted(true);
     },
   });
 
@@ -241,632 +284,494 @@ export function StudentWorkoutExecution({
           exerciseId: exercise.id,
           sets: Array.from({ length: exercise.sets || 3 }, (_, index) => ({
             setNumber: index + 1,
-            weight: "",
-            reps: "",
+            weight: exercise.weight?.toString() || "",
+            reps: exercise.reps || "",
             completed: false,
           })),
           currentSet: 0,
           completed: false,
+          allSetsCompleted: false,
         };
       });
       setExerciseProgress(initialProgress);
     }
   }, [exercises]);
 
-  const startWorkout = () => {
+  const handleStartWorkout = () => {
     setWorkoutStarted(true);
     toast({
       title: "Treino iniciado!",
-      description: "Cronômetro ativado. Boa sorte!",
+      description: "Boa sorte com seu treino!",
     });
   };
 
-  const completeSet = (
-    exerciseId: string,
-    setIndex: number,
-    weight: string,
-    reps: string
-  ) => {
+  const handleCompleteSet = (exerciseId: string, setIndex: number) => {
     setExerciseProgress((prev) => {
       const updated = { ...prev };
-      updated[exerciseId].sets[setIndex] = {
-        ...updated[exerciseId].sets[setIndex],
-        weight,
-        reps,
-        completed: true,
-      };
+      const exercise = updated[exerciseId];
+      if (exercise) {
+        exercise.sets[setIndex].completed = true;
 
-      // Verificar se ainda há séries neste exercício
-      const incompleteSets = updated[exerciseId].sets.filter(
-        (set) => !set.completed
-      );
+        // Verificar se todas as séries foram completadas
+        const allSetsCompleted = exercise.sets.every((set) => set.completed);
+        exercise.allSetsCompleted = allSetsCompleted;
 
-      if (incompleteSets.length > 0) {
-        // Iniciar descanso se não for a última série usando o tempo do exercício
-        const exercise = exercises.find((e) => e.id === exerciseId);
-        const restTime = exercise?.restTime || 60; // Fallback para 60s
-        setCurrentRestDuration(restTime);
-        setIsResting(true);
-      } else {
-        // Exercício completo, passar para o próximo
-        updated[exerciseId].completed = true;
-
-        // Verificar se há mais exercícios
-        const nextExerciseIndex = currentExerciseIndex + 1;
-        if (nextExerciseIndex < exercises.length) {
-          setCurrentExerciseIndex(nextExerciseIndex);
+        if (allSetsCompleted) {
+          exercise.completed = true;
           toast({
             title: "Exercício concluído!",
-            description: `Passando para: ${exercises[nextExerciseIndex]?.name}`,
+            description: `${
+              exercises.find((e) => e.id === exerciseId)?.name
+            } finalizado com sucesso!`,
           });
-        } else {
-          // Treino completo!
-          completeWorkout();
         }
       }
-
       return updated;
     });
   };
 
-  const completeWorkout = () => {
-    setWorkoutCompleted(true);
-    setWorkoutStarted(false);
+  const handleStartRest = (
+    duration: number,
+    exerciseId: string,
+    setIndex: number
+  ) => {
+    setIsResting(true);
+    setCurrentRestDuration(duration);
 
-    // Preparar performances dos exercícios no formato correto para o backend
-    const performances: any[] = [];
-    Object.values(exerciseProgress).forEach((progress) => {
-      const completedSets = progress.sets.filter((set) => set.completed);
+    // Marcar a série como completa antes do descanso
+    handleCompleteSet(exerciseId, setIndex);
+  };
 
-      if (completedSets.length > 0) {
-        // Criar uma performance por exercício com dados agregados
-        performances.push({
-          exerciseId: progress.exerciseId,
-          actualSets: completedSets.length,
-          actualReps: completedSets.map((set) => set.reps).join(","), // Exemplo: "12,10,8"
-          actualWeight: Math.max(
-            ...completedSets.map((set) => parseFloat(set.weight) || 0)
-          ), // Peso máximo usado
-          exerciseTimeSeconds: null, // Poderemos adicionar isso depois
-          restTimeSeconds: currentRestDuration, // Tempo de descanso usado
-          completed: true,
-        });
-      }
+  const handleCompleteRest = () => {
+    setIsResting(false);
+    toast({
+      title: "Descanso concluído!",
+      description: "Pronto para a próxima série!",
     });
+  };
 
-    // Salvar sessão do treino
+  const handleSkipRest = () => {
+    setIsResting(false);
+  };
+
+  const handleUpdateSetData = (
+    exerciseId: string,
+    setIndex: number,
+    field: "weight" | "reps",
+    value: string
+  ) => {
+    setExerciseProgress((prev) => {
+      const updated = { ...prev };
+      const exercise = updated[exerciseId];
+      if (exercise && exercise.sets[setIndex]) {
+        exercise.sets[setIndex][field] = value;
+      }
+      return updated;
+    });
+  };
+
+  const handleFinishWorkout = () => {
+    const completedExercises = Object.values(exerciseProgress).filter(
+      (progress) => progress.completed
+    );
+
+    if (completedExercises.length === 0) {
+      toast({
+        title: "Aviso",
+        description:
+          "Complete pelo menos um exercício antes de finalizar o treino.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Preparar dados da sessão
     const sessionData = {
+      workoutId,
       studentId: student.id,
-      workoutId: workoutId,
-      duration: Math.ceil(workoutDuration / 60), // Converter para minutos
-      notes: `Treino realizado com ${getCompletedSetsCount()} séries completadas`,
-      performances: performances, // Backend espera este campo
+      duration: Math.floor(workoutDuration / 60), // em minutos
+      exercisePerformances: Object.values(exerciseProgress)
+        .filter((progress) => progress.completed)
+        .map((progress) => ({
+          exerciseId: progress.exerciseId,
+          actualSets: progress.sets.filter((set) => set.completed).length,
+          actualReps: progress.sets
+            .filter((set) => set.completed)
+            .map((set) => set.reps)
+            .join(","),
+          actualWeight: progress.sets
+            .filter((set) => set.completed)
+            .map((set) => parseFloat(set.weight) || 0)
+            .reduce((max, weight) => Math.max(max, weight), 0),
+          completed: true,
+        })),
     };
 
     saveWorkoutSessionMutation.mutate(sessionData);
   };
 
-  const getTotalSetsRemaining = () => {
-    return Object.values(exerciseProgress).reduce((total, progress) => {
-      return total + progress.sets.filter((set) => !set.completed).length;
-    }, 0);
+  const openVideo = (videoUrl: string, exerciseName: string) => {
+    setSelectedVideo({ url: videoUrl, exerciseName });
   };
 
-  const getCompletedSetsCount = () => {
-    return Object.values(exerciseProgress).reduce((total, progress) => {
-      return total + progress.sets.filter((set) => set.completed).length;
-    }, 0);
-  };
+  // Calcular estatísticas
+  const totalExercises = exercises.length;
+  const completedExercises = Object.values(exerciseProgress).filter(
+    (progress) => progress.completed
+  ).length;
+  const totalSets = exercises.reduce(
+    (sum, exercise) => sum + (exercise.sets || 3),
+    0
+  );
+  const completedSets = Object.values(exerciseProgress).reduce(
+    (sum, progress) =>
+      sum + progress.sets.filter((set) => set.completed).length,
+    0
+  );
 
-  const getTotalSetsCount = () => {
-    return Object.values(exerciseProgress).reduce((total, progress) => {
-      return total + progress.sets.length;
-    }, 0);
+  // Calcular séries restantes para o exercício atual
+  const getCurrentSetsRemaining = (exerciseId: string) => {
+    const progress = exerciseProgress[exerciseId];
+    if (!progress) return 0;
+    return progress.sets.filter((set) => !set.completed).length;
   };
 
   if (workoutLoading || exercisesLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Carregando treino...</p>
+        </div>
       </div>
     );
   }
 
   if (workoutCompleted) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-2xl mx-auto">
-          <Card className="bg-green-50 border-green-200">
-            <CardHeader className="text-center">
-              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle className="h-8 w-8 text-green-600" />
-              </div>
-              <CardTitle className="text-2xl text-green-700">
-                Parabéns! Treino Concluído
-              </CardTitle>
-              <CardDescription>
-                Você completou seu treino em {Math.floor(workoutDuration / 60)}{" "}
-                minutos
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-center space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <div className="font-semibold text-gray-700">
-                    Séries Completas
-                  </div>
-                  <div className="text-2xl font-bold text-green-600">
-                    {getCompletedSetsCount()}
-                  </div>
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
+        <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl text-green-700 flex items-center justify-center gap-2">
+              <CheckCircle2 className="h-8 w-8" />
+              Treino Concluído!
+            </CardTitle>
+            <CardDescription className="text-lg text-green-600">
+              Parabéns! Você finalizou seu treino com sucesso.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <div className="text-2xl font-bold text-blue-600">
+                  {Math.floor(workoutDuration / 60)}
                 </div>
-                <div>
-                  <div className="font-semibold text-gray-700">Tempo Total</div>
-                  <div className="text-2xl font-bold text-green-600">
-                    {Math.floor(workoutDuration / 60)}min
-                  </div>
-                </div>
+                <div className="text-sm text-muted-foreground">Minutos</div>
               </div>
-              <Button onClick={onBack} className="w-full">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar aos Treinos
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <div className="text-2xl font-bold text-green-600">
+                  {completedExercises}
+                </div>
+                <div className="text-sm text-muted-foreground">Exercícios</div>
+              </div>
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <div className="text-2xl font-bold text-purple-600">
+                  {completedSets}
+                </div>
+                <div className="text-sm text-muted-foreground">Séries</div>
+              </div>
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <div className="text-2xl font-bold text-orange-600">
+                  {Math.round((completedSets / totalSets) * 100)}%
+                </div>
+                <div className="text-sm text-muted-foreground">Concluído</div>
+              </div>
+            </div>
+            <Button onClick={onBack} className="mt-6">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Voltar ao Dashboard
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={onBack}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">
-                {workout?.name || "Treino"}
-              </h1>
-              <p className="text-gray-500">
-                {workout?.description || "Treino personalizado"}
-              </p>
+    <div className="max-w-6xl mx-auto p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" onClick={onBack} className="mb-4">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Voltar
+        </Button>
+
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+            {workout?.name}
+          </h1>
+          <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Calendar className="h-4 w-4" />
+              {getWeekdayName(workout?.weekday)}
+            </div>
+            <div className="flex items-center gap-1">
+              <Dumbbell className="h-4 w-4" />
+              {workout?.category}
             </div>
           </div>
-          <Badge variant="secondary">{workout?.category || "Treino"}</Badge>
         </div>
 
-        {/* Cronômetro Principal */}
+        <div className="flex items-center gap-2">
+          {!workoutStarted ? (
+            <Button
+              onClick={handleStartWorkout}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Play className="h-4 w-4 mr-2" />
+              Iniciar Treino
+            </Button>
+          ) : (
+            <Button onClick={handleFinishWorkout} variant="destructive">
+              <Square className="h-4 w-4 mr-2" />
+              Finalizar Treino
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Stats e Timer */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <WorkoutMainTimer
-          isActive={workoutStarted}
+          isActive={workoutStarted && !workoutCompleted}
           onTimeUpdate={setWorkoutDuration}
         />
 
-        {/* Cronômetro de Descanso */}
-        <RestTimer
-          isActive={isResting || manualRestActive}
-          duration={currentRestDuration}
-          onComplete={() => {
-            setIsResting(false);
-            setManualRestActive(false);
-          }}
-        />
-
-        {/* Botão de Descanso Manual */}
-        {workoutStarted && !isResting && !manualRestActive && (
-          <Card>
-            <CardContent className="pt-4">
-              <Button
-                onClick={() => {
-                  const currentExercise = exercises[currentExerciseIndex];
-                  const restTime = currentExercise?.restTime || 60;
-                  setCurrentRestDuration(restTime);
-                  setManualRestActive(true);
-                }}
-                variant="outline"
-                className="w-full"
-              >
-                <Coffee className="h-4 w-4 mr-2" />
-                Iniciar Descanso (
-                {exercises[currentExerciseIndex]?.restTime || 60}s)
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Progresso Geral */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5" />
-              Progresso do Treino
+        <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg text-green-700">
+              <Target className="h-6 w-6" />
+              Progresso
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span>Séries Completadas</span>
-                <span>
-                  {getCompletedSetsCount()} / {getTotalSetsCount()}
+                <span>Exercícios</span>
+                <span className="font-semibold">
+                  {completedExercises}/{totalExercises}
                 </span>
               </div>
               <Progress
-                value={
-                  getTotalSetsCount()
-                    ? (getCompletedSetsCount() / getTotalSetsCount()) * 100
-                    : 0
-                }
+                value={(completedExercises / totalExercises) * 100}
+                className="h-2"
               />
-              <div className="text-sm text-gray-600 text-center">
-                {getTotalSetsRemaining()} séries restantes
+              <div className="flex justify-between text-sm">
+                <span>Séries</span>
+                <span className="font-semibold">
+                  {completedSets}/{totalSets}
+                </span>
               </div>
+              <Progress
+                value={(completedSets / totalSets) * 100}
+                className="h-2"
+              />
             </div>
           </CardContent>
         </Card>
 
-        {/* Botão Iniciar Treino */}
-        {!workoutStarted && (
-          <Card>
-            <CardContent className="pt-6">
-              <Button onClick={startWorkout} className="w-full" size="lg">
-                <Play className="h-5 w-5 mr-2" />
-                Iniciar Treino
-              </Button>
-            </CardContent>
-          </Card>
+        {isResting && (
+          <RestTimer
+            isActive={isResting}
+            duration={currentRestDuration}
+            onComplete={handleCompleteRest}
+            onSkip={handleSkipRest}
+            setsRemaining={getCurrentSetsRemaining(
+              exercises[currentExerciseIndex]?.id
+            )}
+          />
         )}
+      </div>
 
-        {/* Lista de Exercícios - Mostrar todos */}
+      {/* Exercícios */}
+      <div className="space-y-6">
         {exercises.map((exercise, exerciseIndex) => {
           const progress = exerciseProgress[exercise.id];
           if (!progress) return null;
 
-          const isCurrentExercise = exerciseIndex === currentExerciseIndex;
-          const isCompleted = progress.completed;
-          const canInteract =
-            workoutStarted && (isCurrentExercise || isCompleted);
-          const completedSets = progress.sets.filter(
-            (set) => set.completed
-          ).length;
-          const totalSets = progress.sets.length;
-
           return (
             <Card
               key={exercise.id}
-              className="bg-white shadow-sm border border-gray-200"
+              className={`${
+                progress.allSetsCompleted
+                  ? "bg-gradient-to-r from-green-50 to-emerald-50 border-green-200"
+                  : "bg-white border-gray-200"
+              } shadow-md transition-all duration-300`}
             >
-              <CardHeader className="text-center pb-6">
-                <CardTitle className="text-base text-gray-900">
-                  {exercise.name}
-                </CardTitle>
-                <CardDescription className="text-sm">
-                  {completedSets}/{totalSets} séries completadas
-                </CardDescription>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-3">
+                    {progress.allSetsCompleted ? (
+                      <CheckCircle2 className="h-6 w-6 text-green-600" />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center text-xs font-bold">
+                        {exerciseIndex + 1}
+                      </div>
+                    )}
+                    {exercise.name}
+                    {progress.allSetsCompleted && (
+                      <Badge
+                        variant="secondary"
+                        className="bg-green-100 text-green-700"
+                      >
+                        Concluído
+                      </Badge>
+                    )}
+                  </CardTitle>
+
+                  <div className="flex items-center gap-2">
+                    {exercise.videoUrl && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          openVideo(exercise.videoUrl!, exercise.name)
+                        }
+                        className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                      >
+                        <PlayCircle className="h-4 w-4 mr-1" />
+                        Ver Vídeo
+                      </Button>
+                    )}
+                    {exercise.restTime && (
+                      <Badge
+                        variant="outline"
+                        className="border-orange-300 text-orange-600"
+                      >
+                        Descanso: {Math.floor(exercise.restTime / 60)}:
+                        {(exercise.restTime % 60).toString().padStart(2, "0")}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                {exercise.notes && (
+                  <CardDescription className="text-muted-foreground">
+                    {exercise.notes}
+                  </CardDescription>
+                )}
               </CardHeader>
 
-              {canInteract && (
-                <CardContent>
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600 mb-4">
-                      Exercício {isCurrentExercise ? "atual" : "completo"}
-                    </p>
-                  </div>
-                </CardContent>
-              )}
+              <CardContent>
+                <div className="space-y-4">
+                  {progress.sets.map((set, setIndex) => (
+                    <div
+                      key={setIndex}
+                      className={`flex items-center gap-4 p-4 rounded-lg border ${
+                        set.completed
+                          ? "bg-green-50 border-green-200"
+                          : "bg-gray-50 border-gray-200"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-[80px]">
+                        {set.completed ? (
+                          <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        ) : (
+                          <div className="w-5 h-5 rounded-full border-2 border-gray-400"></div>
+                        )}
+                        <span className="font-medium text-sm">
+                          Série {set.setNumber}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs font-medium text-gray-600">
+                            Peso (kg)
+                          </label>
+                          <Input
+                            type="number"
+                            value={set.weight}
+                            onChange={(e) =>
+                              handleUpdateSetData(
+                                exercise.id,
+                                setIndex,
+                                "weight",
+                                e.target.value
+                              )
+                            }
+                            placeholder={exercise.weight?.toString() || "0"}
+                            className="w-20 h-8 text-center"
+                            disabled={set.completed}
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs font-medium text-gray-600">
+                            Repetições
+                          </label>
+                          <Input
+                            type="number"
+                            value={set.reps}
+                            onChange={(e) =>
+                              handleUpdateSetData(
+                                exercise.id,
+                                setIndex,
+                                "reps",
+                                e.target.value
+                              )
+                            }
+                            placeholder={exercise.reps || "0"}
+                            className="w-20 h-8 text-center"
+                            disabled={set.completed}
+                          />
+                        </div>
+
+                        {!set.completed && workoutStarted && (
+                          <Button
+                            onClick={() => {
+                              if (exercise.restTime && exercise.restTime > 0) {
+                                handleStartRest(
+                                  exercise.restTime,
+                                  exercise.id,
+                                  setIndex
+                                );
+                              } else {
+                                handleCompleteSet(exercise.id, setIndex);
+                              }
+                            }}
+                            className="bg-blue-600 hover:bg-blue-700"
+                            disabled={!set.weight || !set.reps}
+                          >
+                            {exercise.restTime
+                              ? "Concluir & Descansar"
+                              : "Concluir Série"}
+                          </Button>
+                        )}
+
+                        {set.completed && (
+                          <div className="text-sm text-green-600 font-medium">
+                            ✓ {set.weight}kg × {set.reps} reps
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
             </Card>
           );
         })}
-
-        {/* Botão Finalizar Treino - só aparece quando TODOS os exercícios estão completos */}
-        {workoutStarted &&
-          Object.values(exerciseProgress).length > 0 &&
-          Object.values(exerciseProgress).every((p) => p.completed) && (
-            <Card className="bg-white border-gray-200">
-              <CardContent className="text-center py-6">
-                <Button
-                  onClick={completeWorkout}
-                  variant="default"
-                  className="bg-primary hover:bg-primary/90"
-                >
-                  <Square className="h-5 w-5 mr-2" />
-                  Finalizar Treino Completo
-                </Button>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Parabéns! Você completou todos os exercícios.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-      </div>
-    </div>
-  );
-}
-
-// Hook para buscar histórico de peso de um exercício
-function useExerciseWeightHistory(
-  studentId: string | null,
-  exerciseId: string
-) {
-  return useQuery({
-    queryKey: [`/api/workout-history/${studentId}`, exerciseId],
-    queryFn: async () => {
-      if (!studentId) return [];
-      const response = await fetch(
-        `/api/workout-history/${studentId}?exerciseId=${exerciseId}`,
-        { credentials: "include" }
-      );
-      if (!response.ok) return [];
-      return response.json();
-    },
-    enabled: !!studentId,
-    staleTime: 30000, // Cache por 30 segundos
-  });
-}
-
-// Componente para mostrar mudança de peso com símbolos
-function WeightChangeIndicator({
-  studentId,
-  exerciseId,
-  currentWeight,
-}: {
-  studentId: string | null;
-  exerciseId: string;
-  currentWeight: string;
-}) {
-  const { data: history = [] } = useExerciseWeightHistory(
-    studentId,
-    exerciseId
-  );
-
-  if (!history.length || history.length < 2) {
-    return null; // Sem histórico suficiente para comparar
-  }
-
-  const lastRecord = history[0]; // Mais recente
-
-  if (!lastRecord.changeType || !lastRecord.previousWeight) {
-    return null;
-  }
-
-  const getSymbolAndColor = (changeType: string) => {
-    switch (changeType) {
-      case "increase":
-        return { symbol: "↗", color: "text-primary", bg: "bg-primary/20" };
-      case "decrease":
-        return {
-          symbol: "↘",
-          color: "text-muted-foreground",
-          bg: "bg-gray-100",
-        };
-      case "maintain":
-        return { symbol: "→", color: "text-gray-400", bg: "bg-gray-600/20" };
-      default:
-        return { symbol: "→", color: "text-gray-400", bg: "bg-gray-600/20" };
-    }
-  };
-
-  const { symbol, color, bg } = getSymbolAndColor(lastRecord.changeType);
-  const percentageChange = parseFloat(lastRecord.percentageChange || "0");
-
-  return (
-    <div
-      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${bg} border border-current/20`}
-    >
-      <span className={`${color} font-bold text-sm`}>{symbol}</span>
-      <span className={`${color} font-medium text-xs`}>
-        {lastRecord.previousWeight}→{lastRecord.weight}kg
-      </span>
-      {percentageChange !== 0 && (
-        <span className={`${color} text-xs`}>
-          ({percentageChange > 0 ? "+" : ""}
-          {percentageChange.toFixed(1)}%)
-        </span>
-      )}
-    </div>
-  );
-}
-
-// Componente para input de série
-function SetInput({
-  set,
-  exercise,
-  exerciseId,
-  setIndex,
-  onComplete,
-  disabled,
-  isActive,
-  studentId,
-  restTimeLeft,
-  onStartRest,
-  onStopRest,
-}: {
-  set: ExerciseSet;
-  exercise: Exercise;
-  exerciseId: string;
-  setIndex: number;
-  onComplete: (
-    exerciseId: string,
-    setIndex: number,
-    weight: string,
-    reps: string
-  ) => void;
-  disabled: boolean;
-  isActive?: boolean;
-  studentId?: string | null;
-  restTimeLeft?: number;
-  onStartRest?: () => void;
-  onStopRest?: () => void;
-}) {
-  const [weight, setWeight] = useState(
-    set.weight || exercise.weight?.toString() || ""
-  );
-  const [reps, setReps] = useState(set.reps || exercise.reps || "");
-
-  const handleComplete = () => {
-    if (weight && reps) {
-      onComplete(exerciseId, setIndex, weight, reps);
-    }
-  };
-
-  return (
-    <div className="bg-white border border-gray-200 text-gray-900 p-4 rounded-lg min-h-[120px] relative shadow-sm">
-      {/* Header com nome do exercício, vídeo e botão concluir */}
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex flex-col gap-2">
-          <h3 className="text-gray-900 text-base font-semibold">
-            {exercise.name}
-          </h3>
-          {/* Indicador de mudança de peso */}
-          <WeightChangeIndicator
-            studentId={studentId || null}
-            exerciseId={exerciseId}
-            currentWeight={weight}
-          />
-        </div>
-        <div className="flex gap-3 items-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground hover:text-primary hover:bg-primary/10"
-          >
-            Vídeo
-          </Button>
-          {!disabled && (
-            <Button
-              onClick={handleComplete}
-              disabled={!weight || !reps}
-              size="sm"
-              className="bg-primary hover:bg-primary/90 text-white"
-            >
-              Concluir
-            </Button>
-          )}
-        </div>
       </div>
 
-      {/* Área principal com os campos */}
-      {!disabled && (
-        <div className="flex justify-center items-center gap-4 mb-6">
-          {/* Peso */}
-          <div className="text-center">
-            <label className="block text-xs font-medium text-gray-600 mb-2">
-              Peso
-            </label>
-            <Input
-              type="number"
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-              placeholder={exercise.weight?.toString() || "0"}
-              className="bg-white border border-gray-300 text-gray-900 text-center text-sm font-medium w-16 h-10"
-            />
-          </div>
-
-          {/* Série */}
-          <div className="text-center">
-            <label className="block text-xs font-medium text-gray-600 mb-2">
-              Série
-            </label>
-            <div className="bg-gray-100 border border-gray-300 rounded-md p-2 text-sm font-medium w-16 h-10 flex items-center justify-center">
-              {setIndex + 1}
-            </div>
-          </div>
-
-          {/* Repetições */}
-          <div className="text-center">
-            <label className="block text-xs font-medium text-gray-600 mb-2">
-              Repetições
-            </label>
-            <Input
-              value={reps}
-              onChange={(e) => setReps(e.target.value)}
-              placeholder={exercise.reps || "0"}
-              className="bg-white border border-gray-300 text-gray-900 text-center text-sm font-medium w-16 h-10"
-            />
-          </div>
-        </div>
+      {/* Modal de vídeo */}
+      {selectedVideo && (
+        <VideoModal
+          isOpen={!!selectedVideo}
+          onClose={() => setSelectedVideo(null)}
+          videoUrl={selectedVideo.url}
+          exerciseName={selectedVideo.exerciseName}
+        />
       )}
-
-      {/* Quando série está completa */}
-      {disabled && (
-        <div className="flex justify-center items-center mb-4">
-          <div className="text-center bg-primary/20 border border-primary rounded-lg p-4 w-full">
-            <CheckCircle className="h-8 w-8 text-primary mx-auto mb-2" />
-            <p className="text-foreground font-semibold text-base">
-              Série {setIndex + 1} Completa!
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {weight}kg × {reps} repetições
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Timer de descanso ativo - versão compacta no layout escuro */}
-      {restTimeLeft && restTimeLeft > 0 && (
-        <div className="mb-4">
-          <div className="bg-primary/20 border border-primary rounded-lg p-4 text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Coffee className="h-5 w-5 text-primary" />
-              <span className="text-foreground font-semibold">Descanso</span>
-            </div>
-            <div className="text-lg font-mono font-bold text-primary mb-2">
-              {Math.floor(restTimeLeft / 60)}:
-              {(restTimeLeft % 60).toString().padStart(2, "0")}
-            </div>
-            <Progress
-              value={
-                (((exercise.restTime || 60) - restTimeLeft) /
-                  (exercise.restTime || 60)) *
-                100
-              }
-              className="h-2 max-w-xs mx-auto"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Footer com descanso e finalizar */}
-      <div className="flex justify-between items-center mt-auto">
-        <div className="text-left">
-          {/* Botão de descanso */}
-          {disabled &&
-            exercise.restTime &&
-            (!restTimeLeft || restTimeLeft === 0) && (
-              <Button
-                variant="ghost"
-                onClick={onStartRest}
-                className="text-primary hover:text-primary/80 hover:bg-primary/10 px-0"
-              >
-                <Coffee className="h-4 w-4 mr-2" />
-                Descanso
-              </Button>
-            )}
-
-          {/* Timer de descanso ativo */}
-          {restTimeLeft && restTimeLeft > 0 && (
-            <Button
-              variant="ghost"
-              onClick={onStopRest}
-              className="text-primary hover:text-primary/80 hover:bg-primary/10 px-0"
-            >
-              <Square className="h-4 w-4 mr-2" />
-              Parar Descanso
-            </Button>
-          )}
-        </div>
-
-        <div className="text-right">
-          {/* Botão Finalizar - sempre visível no canto inferior direito */}
-          <Button
-            variant="ghost"
-            className="text-destructive hover:text-destructive/80 hover:bg-destructive/10 px-0"
-          >
-            Finalizar
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

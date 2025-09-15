@@ -55,6 +55,16 @@ export const workoutCategoryEnum = pgEnum("workout_category", [
   "full-body",
 ]);
 
+export const weekdayEnum = pgEnum("weekday", [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+]);
+
 // Students table
 export const students = pgTable("students", {
   id: varchar("id")
@@ -96,6 +106,7 @@ export const workouts = pgTable("workouts", {
     .references(() => users.id),
   name: varchar("name").notNull(),
   category: workoutCategoryEnum("category").notNull(),
+  weekday: weekdayEnum("weekday"), // Dia da semana para o treino
   description: text("description"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
@@ -577,11 +588,25 @@ export const insertStudentSchema = createInsertSchema(students)
     height: z.number().optional(),
   });
 
-export const insertWorkoutSchema = createInsertSchema(workouts).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertWorkoutSchema = createInsertSchema(workouts)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    weekday: z
+      .enum([
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+      ])
+      .optional(),
+  });
 
 export const insertExerciseTemplateSchema = createInsertSchema(
   exerciseTemplates

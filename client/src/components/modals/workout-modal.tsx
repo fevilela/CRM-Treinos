@@ -49,6 +49,17 @@ const workoutFormSchema = insertWorkoutSchema
     studentId: z.string().min(1, "Selecione um aluno"),
     name: z.string().min(1, "Nome do treino é obrigatório"),
     category: z.string().min(1, "Selecione uma categoria"),
+    weekday: z
+      .enum([
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+      ])
+      .optional(),
   });
 
 type WorkoutFormData = z.infer<typeof workoutFormSchema>;
@@ -93,6 +104,7 @@ export default function WorkoutModal({
       category: "",
       studentId: "",
       description: "",
+      weekday: undefined,
       isActive: true,
     },
   });
@@ -104,6 +116,7 @@ export default function WorkoutModal({
         category: workout.category as any,
         studentId: workout.studentId,
         description: workout.description || "",
+        weekday: (workout as any).weekday || undefined,
         isActive: workout.isActive,
       });
 
@@ -117,6 +130,7 @@ export default function WorkoutModal({
         category: "",
         studentId: "",
         description: "",
+        weekday: undefined,
         isActive: true,
       });
       setExercises([]);
@@ -331,6 +345,16 @@ export default function WorkoutModal({
     { value: "full-body", label: "Corpo Inteiro" },
   ];
 
+  const weekdays = [
+    { value: "monday", label: "Segunda-feira" },
+    { value: "tuesday", label: "Terça-feira" },
+    { value: "wednesday", label: "Quarta-feira" },
+    { value: "thursday", label: "Quinta-feira" },
+    { value: "friday", label: "Sexta-feira" },
+    { value: "saturday", label: "Sábado" },
+    { value: "sunday", label: "Domingo" },
+  ];
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
@@ -351,7 +375,7 @@ export default function WorkoutModal({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <FormField
                 control={form.control}
                 name="name"
@@ -389,6 +413,31 @@ export default function WorkoutModal({
                             value={category.value}
                           >
                             {category.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="weekday"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Dia da Semana</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-workout-weekday">
+                          <SelectValue placeholder="Selecione o dia" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {weekdays.map((day) => (
+                          <SelectItem key={day.value} value={day.value}>
+                            {day.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
