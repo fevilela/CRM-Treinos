@@ -532,42 +532,48 @@ export function StudentWorkoutExecution({
           ).length;
           const totalSets = progress.sets.length;
 
-          // Find current incomplete set or last completed set
-          const idx = progress.sets.findIndex((s) => !s.completed);
-          const setIndex = idx === -1 ? progress.sets.length - 1 : idx;
-          const currentSet = progress.sets[setIndex];
-
-          return (
-            <Card
-              key={exercise.id}
-              className="bg-white shadow-sm border border-gray-200"
-            >
-              <CardHeader className="text-center pb-6">
-                <CardTitle className="text-base text-gray-900">
-                  {exercise.name}
-                </CardTitle>
-                <CardDescription className="text-sm">
-                  Série {setIndex + 1} de {totalSets}
-                </CardDescription>
-              </CardHeader>
+            return (
+              <Card className="bg-white shadow-sm border border-gray-200">
+                <CardHeader className="text-center pb-6">
+                  <CardTitle className="text-base text-gray-900">
+                    {currentExercise.name}
+                  </CardTitle>
+                  <CardDescription className="text-sm">
+                    Série {currentSet.setNumber}
+                  </CardDescription>
+                </CardHeader>
 
               {canInteract && (
                 <CardContent>
                   <SetInput
                     set={currentSet}
-                    exercise={exercise}
-                    exerciseId={exercise.id}
-                    setIndex={setIndex}
+                    exercise={currentExercise}
+                    exerciseId={currentExercise.id}
+                    setIndex={currentSetIndex}
                     onComplete={completeSet}
                     disabled={currentSet.completed}
+                    restTimeLeft={getTimeLeft(
+                      `${currentExercise.id}-${currentSetIndex}`
+                    )}
                     studentId={student?.id || null}
+                    onStartRest={() =>
+                      startRestTimer(
+                        currentExercise.id,
+                        currentSetIndex,
+                        currentExercise.restTime || 60
+                      )
+                    }
+                    onStopRest={() => {
+                      stopRestTimer(currentExercise.id, currentSetIndex);
+                      advanceToNextSet();
+                    }}
                   />
                 </CardContent>
-              )}
-            </Card>
-          );
-        })}
-      </div>
+              </Card>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Botão Finalizar Treino - só aparece quando TODOS os exercícios estão completos */}
       {workoutStarted &&
@@ -686,7 +692,6 @@ function SetInput({
   onComplete,
   disabled,
   isActive,
-  studentId,
 }: {
   set: ExerciseSet;
   exercise: Exercise;
@@ -700,7 +705,6 @@ function SetInput({
   ) => void;
   disabled: boolean;
   isActive?: boolean;
-  studentId?: string | null;
 }) {
   const [weight, setWeight] = useState(
     set.weight || exercise.weight?.toString() || ""
@@ -723,7 +727,7 @@ function SetInput({
           </h3>
           {/* Indicador de mudança de peso */}
           <WeightChangeIndicator
-            studentId={studentId ?? null}
+            studentId={studentId}
             exerciseId={exerciseId}
             currentWeight={weight}
           />
@@ -806,12 +810,68 @@ function SetInput({
         </div>
       )}
 
-      {/* Timer de descanso removido temporariamente - funcionalidade em desenvolvimento */}
+      {/* Timer de descanso ativo - versão compacta no layout escuro */}
+      {restTimeLeft && restTimeLeft > 0 && (
+        <div className="mb-4">
+          <div className="bg-primary/20 border border-primary rounded-lg p-4 text-center">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Coffee className="h-5 w-5 text-primary" />
+              <span className="text-foreground font-semibold">Descanso</span>
+            </div>
+            <div className="text-lg font-mono font-bold text-primary mb-2">
+              {Math.floor(restTimeLeft / 60)}:
+              {(restTimeLeft % 60).toString().padStart(2, "0")}
+            </div>
+            <Progress
+              value={
+                (((exercise.restTime || 60) - restTimeLeft) /
+                  (exercise.restTime || 60)) *
+                100
+              }
+              className="h-2 max-w-xs mx-auto"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Footer com descanso e finalizar */}
       <div className="flex justify-between items-center mt-auto">
         <div className="text-left">
-          {/* Funções de descanso removidas temporariamente */}
+          {/* Botão de descanso */}
+          {disabled &&
+            exercise.restTime &&
+            (!restTimeLeft || restTimeLeft === 0) && (
+              <Button
+                variant="ghost"
+                onClick={onStartRest}
+                className="text-primary hover:text-primary/80 hover:bg-primary/10 px-0"
+              >
+                <Coffee className="h-4 w-4 mr-2" />
+                Descanso
+              </Button>
+            )}
+
+          {/* Timer de descanso ativo */}
+          {restTimeLeft && restTimeLeft > 0 && (
+            <Button
+              variant="ghost"
+              onClick={onStopRest}
+              className="text-primary hover:text-primary/80 hover:bg-primary/10 px-0"
+            >
+              <Square className="h-4 w-4 mr-2" />
+              Parar Descanso
+            </Button>
+          )}
+        </div>
+
+        <div className="text-right">
+          {/* Botão Finalizar - sempre visível no canto inferior direito */}
+          <Button
+            variant="ghost"
+            className="text-destructive hover:text-destructive/80 hover:bg-destructive/10 px-0"
+          >
+            Finalizar
+          </Button>
         </div>
       </div>
     </div>
