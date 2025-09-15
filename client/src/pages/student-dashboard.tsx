@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Calendar, Dumbbell, TrendingUp, Play } from "lucide-react";
 import { StudentWorkoutExecution } from "@/components/student-workout-execution";
+import { VideoModal } from "@/components/modals/video-modal";
 import type { Student } from "@shared/schema";
 
 interface StudentDashboardProps {
@@ -22,6 +23,14 @@ interface StudentDashboardProps {
 export function StudentDashboard({ student }: StudentDashboardProps) {
   const [selectedWorkout, setSelectedWorkout] = useState<string | null>(null);
   const [showWorkoutExecution, setShowWorkoutExecution] = useState(false);
+  const [workoutTimer, setWorkoutTimer] = useState(0);
+  const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(
+    null
+  );
+  const [selectedVideo, setSelectedVideo] = useState<{
+    url: string;
+    exerciseName: string;
+  } | null>(null);
 
   // Buscar treinos do aluno
   const { data: workouts, isLoading: workoutsLoading } = useQuery({
