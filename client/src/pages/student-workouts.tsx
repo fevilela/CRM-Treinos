@@ -25,6 +25,17 @@ export function StudentWorkouts({ student }: StudentWorkoutsProps) {
   // Buscar treinos do aluno
   const { data: workouts, isLoading: workoutsLoading } = useQuery({
     queryKey: ["/api/workouts/student", student.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/workouts/student/${student.id}`, {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch workouts: ${response.status}`);
+      }
+
+      return response.json();
+    },
     enabled: !!student.id,
   });
 

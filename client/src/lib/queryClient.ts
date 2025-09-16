@@ -49,9 +49,16 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    console.log("[QUERY DEBUG] Fetching:", queryKey.join("/"));
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
     });
+
+    console.log(
+      "[QUERY DEBUG] Response:",
+      res.status,
+      res.headers.get("content-type")
+    );
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;

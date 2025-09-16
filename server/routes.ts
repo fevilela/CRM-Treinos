@@ -49,6 +49,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Debug route for development
+  if (process.env.NODE_ENV === "development") {
+    app.get("/api/debug/session", (req: any, res) => {
+      res.json({
+        sessionID: req.sessionID,
+        user: req.user || null,
+        isAuthenticated: req.isAuthenticated(),
+        sessionData: req.session || null,
+        cookies: req.headers.cookie || null,
+      });
+    });
+  }
+
   // Student auth route - get current student data
   app.get("/api/auth/student/me", isAuthenticated, async (req: any, res) => {
     try {
@@ -725,6 +738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           firstName: student.name.split(" ")[0],
           lastName: student.name.split(" ").slice(1).join(" ") || "",
           role: "student" as const,
+          personalTrainerId: student.personalTrainerId, // This marks it as from students table
         };
 
         // Log the student in using passport session

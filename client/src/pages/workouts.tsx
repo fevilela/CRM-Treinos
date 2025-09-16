@@ -43,12 +43,12 @@ export default function Workouts() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          title: "Não autorizado",
+          description: "Você foi deslogado. Redirecionando...",
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.reload();
         }, 500);
         return;
       }

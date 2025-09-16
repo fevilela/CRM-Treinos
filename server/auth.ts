@@ -24,7 +24,8 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: false, // Set to true in production with HTTPS
+      secure: process.env.NODE_ENV !== "development",
+      sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
       maxAge: sessionTtl,
     },
   });
@@ -58,20 +59,98 @@ passport.use(
 );
 
 passport.serializeUser((user: any, done) => {
-  done(null, user.id);
+  // Serialize with user type and source to distinguish between users table and students table
+  // For users from the 'users' table (teachers and self-registered students)
+  const source = user.personalTrainerId !== undefined ? "students" : "users";
+  const serializedData = { id: user.id, role: user.role, source };
+
+  if (process.env.NODE_ENV === "development") {
+    console.log("[AUTH DEBUG] serializeUser:", {
+      user: {
+        id: user.id,
+        role: user.role,
+        personalTrainerId: user.personalTrainerId,
+      },
+      serializedData,
+    });
+  }
+
+  done(null, serializedData);
 });
 
-passport.deserializeUser(async (id: string, done) => {
+passport.deserializeUser(async (serializedData: any, done) => {
   try {
-    const user = await storage.getUser(id);
-    if (!user) {
-      // Usuário foi excluído, limpar a sessão
-      return done(null, false);
+    if (process.env.NODE_ENV === "development") {
+      console.log("[AUTH DEBUG] deserializeUser input:", serializedData);
     }
-    done(null, user);
+
+    // Handle both old string format (id only) and new object format {id, role, source}
+    let userId: string;
+    let userRole: string;
+    let source: string;
+
+    if (typeof serializedData === "string") {
+      // Old format, assume teacher from users table
+      userId = serializedData;
+      userRole = "teacher";
+      source = "users";
+    } else {
+      // New format with role and source information
+      userId = serializedData.id;
+      userRole = serializedData.role;
+      source = serializedData.source || "users"; // Default to users for backward compatibility
+    }
+
+    if (source === "students") {
+      // For invited students, fetch from students table and reconstruct user object
+      const student = await storage.getStudent(userId);
+      if (!student) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[AUTH DEBUG] Student not found:", userId);
+        }
+        return done(null, false);
+      }
+
+      // Reconstruct student user object to match login format
+      const studentUser = {
+        id: student.id,
+        email: student.email,
+        firstName: student.name.split(" ")[0],
+        lastName: student.name.split(" ").slice(1).join(" ") || "",
+        role: "student" as const,
+        personalTrainerId: student.personalTrainerId,
+      };
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AUTH DEBUG] deserializeUser success (student):", {
+          id: studentUser.id,
+          role: studentUser.role,
+        });
+      }
+
+      done(null, studentUser);
+    } else {
+      // For teachers and self-registered students, fetch from users table
+      const user = await storage.getUser(userId);
+      if (!user) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[AUTH DEBUG] User not found:", userId);
+        }
+        return done(null, false);
+      }
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AUTH DEBUG] deserializeUser success (user):", {
+          id: user.id,
+          role: user.role,
+        });
+      }
+
+      done(null, user);
+    }
   } catch (error) {
     console.error("Erro ao deserializar usuário:", error);
-    done(null, false); // Retorna false ao invés de error para evitar crash
+    done(null, false);
   }
 });
 
@@ -149,7 +228,19 @@ export async function setupAuth(app: Express) {
   });
 }
 
-export const isAuthenticated: RequestHandler = (req, res, next) => {
+export const isAuthenticated: RequestHandler = (req: any, res, next) => {
+  // Debug logging for development
+  if (process.env.NODE_ENV === "development") {
+    console.log("[AUTH DEBUG] isAuthenticated check:", {
+      sessionID: req.sessionID,
+      hasSession: Boolean(req.session),
+      hasUser: Boolean(req.user),
+      isAuth: req.isAuthenticated(),
+      userRole: req.user?.role,
+      cookies: req.headers.cookie ? "present" : "missing",
+    });
+  }
+
   if (req.isAuthenticated()) {
     return next();
   }

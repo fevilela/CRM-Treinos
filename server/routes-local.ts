@@ -53,6 +53,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Student auth route - get current student data
+  app.get("/api/auth/student/me", isAuthenticated, async (req: any, res) => {
+    try {
+      // For local development, check if user has student role
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user || user.role !== "student") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // First try to find student in students table (registered by teacher)
+      const studentRecord = await storage.getStudentByEmail(user.email);
+
+      if (studentRecord) {
+        // Student exists in students table (registered by teacher)
+        const { password, inviteToken, ...sanitizedStudent } = studentRecord;
+        res.json({ success: true, student: sanitizedStudent });
+      } else {
+        // Student is self-registered (only exists in users table)
+        // Create a student-like object from user data
+        const studentData = {
+          id: user.id, // Use user ID as student ID
+          name: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          personalTrainerId: null, // Self-registered students don't have a trainer initially
+          // Add other required student fields as needed
+          gender: null,
+          dateOfBirth: null,
+          phone: null,
+          goals: null,
+          status: "active" as const,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+        };
+
+        res.json({ success: true, student: studentData });
+      }
+    } catch (error) {
+      console.error("Error fetching student data:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch student data",
+      });
+    }
+  });
+
   // Dashboard stats
   app.get("/api/dashboard/stats", isAuthenticated, async (req: any, res) => {
     try {
@@ -338,11 +385,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Busca student record baseado no email
       const student = await storage.getStudentByEmail(userEmail);
       if (!student) {
-        return res
-          .status(404)
-          .json({
-            message: "Student record not found. Please contact your trainer.",
-          });
+        return res.status(404).json({
+          message: "Student record not found. Please contact your trainer.",
+        });
       }
 
       res.json(student);
