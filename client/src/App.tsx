@@ -15,7 +15,7 @@ import StudentSetupPassword from "@/pages/student-setup-password";
 import { StudentApp } from "@/pages/student-app";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/sidebar";
-import StudentSidebar from "@/components/layout/student-sidebar";
+import { StudentLayout } from "@/components/layout/student-layout";
 import type { Student } from "@shared/schema";
 
 // Definir tipo para o usuário baseado no schema
@@ -86,41 +86,7 @@ function StudentInterface({
     );
   }
 
-  return (
-    <div className="flex">
-      <StudentSidebar student={student} onLogout={onLogout} />
-      <main className="flex-1 p-6 bg-background min-h-screen ml-64">
-        <Switch>
-          <Route
-            path="/"
-            component={() => (
-              <StudentDashboard student={student} onLogout={onLogout} />
-            )}
-          />
-          <Route
-            path="/student"
-            component={() => (
-              <StudentDashboard student={student} onLogout={onLogout} />
-            )}
-          />
-          <Route path="/student/progress" component={Progress} />
-          <Route
-            path="/student/evolution"
-            component={() => (
-              <div className="text-center p-8">
-                Evolução Corporal (Em breve)
-              </div>
-            )}
-          />
-          <Route
-            path="/physical-assessments"
-            component={() => <PhysicalAssessments readOnly={true} />}
-          />
-          <Route component={NotFound} />
-        </Switch>
-      </main>
-    </div>
-  );
+  return <StudentLayout student={student} onLogout={onLogout} />;
 }
 
 function Router() {

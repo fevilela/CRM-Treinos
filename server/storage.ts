@@ -69,6 +69,9 @@ export interface IStorage {
   updateWorkout(id: string, workout: Partial<InsertWorkout>): Promise<Workout>;
   deleteWorkout(id: string): Promise<void>;
 
+  // Weekday scheduling operations
+  getStudentMostRecentWorkout(studentId: string): Promise<Workout | undefined>;
+
   // Exercise template operations
   getExerciseTemplates(): Promise<ExerciseTemplate[]>;
   createExerciseTemplate(
@@ -325,7 +328,50 @@ export class DatabaseStorage implements IStorage {
     return workout;
   }
 
+  async getStudentMostRecentWorkout(
+    studentId: string
+  ): Promise<Workout | undefined> {
+    const [workout] = await db
+      .select()
+      .from(workouts)
+      .where(eq(workouts.studentId, studentId))
+      .orderBy(desc(workouts.createdAt))
+      .limit(1);
+    return workout;
+  }
+
+  // Helper method to get next weekday in sequence
+  private getNextWeekday(currentWeekday: string | null): string {
+    const weekdays = [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+      "sunday",
+    ];
+
+    if (!currentWeekday) {
+      return "monday"; // Start with Monday if no previous workout
+    }
+
+    const currentIndex = weekdays.indexOf(currentWeekday);
+    const nextIndex = (currentIndex + 1) % weekdays.length; // Wrap around after Sunday
+    return weekdays[nextIndex];
+  }
+
   async createWorkout(workout: InsertWorkout): Promise<Workout> {
+    // If no weekday is specified, automatically assign one
+    if (!workout.weekday && workout.studentId) {
+      const mostRecentWorkout = await this.getStudentMostRecentWorkout(
+        workout.studentId
+      );
+      workout.weekday = this.getNextWeekday(
+        mostRecentWorkout?.weekday || null
+      ) as any;
+    }
+
     const [newWorkout] = await db.insert(workouts).values(workout).returning();
     return newWorkout;
   }
@@ -334,6 +380,21 @@ export class DatabaseStorage implements IStorage {
     id: string,
     workoutData: Partial<InsertWorkout>
   ): Promise<Workout> {
+    // If no weekday is specified in the update, automatically assign one
+    if (workoutData.weekday === undefined || workoutData.weekday === null) {
+      // First get the existing workout to obtain the studentId
+      const existingWorkout = await this.getWorkout(id);
+      if (existingWorkout && existingWorkout.studentId) {
+        const studentId = workoutData.studentId || existingWorkout.studentId;
+        const mostRecentWorkout = await this.getStudentMostRecentWorkout(
+          studentId
+        );
+        workoutData.weekday = this.getNextWeekday(
+          mostRecentWorkout?.weekday || null
+        ) as any;
+      }
+    }
+
     const [updatedWorkout] = await db
       .update(workouts)
       .set({ ...workoutData, updatedAt: new Date() })
@@ -454,11 +515,12 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select({
         id: workoutSessions.id,
-        workoutId: workoutSessions.workoutId,
         studentId: workoutSessions.studentId,
+        workoutId: workoutSessions.workoutId,
+        notes: workoutSessions.notes,
+        startTime: workoutSessions.startTime,
         completedAt: workoutSessions.completedAt,
         duration: workoutSessions.duration,
-        notes: workoutSessions.notes,
       })
       .from(workoutSessions)
       .innerJoin(workouts, eq(workoutSessions.workoutId, workouts.id))

@@ -1669,11 +1669,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ message: "Assessment not found" });
         }
 
-        // Check authorization
-        if (currentAssessment.personalTrainerId !== req.user.id) {
-          console.log("❌ Acesso negado - Personal trainer não autorizado");
+        // Check authorization - allow both personal trainer and student to access
+        const isPersonalTrainer =
+          currentAssessment.personalTrainerId === req.user.id;
+        const isStudent = currentAssessment.studentId === req.user.id;
+
+        if (!isPersonalTrainer && !isStudent) {
+          console.log("❌ Acesso negado - Usuário não autorizado");
           return res.status(403).json({ message: "Access denied" });
         }
+
+        console.log(
+          `✅ Acesso autorizado - ${
+            isPersonalTrainer ? "Personal trainer" : "Aluno"
+          }`
+        );
 
         // Get previous assessment version for comparison
         const history = await storage.getPhysicalAssessmentHistory(
