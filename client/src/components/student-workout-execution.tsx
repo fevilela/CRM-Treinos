@@ -28,6 +28,8 @@ import {
   Calendar,
   CheckCircle2,
   Dumbbell,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { VideoModal } from "./modals/video-modal";
 import type { Student, Exercise } from "@shared/schema";
@@ -230,6 +232,9 @@ export function StudentWorkoutExecution({
     url: string;
     exerciseName: string;
   } | null>(null);
+  const [collapsedExercises, setCollapsedExercises] = useState<
+    Record<string, boolean>
+  >({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -271,6 +276,9 @@ export function StudentWorkoutExecution({
         description: "Seus resultados foram salvos com sucesso.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/workout-history"] });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/workout-sessions/student/${student.id}`],
+      });
       setWorkoutCompleted(true);
     },
   });
@@ -353,6 +361,25 @@ export function StudentWorkoutExecution({
   const handleSkipRest = () => {
     setIsResting(false);
   };
+
+  // Função para toggle do collapse de exercícios
+  const toggleExerciseCollapse = (exerciseId: string) => {
+    setCollapsedExercises((prev) => ({
+      ...prev,
+      [exerciseId]: !prev[exerciseId],
+    }));
+  };
+
+  // Auto-collapse quando todas as séries estão completas
+  useEffect(() => {
+    const newCollapsed: Record<string, boolean> = {};
+    Object.values(exerciseProgress).forEach((progress) => {
+      if (progress.allSetsCompleted) {
+        newCollapsed[progress.exerciseId] = true;
+      }
+    });
+    setCollapsedExercises((prev) => ({ ...prev, ...newCollapsed }));
+  }, [exerciseProgress]);
 
   const handleUpdateSetData = (
     exerciseId: string,
@@ -608,7 +635,10 @@ export function StudentWorkoutExecution({
                   : "bg-white border-gray-200"
               } shadow-md transition-all duration-300`}
             >
-              <CardHeader>
+              <CardHeader
+                className="cursor-pointer"
+                onClick={() => toggleExerciseCollapse(exercise.id)}
+              >
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-3">
                     {progress.allSetsCompleted ? (
@@ -634,9 +664,10 @@ export function StudentWorkoutExecution({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() =>
-                          openVideo(exercise.videoUrl!, exercise.name)
-                        }
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openVideo(exercise.videoUrl!, exercise.name);
+                        }}
                         className="border-blue-300 text-blue-600 hover:bg-blue-50"
                       >
                         <PlayCircle className="h-4 w-4 mr-1" />
@@ -652,6 +683,11 @@ export function StudentWorkoutExecution({
                         {(exercise.restTime % 60).toString().padStart(2, "0")}
                       </Badge>
                     )}
+                    {collapsedExercises[exercise.id] ? (
+                      <ChevronDown className="h-5 w-5 text-gray-500" />
+                    ) : (
+                      <ChevronUp className="h-5 w-5 text-gray-500" />
+                    )}
                   </div>
                 </div>
                 {exercise.notes && (
@@ -661,103 +697,108 @@ export function StudentWorkoutExecution({
                 )}
               </CardHeader>
 
-              <CardContent>
-                <div className="space-y-4">
-                  {progress.sets.map((set, setIndex) => (
-                    <div
-                      key={setIndex}
-                      className={`flex items-center gap-4 p-4 rounded-lg border ${
-                        set.completed
-                          ? "bg-green-50 border-green-200"
-                          : "bg-gray-50 border-gray-200"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 min-w-[80px]">
-                        {set.completed ? (
-                          <CheckCircle2 className="h-5 w-5 text-green-600" />
-                        ) : (
-                          <div className="w-5 h-5 rounded-full border-2 border-gray-400"></div>
-                        )}
-                        <span className="font-medium text-sm">
-                          Série {set.setNumber}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className="flex items-center gap-2">
-                          <label className="text-xs font-medium text-gray-600">
-                            Peso (kg)
-                          </label>
-                          <Input
-                            type="number"
-                            value={set.weight}
-                            onChange={(e) =>
-                              handleUpdateSetData(
-                                exercise.id,
-                                setIndex,
-                                "weight",
-                                e.target.value
-                              )
-                            }
-                            placeholder={exercise.weight?.toString() || "0"}
-                            className="w-20 h-8 text-center"
-                            disabled={set.completed}
-                          />
+              {!collapsedExercises[exercise.id] && (
+                <CardContent>
+                  <div className="space-y-4">
+                    {progress.sets.map((set, setIndex) => (
+                      <div
+                        key={setIndex}
+                        className={`flex items-center gap-4 p-4 rounded-lg border ${
+                          set.completed
+                            ? "bg-green-50 border-green-200"
+                            : "bg-gray-50 border-gray-200"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-[80px]">
+                          {set.completed ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                          ) : (
+                            <div className="w-5 h-5 rounded-full border-2 border-gray-400"></div>
+                          )}
+                          <span className="font-medium text-sm">
+                            Série {set.setNumber}
+                          </span>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          <label className="text-xs font-medium text-gray-600">
-                            Repetições
-                          </label>
-                          <Input
-                            type="number"
-                            value={set.reps}
-                            onChange={(e) =>
-                              handleUpdateSetData(
-                                exercise.id,
-                                setIndex,
-                                "reps",
-                                e.target.value
-                              )
-                            }
-                            placeholder={exercise.reps || "0"}
-                            className="w-20 h-8 text-center"
-                            disabled={set.completed}
-                          />
-                        </div>
-
-                        {!set.completed && workoutStarted && (
-                          <Button
-                            onClick={() => {
-                              if (exercise.restTime && exercise.restTime > 0) {
-                                handleStartRest(
-                                  exercise.restTime,
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs font-medium text-gray-600">
+                              Peso (kg)
+                            </label>
+                            <Input
+                              type="number"
+                              value={set.weight}
+                              onChange={(e) =>
+                                handleUpdateSetData(
                                   exercise.id,
-                                  setIndex
-                                );
-                              } else {
-                                handleCompleteSet(exercise.id, setIndex);
+                                  setIndex,
+                                  "weight",
+                                  e.target.value
+                                )
                               }
-                            }}
-                            className="bg-blue-600 hover:bg-blue-700"
-                            disabled={!set.weight || !set.reps}
-                          >
-                            {exercise.restTime
-                              ? "Concluir & Descansar"
-                              : "Concluir Série"}
-                          </Button>
-                        )}
-
-                        {set.completed && (
-                          <div className="text-sm text-green-600 font-medium">
-                            ✓ {set.weight}kg × {set.reps} reps
+                              placeholder={exercise.weight?.toString() || "0"}
+                              className="w-20 h-8 text-center"
+                              disabled={set.completed}
+                            />
                           </div>
-                        )}
+
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs font-medium text-gray-600">
+                              Repetições
+                            </label>
+                            <Input
+                              type="number"
+                              value={set.reps}
+                              onChange={(e) =>
+                                handleUpdateSetData(
+                                  exercise.id,
+                                  setIndex,
+                                  "reps",
+                                  e.target.value
+                                )
+                              }
+                              placeholder={exercise.reps || "0"}
+                              className="w-20 h-8 text-center"
+                              disabled={set.completed}
+                            />
+                          </div>
+
+                          {!set.completed && workoutStarted && (
+                            <Button
+                              onClick={() => {
+                                if (
+                                  exercise.restTime &&
+                                  exercise.restTime > 0
+                                ) {
+                                  handleStartRest(
+                                    exercise.restTime,
+                                    exercise.id,
+                                    setIndex
+                                  );
+                                } else {
+                                  handleCompleteSet(exercise.id, setIndex);
+                                }
+                              }}
+                              className="bg-blue-600 hover:bg-blue-700"
+                              disabled={!set.weight || !set.reps}
+                            >
+                              {exercise.restTime
+                                ? "Concluir & Descansar"
+                                : "Concluir Série"}
+                            </Button>
+                          )}
+
+                          {set.completed && (
+                            <div className="text-sm text-green-600 font-medium">
+                              ✓ {set.weight}kg × {set.reps} reps
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
+                    ))}
+                  </div>
+                </CardContent>
+              )}
             </Card>
           );
         })}

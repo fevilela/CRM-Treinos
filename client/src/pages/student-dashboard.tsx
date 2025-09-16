@@ -44,10 +44,16 @@ export function StudentDashboard({ student }: StudentDashboardProps) {
     enabled: !!student.id,
   });
 
+  // Buscar sessões concluídas
+  const { data: workoutSessions, isLoading: sessionsLoading } = useQuery({
+    queryKey: [`/api/workout-sessions/student/${student.id}`],
+    enabled: !!student.id,
+  });
+
   const stats = {
     totalWorkouts: Array.isArray(workouts) ? workouts.length : 0,
-    completedSessions: Array.isArray(workoutHistory)
-      ? workoutHistory.length
+    completedSessions: Array.isArray(workoutSessions)
+      ? workoutSessions.length
       : 0,
     weeklyGoal: 3,
     currentWeekSessions: 2,
@@ -166,53 +172,33 @@ export function StudentDashboard({ student }: StudentDashboardProps) {
         </Card>
       </div>
 
-      {/* My Workouts */}
-      <Card data-testid="card-my-workouts">
+      {/* Quick Action - Go to Workouts */}
+      <Card data-testid="card-quick-actions">
         <CardHeader>
-          <CardTitle>Meus Treinos</CardTitle>
+          <CardTitle>Acesso Rápido</CardTitle>
           <CardDescription>
-            Treinos criados pelo seu personal trainer
+            Navegue rapidamente para suas seções favoritas
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {workoutsLoading ? (
-            <p>Carregando treinos...</p>
-          ) : Array.isArray(workouts) && workouts.length ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {workouts.map((workout: any) => (
-                <Card
-                  key={workout.id}
-                  className="hover:shadow-md transition-shadow"
-                  data-testid={`card-workout-${workout.id}`}
-                >
-                  <CardHeader>
-                    <CardTitle className="text-lg">{workout.name}</CardTitle>
-                    <CardDescription>{workout.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex justify-between items-center">
-                      <Badge
-                        variant="outline"
-                        data-testid={`badge-category-${workout.id}`}
-                      >
-                        {workout.category}
-                      </Badge>
-                      <Button
-                        size="sm"
-                        onClick={() => handleStartWorkout(workout.id)}
-                        data-testid={`button-start-workout-${workout.id}`}
-                      >
-                        <Play className="h-4 w-4 mr-1" />
-                        Iniciar
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500">Nenhum treino disponível ainda</p>
-          )}
+          <div className="grid gap-3 md:grid-cols-2">
+            <Button
+              variant="outline"
+              className="h-20 flex-col space-y-2"
+              onClick={() => (window.location.href = "/student/workouts")}
+            >
+              <Dumbbell className="h-6 w-6" />
+              <span>Meus Treinos</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-20 flex-col space-y-2"
+              onClick={() => (window.location.href = "/student/progress")}
+            >
+              <TrendingUp className="h-6 w-6" />
+              <span>Meu Progresso</span>
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

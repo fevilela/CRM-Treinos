@@ -643,6 +643,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get workout sessions for specific student
+  app.get(
+    "/api/workout-sessions/student/:studentId",
+    isStudentOrTeacher,
+    async (req, res) => {
+      try {
+        const { studentId } = req.params;
+        const sessions = await storage.getWorkoutSessions(studentId);
+        res.json(sessions);
+      } catch (error) {
+        console.error("Error fetching student workout sessions:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch student workout sessions" });
+      }
+    }
+  );
+
   // Body Measurement routes
   app.get(
     "/api/body-measurements/:studentId",
