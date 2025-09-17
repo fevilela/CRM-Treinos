@@ -1,5 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { User } from "lucide-react";
 import type { Student } from "@shared/schema";
 
 const studentMenuItems = [
@@ -16,7 +18,6 @@ const studentMenuItems = [
     path: "/student/body-evolution",
     icon: "fas fa-male",
   },
-  { name: "Meu Perfil", path: "/student/profile", icon: "fas fa-user-circle" },
 ];
 
 interface StudentSidebarProps {
@@ -67,17 +68,25 @@ export default function StudentSidebar({
       {/* Student Profile */}
       <div className="absolute bottom-0 w-64 p-6 border-t bg-gray-50">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-              <i className="fas fa-user text-white"></i>
+          <Link href="/student/profile">
+            <div className="flex items-center space-x-3 cursor-pointer hover:opacity-75">
+              <Avatar className="h-10 w-10">
+                <AvatarImage
+                  src={student.profileImage || undefined}
+                  alt="Foto de perfil"
+                />
+                <AvatarFallback>
+                  <User className="h-5 w-5" />
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-sm font-medium text-gray-900">
+                  {student.name}
+                </p>
+                <p className="text-xs text-gray-500">Aluno</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-900">
-                {student.name}
-              </p>
-              <p className="text-xs text-gray-500">Aluno</p>
-            </div>
-          </div>
+          </Link>
           <Button
             variant="ghost"
             size="sm"

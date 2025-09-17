@@ -1,6 +1,9 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
+import { User } from "lucide-react";
 
 const menuItems = [
   { name: "Dashboard", path: "/", icon: "fas fa-home" },
@@ -13,13 +16,26 @@ const menuItems = [
   },
   { name: "Progresso", path: "/progress", icon: "fas fa-chart-line" },
   { name: "Evolução Corporal", path: "/body-evolution", icon: "fas fa-male" },
-  { name: "Meu Perfil", path: "/profile", icon: "fas fa-user-circle" },
   { name: "Configurações", path: "/settings", icon: "fas fa-cog" },
 ];
 
 export function Sidebar() {
   const [location] = useLocation();
   const { logout, isLoggingOut } = useAuth();
+
+  // Buscar dados do usuário atual
+  const { data: user } = useQuery({
+    queryKey: ["/api/auth/user"],
+    queryFn: async () => {
+      const response = await fetch("/api/auth/user", {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    },
+  });
 
   return (
     <div className="bg-white shadow-lg w-64 fixed h-full z-10">
@@ -58,17 +74,22 @@ export function Sidebar() {
       {/* User Profile */}
       <div className="absolute bottom-0 w-64 p-6 border-t bg-gray-50">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-              <i className="fas fa-user text-white"></i>
+          <Link href="/profile">
+            <div className="flex items-center space-x-3 cursor-pointer hover:opacity-75">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={user?.profileImageUrl} alt="Foto de perfil" />
+                <AvatarFallback>
+                  <User className="h-5 w-5" />
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-sm font-medium text-gray-900">
+                  {user?.firstName} {user?.lastName}
+                </p>
+                <p className="text-xs text-gray-500">Personal Trainer</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-900">
-                Personal Trainer
-              </p>
-              <p className="text-xs text-gray-500">Sistema CRM</p>
-            </div>
-          </div>
+          </Link>
           <Button
             variant="ghost"
             size="sm"

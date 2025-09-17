@@ -27,10 +27,6 @@ const studentProfileSchema = z.object({
   phone: z.string().optional(),
   dateOfBirth: z.string().optional(),
   gender: z.enum(["male", "female"]),
-  weight: z.string().optional(),
-  height: z.string().optional(),
-  goal: z.string().optional(),
-  medicalConditions: z.string().optional(),
 });
 
 type StudentProfileData = z.infer<typeof studentProfileSchema>;
@@ -62,10 +58,6 @@ export default function StudentProfile() {
       phone: "",
       dateOfBirth: "",
       gender: "male",
-      weight: "",
-      height: "",
-      goal: "",
-      medicalConditions: "",
     },
   });
 
@@ -79,10 +71,6 @@ export default function StudentProfile() {
           ? new Date(student.dateOfBirth).toISOString().split("T")[0]
           : "",
         gender: student.gender || "male",
-        weight: student.weight ? String(student.weight) : "",
-        height: student.height ? String(student.height) : "",
-        goal: student.goal || "",
-        medicalConditions: student.medicalConditions || "",
       });
       setPreviewUrl(student.profileImage || "");
     }
@@ -239,74 +227,22 @@ export default function StudentProfile() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="gender">Gênero</Label>
-                  <Select
-                    value={form.watch("gender")}
-                    onValueChange={(value) =>
-                      form.setValue("gender", value as "male" | "female")
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o gênero" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="male">Masculino</SelectItem>
-                      <SelectItem value="female">Feminino</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="weight">Peso (kg)</Label>
-                  <Input
-                    {...form.register("weight")}
-                    id="weight"
-                    placeholder="Ex: 70.5"
-                    type="number"
-                    step="0.1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="height">Altura (cm)</Label>
-                  <Input
-                    {...form.register("height")}
-                    id="height"
-                    placeholder="Ex: 175"
-                    type="number"
-                    step="0.1"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Objetivos e Condições Médicas */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Objetivos e Saúde</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="goal">Objetivo Principal</Label>
-                <Textarea
-                  {...form.register("goal")}
-                  id="goal"
-                  placeholder="Descreva seus objetivos de treino..."
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="medicalConditions">
-                  Condições Médicas ou Limitações
-                </Label>
-                <Textarea
-                  {...form.register("medicalConditions")}
-                  id="medicalConditions"
-                  placeholder="Descreva qualquer condição médica, lesão ou limitação..."
-                  rows={3}
-                />
+                <Label htmlFor="gender">Gênero</Label>
+                <Select
+                  value={form.watch("gender")}
+                  onValueChange={(value) =>
+                    form.setValue("gender", value as "male" | "female")
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o gênero" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Masculino</SelectItem>
+                    <SelectItem value="female">Feminino</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>
