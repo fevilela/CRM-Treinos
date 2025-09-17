@@ -8,6 +8,7 @@ import ProgressChart from "@/components/dashboard/progress-chart";
 import BodyPhotoGallery from "@/components/dashboard/body-photo-gallery";
 import StudentList from "@/components/dashboard/student-list";
 import ActivityFeed from "@/components/dashboard/activity-feed";
+import TeacherCalendar from "@/components/dashboard/calendar";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -56,6 +57,11 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <ProgressChart />
           <BodyPhotoGallery photos={[]} interactive={false} measurements={{}} />
+        </div>
+
+        {/* Calendar Section */}
+        <div className="mb-8">
+          <TeacherCalendar />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

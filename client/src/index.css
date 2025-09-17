@@ -61,3 +61,105 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+/* React Big Calendar Styles */
+.rbc-calendar {
+  font-family: inherit;
+}
+
+.rbc-toolbar {
+  @apply mb-4 flex items-center justify-between flex-wrap gap-2;
+}
+
+.rbc-toolbar button {
+  @apply px-3 py-2 text-sm font-medium rounded-md border border-gray-300 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+}
+
+.rbc-toolbar button.rbc-active {
+  @apply bg-blue-600 text-white border-blue-600 hover:bg-blue-700;
+}
+
+.rbc-toolbar .rbc-toolbar-label {
+  @apply text-lg font-semibold text-gray-900;
+}
+
+.rbc-month-view,
+.rbc-time-view {
+  @apply border border-gray-200 rounded-lg;
+}
+
+.rbc-header {
+  @apply bg-gray-50 border-b border-gray-200 py-2 px-3 text-sm font-medium text-gray-700;
+}
+
+.rbc-date-cell {
+  @apply text-sm text-gray-900;
+}
+
+.rbc-off-range-bg {
+  @apply bg-gray-50;
+}
+
+.rbc-today {
+  @apply bg-blue-50;
+}
+
+.rbc-event {
+  @apply text-xs font-medium px-2 py-1 rounded;
+}
+
+.rbc-slot-selection {
+  @apply bg-blue-100 border border-blue-300;
+}
+
+.rbc-time-slot {
+  @apply border-t border-gray-100;
+}
+
+.rbc-timeslot-group {
+  @apply border-b border-gray-200;
+}
+
+.rbc-current-time-indicator {
+  @apply bg-red-500;
+}
+
+.rbc-calendar .rbc-toolbar .rbc-btn-group {
+  @apply space-x-1;
+}
+
+.rbc-calendar .rbc-header+.rbc-header {
+  @apply border-l border-gray-200;
+}
+
+.rbc-time-content {
+  @apply border-t border-gray-200;
+}
+
+.rbc-time-gutter .rbc-timeslot-group {
+  @apply border-r border-gray-200;
+}
+
+.rbc-day-slot .rbc-time-slot {
+  @apply border-r border-gray-100;
+}
+
+.rbc-agenda-view {
+  @apply border border-gray-200 rounded-lg;
+}
+
+.rbc-agenda-view table.rbc-agenda-table {
+  @apply w-full;
+}
+
+.rbc-agenda-view .rbc-agenda-table tbody>tr>td {
+  @apply border-b border-gray-100 py-2 px-3;
+}
+
+.rbc-agenda-view .rbc-agenda-table .rbc-agenda-time-cell {
+  @apply text-sm text-gray-600;
+}
+
+.rbc-agenda-view .rbc-agenda-table .rbc-agenda-event-cell {
+  @apply text-sm;
+}

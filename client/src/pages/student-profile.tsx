@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -35,6 +35,7 @@ export default function StudentProfile() {
   const { toast } = useToast();
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Buscar dados do estudante atual
   const { data: student, isLoading } = useQuery({
@@ -171,18 +172,17 @@ export default function StudentProfile() {
                     accept="image/*"
                     onChange={handleImageChange}
                     className="hidden"
-                    id="profile-image"
+                    ref={fileInputRef}
                   />
-                  <label htmlFor="profile-image">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="cursor-pointer"
-                    >
-                      <Camera className="h-4 w-4 mr-2" />
-                      Alterar Foto
-                    </Button>
-                  </label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="cursor-pointer"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Camera className="h-4 w-4 mr-2" />
+                    Alterar Foto
+                  </Button>
                 </div>
               </div>
             </CardContent>
