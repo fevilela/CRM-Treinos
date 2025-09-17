@@ -10,6 +10,8 @@ import Students from "@/pages/students";
 import Workouts from "@/pages/workouts";
 import PhysicalAssessments from "@/pages/physical-assessments";
 import Progress from "@/pages/progress";
+import TeacherProfile from "@/pages/teacher-profile";
+import StudentProfile from "@/pages/student-profile";
 import { StudentDashboard } from "@/pages/student-dashboard";
 import StudentSetupPassword from "@/pages/student-setup-password";
 import { StudentApp } from "@/pages/student-app";
@@ -160,6 +162,7 @@ function Router() {
                     component={() => <PhysicalAssessments />}
                   />
                   <Route path="/progress" component={Progress} />
+                  <Route path="/profile" component={TeacherProfile} />
                   <Route component={NotFound} />
                 </Switch>
               </main>

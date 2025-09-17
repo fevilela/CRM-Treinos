@@ -13,6 +13,7 @@ const menuItems = [
   },
   { name: "Progresso", path: "/progress", icon: "fas fa-chart-line" },
   { name: "Evolução Corporal", path: "/body-evolution", icon: "fas fa-male" },
+  { name: "Meu Perfil", path: "/profile", icon: "fas fa-user-circle" },
   { name: "Configurações", path: "/settings", icon: "fas fa-cog" },
 ];
 

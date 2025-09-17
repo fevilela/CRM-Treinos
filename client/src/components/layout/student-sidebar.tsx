@@ -16,6 +16,7 @@ const studentMenuItems = [
     path: "/student/body-evolution",
     icon: "fas fa-male",
   },
+  { name: "Meu Perfil", path: "/student/profile", icon: "fas fa-user-circle" },
 ];
 
 interface StudentSidebarProps {

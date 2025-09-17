@@ -19,6 +19,7 @@ import {
   insertWorkoutCommentSchema,
   insertPhysicalAssessmentSchema,
   insertAssessmentPhotoSchema,
+  insertUserSchema,
   type Student,
 } from "@shared/schema";
 import { z } from "zod";
@@ -1727,6 +1728,195 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error("Error generating PDF:", error);
         res.status(500).json({ message: "Falha ao gerar PDF de análise" });
+      }
+    }
+  );
+
+  // Profile image upload configuration
+  const profileUploadsDir = path.join(
+    process.cwd(),
+    "uploads",
+    "profile-images"
+  );
+  await fs.mkdir(profileUploadsDir, { recursive: true });
+
+  const profileImageStorage = multer.diskStorage({
+    destination: profileUploadsDir,
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      const ext = path.extname(file.originalname);
+      cb(null, `profile-${uniqueSuffix}${ext}`);
+    },
+  });
+
+  const uploadProfileImage = multer({
+    storage: profileImageStorage,
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB limit for profile images
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+      ];
+      if (!allowedTypes.includes(file.mimetype)) {
+        return cb(
+          new Error(
+            "Apenas arquivos de imagem são permitidos (JPEG, PNG, WebP)"
+          )
+        );
+      }
+      cb(null, true);
+    },
+  });
+
+  // Teacher profile update validation schema
+  const teacherProfileUpdateSchema = z.object({
+    firstName: z.string().min(1).optional(),
+    lastName: z.string().min(1).optional(),
+    email: z.string().email().optional(),
+    phone: z.string().optional(),
+    dateOfBirth: z.coerce.date().optional(),
+    crefNumber: z.string().optional(),
+    crefExpiryDate: z.coerce.date().optional(),
+    profileImageUrl: z.string().optional(),
+  });
+
+  // Teacher profile update route
+  app.put(
+    "/api/profile/teacher",
+    isAuthenticated,
+    uploadProfileImage.single("profileImage"),
+    async (req: any, res) => {
+      try {
+        const userId = req.user.id;
+
+        // Verify user is a teacher
+        if (req.user.role !== "teacher") {
+          return res
+            .status(403)
+            .json({
+              message:
+                "Acesso negado. Apenas professores podem atualizar este perfil.",
+            });
+        }
+
+        // Validate input data
+        const validationResult = teacherProfileUpdateSchema.safeParse(req.body);
+        if (!validationResult.success) {
+          // Clean up uploaded file if validation fails
+          if (req.file) {
+            await fs.unlink(req.file.path).catch(() => {});
+          }
+          return res.status(400).json({
+            message: "Dados inválidos",
+            errors: validationResult.error.errors,
+          });
+        }
+
+        const updateData = validationResult.data;
+
+        // Handle profile image upload
+        if (req.file) {
+          updateData.profileImageUrl = `/uploads/profile-images/${req.file.filename}`;
+        }
+
+        // Update user in database
+        await storage.updateUser(userId, updateData);
+
+        // Return success without sensitive data - frontend will refetch user data
+        res.json({
+          success: true,
+          message: "Perfil atualizado com sucesso",
+        });
+      } catch (error) {
+        console.error("Error updating teacher profile:", error);
+        // Clean up uploaded file on error
+        if (req.file) {
+          await fs.unlink(req.file.path).catch(() => {});
+        }
+        res.status(500).json({ message: "Falha ao atualizar perfil" });
+      }
+    }
+  );
+
+  // Student profile update validation schema (disallow email changes to prevent identity issues)
+  const studentProfileUpdateSchema = z.object({
+    name: z.string().min(1).optional(),
+    phone: z.string().optional(),
+    dateOfBirth: z.coerce.date().optional(),
+    gender: z.enum(["male", "female"]).optional(),
+    weight: z.coerce.number().positive().optional(),
+    height: z.coerce.number().positive().optional(),
+    goal: z.string().optional(),
+    medicalConditions: z.string().optional(),
+    profileImage: z.string().optional(),
+  });
+
+  // Student profile update route
+  app.put(
+    "/api/profile/student",
+    isAuthenticated,
+    uploadProfileImage.single("profileImage"),
+    async (req: any, res) => {
+      try {
+        const user = req.user;
+
+        // Verify user is a student
+        if (user.role !== "student") {
+          return res
+            .status(403)
+            .json({
+              message:
+                "Acesso negado. Apenas alunos podem atualizar este perfil.",
+            });
+        }
+
+        // Get student record
+        const student = await storage.getStudentByEmail(user.email);
+        if (!student) {
+          return res
+            .status(404)
+            .json({ message: "Registro de aluno não encontrado" });
+        }
+
+        // Validate input data
+        const validationResult = studentProfileUpdateSchema.safeParse(req.body);
+        if (!validationResult.success) {
+          // Clean up uploaded file if validation fails
+          if (req.file) {
+            await fs.unlink(req.file.path).catch(() => {});
+          }
+          return res.status(400).json({
+            message: "Dados inválidos",
+            errors: validationResult.error.errors,
+          });
+        }
+
+        const updateData = validationResult.data;
+
+        // Handle profile image upload
+        if (req.file) {
+          updateData.profileImage = `/uploads/profile-images/${req.file.filename}`;
+        }
+
+        // Update student in database
+        await storage.updateStudent(student.id, updateData);
+
+        // Return success without sensitive data - frontend will refetch student data
+        res.json({
+          success: true,
+          message: "Perfil atualizado com sucesso",
+        });
+      } catch (error) {
+        console.error("Error updating student profile:", error);
+        // Clean up uploaded file on error
+        if (req.file) {
+          await fs.unlink(req.file.path).catch(() => {});
+        }
+        res.status(500).json({ message: "Falha ao atualizar perfil" });
       }
     }
   );

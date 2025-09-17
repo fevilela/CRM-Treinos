@@ -41,6 +41,11 @@ export const users = pgTable("users", {
   lastName: varchar("last_name").notNull(),
   role: roleEnum("role").notNull().default("teacher"),
   profileImageUrl: varchar("profile_image_url"),
+  // Campos para professores
+  crefNumber: varchar("cref_number"),
+  crefExpiryDate: timestamp("cref_expiry_date"),
+  phone: varchar("phone"),
+  dateOfBirth: timestamp("date_of_birth"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
