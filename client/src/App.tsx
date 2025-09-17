@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -91,9 +91,36 @@ function StudentInterface({
 
 function Router() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const [, setLocation] = useLocation();
 
   // Type assertion do user baseado na estrutura do schema
   const authUser = user as AuthUser;
+
+  // Função personalizada para redirecionamento após login
+  const handleLoginSuccess = async () => {
+    try {
+      // Recarrega os dados do usuário de forma determinística
+      await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
+
+      // Agora podemos acessar os dados atualizados com segurança
+      const freshUser = queryClient.getQueryData([
+        "/api/auth/user",
+      ]) as AuthUser;
+
+      if (freshUser?.role === "student") {
+        setLocation("/student");
+      } else if (freshUser?.role === "teacher") {
+        setLocation("/");
+      } else {
+        // Fallback - recarrega a página se não conseguir determinar o tipo
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error("Error during login redirect:", error);
+      // Em caso de erro, recarrega a página como fallback
+      window.location.reload();
+    }
+  };
 
   return (
     <Switch>
@@ -111,7 +138,7 @@ function Router() {
           }
 
           if (!isAuthenticated) {
-            return <LoginPage onSuccess={() => window.location.reload()} />;
+            return <LoginPage onSuccess={handleLoginSuccess} />;
           }
 
           // Interface específica para alunos
