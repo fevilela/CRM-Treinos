@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   Calendar,
   momentLocalizer,
@@ -219,21 +219,253 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
     });
   };
 
-  // Sync with external calendars
+  // Estados para conexões de calendários
+  const [calendarConnections, setCalendarConnections] = useState({
+    google: { connected: false, loading: false },
+    outlook: { connected: false, loading: false },
+  });
+
+  // Verificar status das conexões ao carregar
+  useEffect(() => {
+    checkCalendarStatus();
+  }, []);
+
+  // Verificar status das conexões de calendários
+  const checkCalendarStatus = async () => {
+    try {
+      const response = await fetch("/api/calendar/status", {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCalendarConnections({
+          google: {
+            connected: data.connections.google.connected,
+            loading: false,
+          },
+          outlook: {
+            connected: data.connections.outlook.connected,
+            loading: false,
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao verificar status dos calendários:", error);
+    }
+  };
+
+  // Conectar com Google Calendar
+  const handleConnectGoogle = async () => {
+    setCalendarConnections((prev) => ({
+      ...prev,
+      google: { ...prev.google, loading: true },
+    }));
+
+    try {
+      const response = await fetch("/api/auth/google/calendar", {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Abrir URL de autorização em nova janela
+        window.open(data.authUrl, "google-auth", "width=500,height=600");
+
+        toast({
+          title: "Redirecionamento",
+          description: "Complete a autorização no Google Calendar",
+        });
+
+        // Monitorar se a janela foi fechada para verificar status
+        const checkAuthStatus = setInterval(async () => {
+          try {
+            const statusResponse = await fetch("/api/calendar/status", {
+              credentials: "include",
+            });
+            if (statusResponse.ok) {
+              const statusData = await statusResponse.json();
+              if (statusData.connections.google.connected) {
+                setCalendarConnections((prev) => ({
+                  ...prev,
+                  google: { connected: true, loading: false },
+                }));
+                clearInterval(checkAuthStatus);
+                toast({
+                  title: "Sucesso",
+                  description: "Google Calendar conectado com sucesso",
+                });
+              }
+            }
+          } catch (error) {
+            console.log("Aguardando autorização...");
+          }
+        }, 2000);
+
+        // Limpar intervalo após 2 minutos
+        setTimeout(() => {
+          clearInterval(checkAuthStatus);
+          setCalendarConnections((prev) => ({
+            ...prev,
+            google: { ...prev.google, loading: false },
+          }));
+        }, 120000);
+      } else {
+        throw new Error("Falha ao iniciar autenticação");
+      }
+    } catch (error) {
+      console.error("Erro ao conectar Google Calendar:", error);
+      setCalendarConnections((prev) => ({
+        ...prev,
+        google: { ...prev.google, loading: false },
+      }));
+      toast({
+        title: "Erro",
+        description: "Falha ao conectar com Google Calendar",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Conectar com Outlook Calendar
+  const handleConnectOutlook = async () => {
+    setCalendarConnections((prev) => ({
+      ...prev,
+      outlook: { ...prev.outlook, loading: true },
+    }));
+
+    try {
+      const response = await fetch("/api/auth/outlook/calendar", {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Abrir URL de autorização em nova janela
+        window.open(data.authUrl, "outlook-auth", "width=500,height=600");
+
+        toast({
+          title: "Redirecionamento",
+          description: "Complete a autorização no Outlook Calendar",
+        });
+
+        // Monitorar se a janela foi fechada para verificar status
+        const checkAuthStatus = setInterval(async () => {
+          try {
+            const statusResponse = await fetch("/api/calendar/status", {
+              credentials: "include",
+            });
+            if (statusResponse.ok) {
+              const statusData = await statusResponse.json();
+              if (statusData.connections.outlook.connected) {
+                setCalendarConnections((prev) => ({
+                  ...prev,
+                  outlook: { connected: true, loading: false },
+                }));
+                clearInterval(checkAuthStatus);
+                toast({
+                  title: "Sucesso",
+                  description: "Outlook Calendar conectado com sucesso",
+                });
+              }
+            }
+          } catch (error) {
+            console.log("Aguardando autorização...");
+          }
+        }, 2000);
+
+        // Limpar intervalo após 2 minutos
+        setTimeout(() => {
+          clearInterval(checkAuthStatus);
+          setCalendarConnections((prev) => ({
+            ...prev,
+            outlook: { ...prev.outlook, loading: false },
+          }));
+        }, 120000);
+      } else {
+        throw new Error("Falha ao iniciar autenticação");
+      }
+    } catch (error) {
+      console.error("Erro ao conectar Outlook Calendar:", error);
+      setCalendarConnections((prev) => ({
+        ...prev,
+        outlook: { ...prev.outlook, loading: false },
+      }));
+      toast({
+        title: "Erro",
+        description: "Falha ao conectar com Outlook Calendar",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Sincronizar calendários externos
   const handleSyncCalendars = async () => {
     setIsLoading(true);
     try {
-      // TODO: Implement actual sync logic
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate API call
-
-      toast({
-        title: "Sucesso",
-        description: "Calendários sincronizados com sucesso",
+      const response = await fetch("/api/calendar/sync", {
+        method: "POST",
+        credentials: "include",
       });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Adicionar eventos sincronizados aos eventos locais
+        const syncedEvents: CalendarEvent[] = [];
+
+        if (data.results.google?.events) {
+          const googleEvents = data.results.google.events.map((event: any) => ({
+            id: `google_${event.id}`,
+            title: event.summary || "Evento Google",
+            start: new Date(event.start.dateTime || event.start.date),
+            end: new Date(event.end.dateTime || event.end.date),
+            description: event.description,
+            type: "synced" as const,
+            source: "google" as const,
+          }));
+          syncedEvents.push(...googleEvents);
+        }
+
+        if (data.results.outlook?.events) {
+          const outlookEvents = data.results.outlook.events.map(
+            (event: any) => ({
+              id: `outlook_${event.id}`,
+              title: event.subject || "Evento Outlook",
+              start: new Date(event.start.dateTime),
+              end: new Date(event.end.dateTime),
+              description: event.body?.content,
+              type: "synced" as const,
+              source: "outlook" as const,
+            })
+          );
+          syncedEvents.push(...outlookEvents);
+        }
+
+        // Mesclar eventos externos com eventos locais
+        const localEvents = events.filter((e) => e.source === "manual");
+        setEvents([...localEvents, ...syncedEvents]);
+
+        let message = "Calendários sincronizados com sucesso!";
+        if (data.results.google) {
+          message += ` Google: ${data.results.google.count} eventos.`;
+        }
+        if (data.results.outlook) {
+          message += ` Outlook: ${data.results.outlook.count} eventos.`;
+        }
+
+        toast({
+          title: "Sucesso",
+          description: message,
+        });
+      } else {
+        throw new Error("Falha na sincronização");
+      }
     } catch (error) {
+      console.error("Erro ao sincronizar calendários:", error);
       toast({
         title: "Erro",
-        description: "Falha ao sincronizar calendários",
+        description: "Falha ao sincronizar calendários externos",
         variant: "destructive",
       });
     } finally {
@@ -289,14 +521,40 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
                       <Button
                         variant="outline"
                         className="w-full justify-start"
+                        onClick={handleConnectGoogle}
+                        disabled={calendarConnections.google.loading}
                       >
-                        📅 Conectar Google Calendar
+                        {calendarConnections.google.loading ? (
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        ) : calendarConnections.google.connected ? (
+                          "✅"
+                        ) : (
+                          "📅"
+                        )}{" "}
+                        {calendarConnections.google.connected
+                          ? "Google Calendar Conectado"
+                          : calendarConnections.google.loading
+                          ? "Conectando..."
+                          : "Conectar Google Calendar"}
                       </Button>
                       <Button
                         variant="outline"
                         className="w-full justify-start"
+                        onClick={handleConnectOutlook}
+                        disabled={calendarConnections.outlook.loading}
                       >
-                        📅 Conectar Outlook Calendar
+                        {calendarConnections.outlook.loading ? (
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        ) : calendarConnections.outlook.connected ? (
+                          "✅"
+                        ) : (
+                          "📅"
+                        )}{" "}
+                        {calendarConnections.outlook.connected
+                          ? "Outlook Calendar Conectado"
+                          : calendarConnections.outlook.loading
+                          ? "Conectando..."
+                          : "Conectar Outlook Calendar"}
                       </Button>
                     </div>
                   </div>

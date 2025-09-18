@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { registerCalendarRoutes } from "./calendar-routes";
 import {
   setupAuth,
   isAuthenticated,
@@ -1795,12 +1796,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Verify user is a teacher
         if (req.user.role !== "teacher") {
-          return res
-            .status(403)
-            .json({
-              message:
-                "Acesso negado. Apenas professores podem atualizar este perfil.",
-            });
+          return res.status(403).json({
+            message:
+              "Acesso negado. Apenas professores podem atualizar este perfil.",
+          });
         }
 
         // Validate input data
@@ -1866,12 +1865,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Verify user is a student
         if (user.role !== "student") {
-          return res
-            .status(403)
-            .json({
-              message:
-                "Acesso negado. Apenas alunos podem atualizar este perfil.",
-            });
+          return res.status(403).json({
+            message:
+              "Acesso negado. Apenas alunos podem atualizar este perfil.",
+          });
         }
 
         // Get student record
@@ -1923,6 +1920,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Serve uploaded photos statically
   app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
+  // Register calendar routes
+  registerCalendarRoutes(app);
 
   // Create HTTP server (don't start listening here)
   const httpServer = createServer(app);

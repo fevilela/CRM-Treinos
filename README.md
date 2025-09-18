@@ -15,6 +15,7 @@ Sistema completo de gerenciamento para personal trainers. Gerencie alunos, crie 
 ## 🛠️ Tecnologias Utilizadas
 
 ### Frontend
+
 - **React 18** com TypeScript
 - **Wouter** para roteamento
 - **TanStack Query** para gerenciamento de estado
@@ -23,6 +24,7 @@ Sistema completo de gerenciamento para personal trainers. Gerencie alunos, crie 
 - **Vite** como build tool
 
 ### Backend
+
 - **Express.js** com TypeScript
 - **Drizzle ORM** para banco de dados
 - **PostgreSQL** (Neon)
@@ -38,17 +40,20 @@ Sistema completo de gerenciamento para personal trainers. Gerencie alunos, crie 
 ## 🚀 Como executar localmente
 
 ### 1. Clone o repositório
+
 ```bash
 git clone [URL_DO_SEU_REPOSITORIO]
 cd crm-treinos-mp
 ```
 
 ### 2. Instale as dependências
+
 ```bash
 npm install
 ```
 
 ### 3. Configure as variáveis de ambiente
+
 Crie um arquivo `.env` na raiz do projeto com:
 
 ```env
@@ -59,20 +64,22 @@ DATABASE_URL="sua_url_do_postgresql"
 SESSION_SECRET="sua_chave_secreta_super_segura"
 REPL_ID="seu_repl_id"
 ISSUER_URL="https://replit.com/oidc"
-REPLIT_DOMAINS="localhost:5000"
+REPLIT_DOMAINS="localhost:3000"
 ```
 
 ### 4. Execute as migrações do banco
+
 ```bash
 npm run db:push
 ```
 
 ### 5. Inicie o servidor de desenvolvimento
+
 ```bash
 npm run dev
 ```
 
-O sistema estará disponível em `http://localhost:5000`
+O sistema estará disponível em `http://localhost:3000`
 
 ## 📁 Estrutura do Projeto
 
@@ -112,6 +119,7 @@ O sistema estará disponível em `http://localhost:5000`
 ## 📱 Funcionalidades Detalhadas
 
 ### Dashboard
+
 - Estatísticas em tempo real (total de alunos, treinos ativos, taxa de adesão)
 - Gráfico de progresso dos treinos
 - Visualização de evolução corporal
@@ -119,6 +127,7 @@ O sistema estará disponível em `http://localhost:5000`
 - Feed de atividades
 
 ### Gerenciamento de Alunos
+
 - Cadastro completo com dados pessoais
 - Campos para objetivos e condições médicas
 - Sistema de status (ativo, inativo, suspenso)
@@ -126,12 +135,14 @@ O sistema estará disponível em `http://localhost:5000`
 - Operações CRUD completas
 
 ### Criação de Treinos
+
 - Nome e categoria do treino
 - Exercícios detalhados (séries, repetições, peso, descanso)
 - Sistema de ordenação drag-and-drop
 - Categorias pré-definidas (Peito/Tríceps, Costas/Bíceps, Pernas, etc.)
 
 ### Acompanhamento
+
 - Registro de sessões de treino
 - Performance individual por exercício
 - Evolução das cargas e repetições
