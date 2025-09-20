@@ -1,22 +1,41 @@
 import express, { type Request, Response, NextFunction } from "express";
 import path from "path";
-import { registerRoutes } from "./routes.ts";
+import { registerRoutes } from "./routes";
 import { serveStatic, log } from "./vite";
+import config from "./config";
 
 const app = express();
 
-// Trust proxy for secure cookies behind Replit's HTTPS proxy
-app.set("trust proxy", 1);
+// Trust proxy (configurable based on environment)
+app.set("trust proxy", config.trustProxy);
 
-// CORS middleware
+// CORS middleware (configurable)
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
+  const origin = req.headers.origin;
+
+  // Se allowedOrigin for "*", permitir qualquer origem, mas sem credentials
+  if (config.allowedOrigin === "*") {
+    res.header("Access-Control-Allow-Origin", "*");
+    // Não definir Allow-Credentials quando Origin é wildcard
+  } else {
+    // Se origem específica, localhost ou 127.0.0.1, permitir com credentials
+    const allowedOrigins = [config.allowedOrigin];
+    if (config.isDevelopment) {
+      allowedOrigins.push("http://localhost:3000", "http://127.0.0.1:3000");
+    }
+
+    if (origin && allowedOrigins.includes(origin)) {
+      res.header("Access-Control-Allow-Origin", origin);
+      res.header("Access-Control-Allow-Credentials", "true");
+      res.header("Vary", "Origin");
+    }
+  }
+
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.header(
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept, Authorization"
   );
-  res.header("Access-Control-Allow-Credentials", "true");
 
   if (req.method === "OPTIONS") {
     res.sendStatus(200);
@@ -87,16 +106,18 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // Use port 3000 for Replit webview (both frontend and backend on same server)
-  const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+  // Use configurable port and host
   server.listen(
     {
-      port,
-      host: "0.0.0.0",
+      port: config.port,
+      host: config.host,
       reusePort: true,
     },
     () => {
-      log(`serving on port ${port}`);
+      log(`serving on port ${config.port}`);
+      if (config.isDevelopment) {
+        log(`Local URL: ${config.baseUrl}`);
+      }
     }
   );
 })();

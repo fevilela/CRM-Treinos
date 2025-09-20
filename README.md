@@ -1,6 +1,6 @@
 # CRM Treinos MP
 
-Sistema completo de gerenciamento para personal trainers. Gerencie alunos, crie treinos personalizados e acompanhe o progresso com evolução corporal.
+Sistema completo de gerenciamento para personal trainers. Gerencie alunos, crie treinos personalizados e acompanhe o progresso com evolução corporal e sincronização de calendários.
 
 ## 🚀 Funcionalidades
 
@@ -9,6 +9,7 @@ Sistema completo de gerenciamento para personal trainers. Gerencie alunos, crie 
 - ✅ Gerenciamento completo de alunos (CRUD)
 - ✅ Criação de treinos personalizados com exercícios
 - ✅ Acompanhamento de progresso e evolução corporal
+- ✅ **Sincronização com Google Calendar e Outlook**
 - ✅ Interface moderna e responsiva
 - ✅ Banco de dados PostgreSQL
 
@@ -30,11 +31,13 @@ Sistema completo de gerenciamento para personal trainers. Gerencie alunos, crie 
 - **PostgreSQL** (Neon)
 - **OpenID Connect** para autenticação
 - **Passport.js** para sessões
+- **Google Calendar API** e **Microsoft Graph API**
 
 ## 📋 Pré-requisitos
 
 - Node.js 18+ instalado
-- PostgreSQL (ou conta no Neon Database)
+- PostgreSQL (local ou cloud como Neon Database)
+- Credenciais do Google Calendar API (opcional)
 - Git
 
 ## 🚀 Como executar localmente
@@ -54,17 +57,34 @@ npm install
 
 ### 3. Configure as variáveis de ambiente
 
-Crie um arquivo `.env` na raiz do projeto com:
+Copie o arquivo de exemplo e configure:
+
+```bash
+cp .env.example .env
+```
+
+Edite o arquivo `.env` com suas configurações:
 
 ```env
-# Database
-DATABASE_URL="sua_url_do_postgresql"
+# Configurações básicas
+PORT=3000
+HOST=0.0.0.0
+APP_BASE_URL=http://localhost:3000
+NODE_ENV=development
 
-# Authentication (para desenvolvimento local)
+# Database (configure sua URL do PostgreSQL)
+DATABASE_URL="postgresql://user:password@localhost:5432/crm_treinos"
+
+# Para desenvolvimento local, pode usar "*"
+ALLOWED_ORIGIN=*
+
+# Google Calendar (opcional - para sincronização)
+GOOGLE_CLIENT_ID=seu_client_id_aqui
+GOOGLE_CLIENT_SECRET=seu_client_secret_aqui
+GOOGLE_REDIRECT_URI=http://localhost:3000/api/auth/google/callback
+
+# Sessão
 SESSION_SECRET="sua_chave_secreta_super_segura"
-REPL_ID="seu_repl_id"
-ISSUER_URL="https://replit.com/oidc"
-REPLIT_DOMAINS="localhost:3000"
 ```
 
 ### 4. Execute as migrações do banco
@@ -79,7 +99,21 @@ npm run db:push
 npm run dev
 ```
 
-O sistema estará disponível em `http://localhost:3000`
+A aplicação estará disponível em: **http://localhost:3000**
+
+## 🔗 Configuração do Google Calendar (Opcional)
+
+Para habilitar a sincronização com Google Calendar:
+
+1. Acesse [Google Cloud Console](https://console.cloud.google.com/)
+2. Crie um projeto ou selecione um existente
+3. Ative a **Google Calendar API**
+4. Crie credenciais OAuth 2.0:
+   - Tipo: Aplicação Web
+   - URLs de redirecionamento: `http://localhost:3000/api/auth/google/callback`
+5. Configure `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` no `.env`
+
+**Importante**: Para produção, registre também: `https://seu-dominio.com/api/auth/google/callback`
 
 ## 📁 Estrutura do Projeto
 

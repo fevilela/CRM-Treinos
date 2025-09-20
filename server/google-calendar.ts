@@ -1,6 +1,7 @@
 import { google } from "googleapis";
 import fs from "fs";
 import path from "path";
+import config from "./config";
 
 // Tipos para eventos do Google Calendar
 export interface GoogleCalendarEvent {
@@ -230,15 +231,16 @@ export class GoogleCalendarService {
 
 // Exportar instância singleton configurada com variáveis de ambiente
 export function createGoogleCalendarService(): GoogleCalendarService {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirectUri =
-    process.env.GOOGLE_REDIRECT_URI ||
-    "http://localhost:3000/api/auth/google/callback";
-
-  if (!clientId || !clientSecret) {
-    throw new Error("Credenciais do Google Calendar não configuradas");
+  if (!config.google.clientId || !config.google.clientSecret) {
+    throw new Error(
+      "Credenciais do Google Calendar não configuradas. " +
+        "Defina GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET nas variáveis de ambiente."
+    );
   }
 
-  return new GoogleCalendarService(clientId, clientSecret, redirectUri);
+  return new GoogleCalendarService(
+    config.google.clientId,
+    config.google.clientSecret,
+    config.google.redirectUri
+  );
 }
