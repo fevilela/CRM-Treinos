@@ -21,13 +21,22 @@ import {
   insertPhysicalAssessmentSchema,
   insertAssessmentPhotoSchema,
   insertUserSchema,
+  insertCalendarEventSchema,
   type Student,
+  type CalendarEvent,
+  type InsertCalendarEvent,
 } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import { promises as fs } from "fs";
 import path from "path";
 import crypto from "crypto";
+// Blueprint: replitmail integration
+import {
+  sendAllEventNotifications,
+  getUpcomingEventsForNotification,
+} from "./notification-service";
+import { getSchedulerStatus } from "./notification-scheduler";
 
 // Helper function to sanitize student objects by removing sensitive fields
 function sanitizeStudent(
@@ -1923,6 +1932,316 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register calendar routes
   registerCalendarRoutes(app);
+
+  // Calendar events routes - apenas para professores
+  app.get("/api/calendar/events", isTeacher, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const events = await storage.getCalendarEvents(userId);
+      res.json(events);
+    } catch (error) {
+      console.error("Error fetching calendar events:", error);
+      res.status(500).json({ message: "Failed to fetch calendar events" });
+    }
+  });
+
+  // Get events for a specific student
+  app.get(
+    "/api/calendar/events/student/:studentId",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { studentId } = req.params;
+
+        // Verify student belongs to this teacher or is the student themselves
+        const student = await storage.getStudent(studentId);
+        if (!student) {
+          return res.status(404).json({ message: "Student not found" });
+        }
+
+        if (req.user.role === "teacher") {
+          // Teacher must own this student
+          if (student.personalTrainerId !== req.user.id) {
+            return res.status(403).json({ message: "Access denied" });
+          }
+        } else if (req.user.role === "student") {
+          // Student must be viewing their own events - get student record by email
+          const authenticatedStudent = await storage.getStudentByEmail(
+            req.user.email
+          );
+          if (!authenticatedStudent || authenticatedStudent.id !== studentId) {
+            return res.status(403).json({ message: "Access denied" });
+          }
+        } else {
+          return res.status(403).json({ message: "Access denied" });
+        }
+
+        const events = await storage.getStudentCalendarEvents(studentId);
+        res.json(events);
+      } catch (error) {
+        console.error("Error fetching student calendar events:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch student calendar events" });
+      }
+    }
+  );
+
+  // Create calendar event
+  app.post("/api/calendar/events", isTeacher, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const validatedData = insertCalendarEventSchema.parse({
+        ...req.body,
+        personalTrainerId: userId,
+      });
+
+      // If studentId is provided, verify student belongs to this teacher
+      if (validatedData.studentId) {
+        const student = await storage.getStudent(validatedData.studentId);
+        if (!student || student.personalTrainerId !== userId) {
+          return res.status(400).json({ message: "Invalid student" });
+        }
+      }
+
+      const event = await storage.createCalendarEvent(validatedData);
+      res.status(201).json(event);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: "Invalid input",
+          errors: error.errors,
+        });
+      }
+      console.error("Error creating calendar event:", error);
+      res.status(500).json({ message: "Failed to create calendar event" });
+    }
+  });
+
+  // Update calendar event
+  app.put("/api/calendar/events/:id", isTeacher, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+
+      // Verify event belongs to this teacher
+      const existingEvent = await storage.getCalendarEvent(id);
+      if (!existingEvent) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      if (existingEvent.personalTrainerId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const validatedData = insertCalendarEventSchema.partial().parse(req.body);
+
+      // Remove any attempt to change ownership - prevent privilege escalation
+      delete validatedData.personalTrainerId;
+
+      // If studentId is being updated, verify student belongs to this teacher
+      if (validatedData.studentId !== undefined) {
+        if (validatedData.studentId) {
+          const student = await storage.getStudent(validatedData.studentId);
+          if (!student || student.personalTrainerId !== userId) {
+            return res.status(400).json({ message: "Invalid student" });
+          }
+        }
+        // Allow setting studentId to null (personal events)
+      }
+
+      const event = await storage.updateCalendarEvent(id, validatedData);
+      res.json(event);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: "Invalid input",
+          errors: error.errors,
+        });
+      }
+      console.error("Error updating calendar event:", error);
+      res.status(500).json({ message: "Failed to update calendar event" });
+    }
+  });
+
+  // Delete calendar event
+  app.delete(
+    "/api/calendar/events/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const userId = req.user.id;
+
+        // Verify event belongs to this teacher
+        const existingEvent = await storage.getCalendarEvent(id);
+        if (!existingEvent) {
+          return res.status(404).json({ message: "Event not found" });
+        }
+
+        if (existingEvent.personalTrainerId !== userId) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+
+        await storage.deleteCalendarEvent(id);
+        res.status(204).send();
+      } catch (error) {
+        console.error("Error deleting calendar event:", error);
+        res.status(500).json({ message: "Failed to delete calendar event" });
+      }
+    }
+  );
+
+  // Notification routes - Blueprint: replitmail integration
+
+  // Send event notifications (manual trigger for testing)
+  app.post("/api/notifications/send", isTeacher, async (req: any, res) => {
+    try {
+      console.log(
+        "[NOTIFICATION] Manual trigger started by user:",
+        req.user.id
+      );
+
+      const result = await sendAllEventNotifications();
+
+      res.json({
+        success: true,
+        message: "Notificações processadas com sucesso",
+        ...result,
+      });
+    } catch (error) {
+      console.error("Error sending notifications:", error);
+      res.status(500).json({
+        success: false,
+        message: "Falha ao enviar notificações",
+        error: error.message,
+      });
+    }
+  });
+
+  // Get pending notifications preview
+  app.get("/api/notifications/preview", isTeacher, async (req: any, res) => {
+    try {
+      const notifications = await getUpcomingEventsForNotification();
+
+      res.json({
+        success: true,
+        count: notifications.length,
+        notifications: notifications.map((n) => ({
+          studentName: n.studentName,
+          studentEmail: n.studentEmail,
+          eventTitle: n.event.title,
+          eventTime: n.event.startTime,
+          eventType: n.event.type,
+        })),
+      });
+    } catch (error) {
+      console.error("Error getting notification preview:", error);
+      res.status(500).json({
+        success: false,
+        message: "Falha ao buscar preview de notificações",
+      });
+    }
+  });
+
+  // Automated notification endpoint (for cron/scheduled tasks)
+  app.post("/api/notifications/automated", async (req: any, res) => {
+    try {
+      // Security check with proper token validation - REQUIRES environment variable
+      const expectedToken = process.env.NOTIFICATIONS_CRON_TOKEN;
+
+      if (!expectedToken) {
+        console.error("[NOTIFICATION] NOTIFICATIONS_CRON_TOKEN not configured");
+        return res
+          .status(500)
+          .json({ message: "Notification service not configured" });
+      }
+
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        console.warn(
+          "[NOTIFICATION] Invalid auth attempt from:",
+          req.ip || "unknown"
+        );
+        return res
+          .status(401)
+          .json({ message: "Unauthorized - Missing Bearer token" });
+      }
+
+      const providedToken = authHeader.replace("Bearer ", "");
+
+      // Use timing-safe comparison to prevent timing attacks
+      const expectedBuffer = Buffer.from(expectedToken, "utf8");
+      const providedBuffer = Buffer.from(providedToken, "utf8");
+
+      if (expectedBuffer.length !== providedBuffer.length) {
+        console.warn(
+          "[NOTIFICATION] Invalid token length from:",
+          req.ip || "unknown"
+        );
+        return res
+          .status(401)
+          .json({ message: "Unauthorized - Invalid token" });
+      }
+
+      const isValid = crypto.timingSafeEqual(expectedBuffer, providedBuffer);
+      if (!isValid) {
+        console.warn(
+          "[NOTIFICATION] Invalid token attempt from:",
+          req.ip || "unknown",
+          "at:",
+          new Date().toISOString()
+        );
+        return res
+          .status(401)
+          .json({ message: "Unauthorized - Invalid token" });
+      }
+
+      console.log(
+        "[NOTIFICATION] Automated trigger started with valid credentials"
+      );
+
+      const result = await sendAllEventNotifications();
+
+      res.json({
+        success: true,
+        message: "Automated notifications processed",
+        timestamp: new Date().toISOString(),
+        ...result,
+      });
+    } catch (error) {
+      console.error("Error in automated notifications:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to process automated notifications",
+        error: error.message,
+      });
+    }
+  });
+
+  // Notification status endpoint
+  app.get("/api/notifications/status", isTeacher, async (req: any, res) => {
+    try {
+      const status = getSchedulerStatus();
+
+      res.json({
+        success: true,
+        scheduler: status,
+        endpoints: {
+          preview: "/api/notifications/preview",
+          manual: "/api/notifications/send",
+          automated: "/api/notifications/automated",
+        },
+        documentation: "See NOTIFICATION_SETUP.md for configuration details",
+      });
+    } catch (error) {
+      console.error("Error getting notification status:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get notification status",
+      });
+    }
+  });
 
   // Create HTTP server (don't start listening here)
   const httpServer = createServer(app);

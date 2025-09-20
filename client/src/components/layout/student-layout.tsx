@@ -1,6 +1,7 @@
 import { Route, Switch } from "wouter";
 import StudentSidebar from "./student-sidebar";
 import { StudentDashboard } from "@/pages/student-dashboard";
+import { StudentEvents } from "@/pages/student-events";
 import { StudentWorkouts } from "@/pages/student-workouts";
 import { StudentPhysicalAssessments } from "@/pages/student-physical-assessments";
 import { StudentProgress } from "@/pages/student-progress";
@@ -26,6 +27,10 @@ export function StudentLayout({ student, onLogout }: StudentLayoutProps) {
               component={() => (
                 <StudentDashboard student={student} onLogout={onLogout} />
               )}
+            />
+            <Route
+              path="/student/events"
+              component={() => <StudentEvents student={student} />}
             />
             <Route
               path="/student/workouts"

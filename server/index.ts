@@ -3,6 +3,7 @@ import path from "path";
 import { registerRoutes } from "./routes";
 import { serveStatic, log } from "./vite";
 import config from "./config";
+import { startNotificationScheduler } from "./notification-scheduler";
 
 const app = express();
 
@@ -118,6 +119,9 @@ app.use((req, res, next) => {
       if (config.isDevelopment) {
         log(`Local URL: ${config.baseUrl}`);
       }
+
+      // Start notification scheduler after server is running
+      startNotificationScheduler();
     }
   );
 })();

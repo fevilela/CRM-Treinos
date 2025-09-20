@@ -35,6 +35,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
 
 // Configure moment localizer
 const localizer = momentLocalizer(moment);
@@ -69,40 +70,45 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
   );
   const [isLoading, setIsLoading] = useState(false);
 
-  // Mock events - later will be replaced with real data from APIs
-  const [events, setEvents] = useState<CalendarEvent[]>([
-    {
-      id: "1",
-      title: "Treino - João Silva",
-      start: new Date(2025, 0, 20, 9, 0),
-      end: new Date(2025, 0, 20, 10, 0),
-      description: "Treino de peito e tríceps",
-      type: "training",
-      studentId: "1",
-      studentName: "João Silva",
-      source: "manual",
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+
+  // Buscar eventos do calendário do banco de dados
+  const {
+    data: calendarEvents = [],
+    isLoading: loadingEvents,
+    refetch: refetchEvents,
+  } = useQuery({
+    queryKey: ["calendar-events"],
+    queryFn: async () => {
+      const response = await fetch("/api/calendar/events", {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch calendar events");
+      }
+      return response.json();
     },
-    {
-      id: "2",
-      title: "Consulta Inicial - Maria Santos",
-      start: new Date(2025, 0, 21, 14, 0),
-      end: new Date(2025, 0, 21, 15, 0),
-      description: "Avaliação física e definição de objetivos",
-      type: "consultation",
-      studentId: "2",
-      studentName: "Maria Santos",
-      source: "manual",
-    },
-    {
-      id: "3",
-      title: "Reunião Gerencial",
-      start: new Date(2025, 0, 22, 16, 0),
-      end: new Date(2025, 0, 22, 17, 0),
-      description: "Reunião mensal de planejamento",
-      type: "personal",
-      source: "google",
-    },
-  ]);
+  });
+
+  // Atualizar eventos quando dados chegam do backend
+  useEffect(() => {
+    const formattedEvents: CalendarEvent[] = calendarEvents.map(
+      (event: any) => ({
+        id: event.id,
+        title: event.title,
+        start: new Date(event.startTime),
+        end: new Date(event.endTime),
+        description: event.description,
+        type: event.type,
+        studentId: event.studentId,
+        studentName: event.studentId
+          ? students.find((s: any) => s.id === event.studentId)?.name
+          : undefined,
+        source: "manual",
+      })
+    );
+    setEvents(formattedEvents);
+  }, [calendarEvents, students]);
 
   const [newEvent, setNewEvent] = useState({
     title: "",
@@ -111,6 +117,21 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
     description: "",
     type: "training" as CalendarEvent["type"],
     studentId: "",
+    studentName: "",
+  });
+
+  // Buscar lista de alunos
+  const { data: students = [], isLoading: loadingStudents } = useQuery({
+    queryKey: ["students"],
+    queryFn: async () => {
+      const response = await fetch("/api/students", {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch students");
+      }
+      return response.json();
+    },
   });
 
   // Calendar configuration
@@ -181,6 +202,7 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
         description: "",
         type: "training",
         studentId: "",
+        studentName: "",
       });
       setSelectedEvent(null);
       setShowEventModal(true);
@@ -199,24 +221,62 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
       return;
     }
 
-    const event: CalendarEvent = {
-      id: Date.now().toString(),
-      title: newEvent.title,
-      start: new Date(newEvent.start),
-      end: new Date(newEvent.end),
-      description: newEvent.description,
-      type: newEvent.type,
-      studentId: newEvent.studentId || undefined,
-      source: "manual",
-    };
+    try {
+      const eventData = {
+        title: newEvent.title,
+        startTime: new Date(newEvent.start).toISOString(),
+        endTime: new Date(newEvent.end).toISOString(),
+        description: newEvent.description || null,
+        type: newEvent.type,
+        studentId: newEvent.studentId || null,
+        location: null,
+        isAllDay: false,
+      };
 
-    setEvents((prev) => [...prev, event]);
-    setShowEventModal(false);
+      const response = await fetch("/api/calendar/events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(eventData),
+      });
 
-    toast({
-      title: "Sucesso",
-      description: "Evento criado com sucesso",
-    });
+      if (!response.ok) {
+        throw new Error("Failed to create event");
+      }
+
+      const createdEvent = await response.json();
+
+      // Convert to frontend format and add to events
+      const frontendEvent: CalendarEvent = {
+        id: createdEvent.id,
+        title: createdEvent.title,
+        start: new Date(createdEvent.startTime),
+        end: new Date(createdEvent.endTime),
+        description: createdEvent.description,
+        type: createdEvent.type,
+        studentId: createdEvent.studentId,
+        studentName: newEvent.studentName,
+        source: "manual",
+      };
+
+      // Recarregar eventos do backend após criar
+      refetchEvents();
+      setShowEventModal(false);
+
+      toast({
+        title: "Sucesso",
+        description: "Evento criado com sucesso",
+      });
+    } catch (error) {
+      console.error("Error creating event:", error);
+      toast({
+        title: "Erro",
+        description: "Falha ao criar evento",
+        variant: "destructive",
+      });
+    }
   };
 
   // Estados para conexões de calendários
@@ -740,6 +800,44 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Campo de seleção de aluno - apenas para treinos e consultas */}
+                {(newEvent.type === "training" ||
+                  newEvent.type === "consultation") && (
+                  <div>
+                    <Label htmlFor="student">Aluno</Label>
+                    <Select
+                      value={newEvent.studentId}
+                      onValueChange={(value) => {
+                        const selectedStudent = students.find(
+                          (s: any) => s.id === value
+                        );
+                        setNewEvent((prev) => ({
+                          ...prev,
+                          studentId: value,
+                          studentName: selectedStudent?.name || "",
+                        }));
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={
+                            loadingStudents
+                              ? "Carregando..."
+                              : "Selecione um aluno"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {students.map((student: any) => (
+                          <SelectItem key={student.id} value={student.id}>
+                            {student.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 <div>
                   <Label htmlFor="description">Descrição</Label>

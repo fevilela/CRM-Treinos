@@ -428,10 +428,42 @@ export const assessmentPhotos = pgTable("assessment_photos", {
   uploadedAt: timestamp("uploaded_at").defaultNow(),
 });
 
+// Enum para tipos de evento do calendário
+export const calendarEventTypeEnum = pgEnum("calendar_event_type", [
+  "training",
+  "consultation",
+  "assessment",
+  "personal",
+]);
+
+// Tabela de eventos do calendário
+export const calendarEvents = pgTable("calendar_events", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  personalTrainerId: varchar("personal_trainer_id")
+    .notNull()
+    .references(() => users.id),
+  studentId: varchar("student_id").references(() => students.id), // Opcional - pode ser evento pessoal do professor
+  title: varchar("title").notNull(),
+  description: text("description"),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  type: calendarEventTypeEnum("type").notNull(),
+  location: varchar("location"),
+  isAllDay: boolean("is_all_day").default(false),
+  reminderSent: boolean("reminder_sent").default(false), // Para controlar se notificação já foi enviada
+  googleEventId: varchar("google_event_id"), // Para sincronização com Google Calendar
+  outlookEventId: varchar("outlook_event_id"), // Para sincronização com Outlook
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   students: many(students),
   workouts: many(workouts),
+  calendarEvents: many(calendarEvents),
 }));
 
 export const studentsRelations = relations(students, ({ one, many }) => ({
@@ -445,6 +477,7 @@ export const studentsRelations = relations(students, ({ one, many }) => ({
   workoutHistory: many(workoutHistory),
   workoutComments: many(workoutComments),
   physicalAssessments: many(physicalAssessments),
+  calendarEvents: many(calendarEvents),
 }));
 
 export const workoutsRelations = relations(workouts, ({ one, many }) => ({
@@ -575,6 +608,17 @@ export const assessmentPhotosRelations = relations(
     }),
   })
 );
+
+export const calendarEventsRelations = relations(calendarEvents, ({ one }) => ({
+  personalTrainer: one(users, {
+    fields: [calendarEvents.personalTrainerId],
+    references: [users.id],
+  }),
+  student: one(students, {
+    fields: [calendarEvents.studentId],
+    references: [students.id],
+  }),
+}));
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -776,6 +820,17 @@ export type InsertPhysicalAssessment = z.infer<
 export type PhysicalAssessment = typeof physicalAssessments.$inferSelect;
 export type InsertAssessmentPhoto = z.infer<typeof insertAssessmentPhotoSchema>;
 export type AssessmentPhoto = typeof assessmentPhotos.$inferSelect;
+
+export const insertCalendarEventSchema = createInsertSchema(
+  calendarEvents
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
+export type CalendarEvent = typeof calendarEvents.$inferSelect;
 export type InsertPhysicalAssessmentHistory = z.infer<
   typeof insertPhysicalAssessmentHistorySchema
 >;

@@ -13,6 +13,7 @@ import {
   physicalAssessments,
   physicalAssessmentHistory,
   assessmentPhotos,
+  calendarEvents,
   type User,
   type InsertUser,
   type UpsertUser,
@@ -40,9 +41,11 @@ import {
   type InsertPhysicalAssessmentHistory,
   type AssessmentPhoto,
   type InsertAssessmentPhoto,
+  type CalendarEvent,
+  type InsertCalendarEvent,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql, count } from "drizzle-orm";
+import { eq, desc, and, sql, count, gte, lte } from "drizzle-orm";
 import PDFDocument from "pdfkit";
 import type * as PDFKit from "pdfkit";
 import { analyzePhysicalAssessment } from "./analysisEngine";
@@ -175,6 +178,19 @@ export interface IStorage {
   getAssessmentPhoto(photoId: string): Promise<AssessmentPhoto | undefined>;
   createAssessmentPhoto(photo: InsertAssessmentPhoto): Promise<AssessmentPhoto>;
   deleteAssessmentPhoto(photoId: string): Promise<void>;
+
+  // Calendar events operations
+  getCalendarEvents(personalTrainerId: string): Promise<CalendarEvent[]>;
+  getStudentCalendarEvents(studentId: string): Promise<CalendarEvent[]>;
+  getCalendarEvent(id: string): Promise<CalendarEvent | undefined>;
+  createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
+  updateCalendarEvent(
+    id: string,
+    event: Partial<InsertCalendarEvent>
+  ): Promise<CalendarEvent>;
+  deleteCalendarEvent(id: string): Promise<void>;
+  getUpcomingEvents(startDate: Date, endDate: Date): Promise<CalendarEvent[]>;
+  markEventReminderSent(eventId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2004,6 +2020,87 @@ export class DatabaseStorage implements IStorage {
 
       doc.end();
     });
+  }
+
+  // Calendar events operations
+  async getCalendarEvents(personalTrainerId: string): Promise<CalendarEvent[]> {
+    return await db
+      .select()
+      .from(calendarEvents)
+      .where(eq(calendarEvents.personalTrainerId, personalTrainerId))
+      .orderBy(desc(calendarEvents.startTime));
+  }
+
+  async getStudentCalendarEvents(studentId: string): Promise<CalendarEvent[]> {
+    return await db
+      .select()
+      .from(calendarEvents)
+      .where(eq(calendarEvents.studentId, studentId))
+      .orderBy(desc(calendarEvents.startTime));
+  }
+
+  async getCalendarEvent(id: string): Promise<CalendarEvent | undefined> {
+    const [event] = await db
+      .select()
+      .from(calendarEvents)
+      .where(eq(calendarEvents.id, id));
+    return event;
+  }
+
+  async createCalendarEvent(
+    eventData: InsertCalendarEvent
+  ): Promise<CalendarEvent> {
+    const [event] = await db
+      .insert(calendarEvents)
+      .values(eventData)
+      .returning();
+    return event;
+  }
+
+  async updateCalendarEvent(
+    id: string,
+    eventData: Partial<InsertCalendarEvent>
+  ): Promise<CalendarEvent> {
+    const [event] = await db
+      .update(calendarEvents)
+      .set({
+        ...eventData,
+        updatedAt: new Date(),
+      })
+      .where(eq(calendarEvents.id, id))
+      .returning();
+    return event;
+  }
+
+  async deleteCalendarEvent(id: string): Promise<void> {
+    await db.delete(calendarEvents).where(eq(calendarEvents.id, id));
+  }
+
+  async getUpcomingEvents(
+    startDate: Date,
+    endDate: Date
+  ): Promise<CalendarEvent[]> {
+    return await db
+      .select()
+      .from(calendarEvents)
+      .where(
+        and(
+          gte(calendarEvents.startTime, startDate),
+          lte(calendarEvents.startTime, endDate),
+          eq(calendarEvents.reminderSent, false)
+        )
+      )
+      .orderBy(calendarEvents.startTime);
+  }
+
+  async markEventReminderSent(eventId: string): Promise<void> {
+    await db
+      .update(calendarEvents)
+      .set({
+        reminderSent: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(calendarEvents.id, eventId));
   }
 }
 

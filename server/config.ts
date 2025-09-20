@@ -6,7 +6,7 @@ dotenv.config();
 export const config = {
   // Configurações do servidor
   port: parseInt(process.env.PORT || "3000"),
-  host: process.env.HOST || "0.0.0.0",
+  host: process.env.HOST || "localhost",
 
   // Trust proxy (0 para local, 1+ para servidores com proxy/load balancer)
   trustProxy: process.env.TRUST_PROXY

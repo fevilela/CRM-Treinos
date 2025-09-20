@@ -136,14 +136,41 @@ export class OutlookCalendarService {
     try {
       const graphClient = this.getGraphClient();
 
+      // Buscar eventos dos últimos 6 meses até 6 meses no futuro
+      const now = new Date();
+      const sixMonthsAgo = new Date(now);
+      sixMonthsAgo.setMonth(now.getMonth() - 6);
+      const sixMonthsFromNow = new Date(now);
+      sixMonthsFromNow.setMonth(now.getMonth() + 6);
+
+      console.log(
+        `[OUTLOOK] Buscando eventos de ${sixMonthsAgo.toISOString()} até ${sixMonthsFromNow.toISOString()}`
+      );
+
       const events = await graphClient
         .api("/me/calendar/events")
         .select("id,subject,body,start,end,attendees,location")
+        .filter(
+          `start/dateTime ge '${sixMonthsAgo.toISOString()}' and end/dateTime le '${sixMonthsFromNow.toISOString()}'`
+        )
         .orderby("start/dateTime")
         .top(maxResults)
         .get();
 
-      return events.value || [];
+      const eventList = events.value || [];
+      console.log(`[OUTLOOK] Encontrados ${eventList.length} eventos`);
+      if (eventList.length > 0) {
+        console.log(
+          `[OUTLOOK] Primeiro evento: ${eventList[0].subject} - ${eventList[0].start?.dateTime}`
+        );
+        console.log(
+          `[OUTLOOK] Último evento: ${
+            eventList[eventList.length - 1].subject
+          } - ${eventList[eventList.length - 1].start?.dateTime}`
+        );
+      }
+
+      return eventList;
     } catch (error) {
       console.error("Erro ao buscar eventos do Outlook Calendar:", error);
       throw new Error("Falha ao buscar eventos do Outlook Calendar");

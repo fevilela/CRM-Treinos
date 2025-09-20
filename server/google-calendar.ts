@@ -101,15 +101,40 @@ export class GoogleCalendarService {
     try {
       await this.refreshTokensIfNeeded();
 
+      // Buscar eventos dos últimos 6 meses até 6 meses no futuro
+      const now = new Date();
+      const sixMonthsAgo = new Date(now);
+      sixMonthsAgo.setMonth(now.getMonth() - 6);
+      const sixMonthsFromNow = new Date(now);
+      sixMonthsFromNow.setMonth(now.getMonth() + 6);
+
+      console.log(
+        `[GOOGLE] Buscando eventos de ${sixMonthsAgo.toISOString()} até ${sixMonthsFromNow.toISOString()}`
+      );
+
       const response = await this.calendar.events.list({
         calendarId: "primary",
-        timeMin: new Date().toISOString(),
+        timeMin: sixMonthsAgo.toISOString(),
+        timeMax: sixMonthsFromNow.toISOString(),
         maxResults,
         singleEvents: true,
         orderBy: "startTime",
       });
 
-      return response.data.items || [];
+      const events = response.data.items || [];
+      console.log(`[GOOGLE] Encontrados ${events.length} eventos`);
+      if (events.length > 0) {
+        console.log(
+          `[GOOGLE] Primeiro evento: ${events[0].summary} - ${events[0].start?.dateTime}`
+        );
+        console.log(
+          `[GOOGLE] Último evento: ${events[events.length - 1].summary} - ${
+            events[events.length - 1].start?.dateTime
+          }`
+        );
+      }
+
+      return events;
     } catch (error) {
       console.error("Erro ao buscar eventos do Google Calendar:", error);
       throw new Error("Falha ao buscar eventos do Google Calendar");

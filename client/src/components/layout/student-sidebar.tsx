@@ -6,6 +6,7 @@ import type { Student } from "@shared/schema";
 
 const studentMenuItems = [
   { name: "Dashboard", path: "/student", icon: "fas fa-home" },
+  { name: "Eventos", path: "/student/events", icon: "fas fa-calendar-alt" },
   { name: "Treinos", path: "/student/workouts", icon: "fas fa-clipboard-list" },
   {
     name: "Avaliações Físicas",
