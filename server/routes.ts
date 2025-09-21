@@ -2580,6 +2580,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Get student's own debts - for students to view their own debts
+  app.get("/api/finances/my-debts", isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== "student") {
+        return res.status(403).json({
+          success: false,
+          message: "Apenas alunos podem acessar suas próprias dívidas",
+        });
+      }
+
+      // Look up student by email since user ID and student ID are different
+      const student = await storage.getStudentByEmail(req.user.email);
+      if (!student) {
+        return res.status(404).json({
+          success: false,
+          message: "Registro de aluno não encontrado",
+        });
+      }
+
+      // Get debt summary and detailed accounts
+      const debtSummary = await storage.getStudentDebtSummary(student.id);
+      const accounts = await storage.getFinancialAccounts(
+        student.personalTrainerId,
+        {
+          type: "receivable",
+          studentId: student.id,
+        }
+      );
+
+      // Filter only unpaid/partial accounts
+      const unpaidAccounts = accounts.filter(
+        (account) =>
+          account.status === "pending" ||
+          account.status === "partial" ||
+          account.status === "overdue"
+      );
+
+      res.json({
+        success: true,
+        summary: debtSummary,
+        accounts: unpaidAccounts,
+      });
+    } catch (error) {
+      console.error("Error fetching student debts:", error);
+      res.status(500).json({
+        success: false,
+        message: "Erro ao buscar dívidas do aluno",
+      });
+    }
+  });
+
   // Get overdue accounts for teacher
   app.get("/api/finances/overdue", isTeacher, async (req: any, res) => {
     try {

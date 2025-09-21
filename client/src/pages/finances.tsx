@@ -554,7 +554,10 @@ function CreateAccountForm({
         credentials: "include",
         body: JSON.stringify({
           ...formData,
-          amount: parseFloat(formData.amount),
+          amount: parseFloat(formData.amount) || 0,
+          dueDate: formData.dueDate
+            ? new Date(formData.dueDate).toISOString()
+            : new Date().toISOString(),
           studentId:
             formData.studentId === "none" ? null : formData.studentId || null,
         }),
