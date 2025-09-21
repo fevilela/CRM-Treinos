@@ -428,6 +428,34 @@ export const assessmentPhotos = pgTable("assessment_photos", {
   uploadedAt: timestamp("uploaded_at").defaultNow(),
 });
 
+// Enum para tipos de conta financeira
+export const accountTypeEnum = pgEnum("account_type", [
+  "receivable", // Contas a receber
+  "payable", // Contas a pagar
+]);
+
+// Enum para status de pagamento
+export const paymentStatusEnum = pgEnum("payment_status", [
+  "pending", // Pendente
+  "partial", // Parcialmente pago
+  "paid", // Pago
+  "overdue", // Em atraso
+  "cancelled", // Cancelado
+]);
+
+// Enum para categoria de conta
+export const accountCategoryEnum = pgEnum("account_category", [
+  "student_monthly", // Mensalidade de aluno
+  "student_assessment", // Avaliação física
+  "student_personal_training", // Personal training
+  "rent", // Aluguel
+  "equipment", // Equipamentos
+  "marketing", // Marketing
+  "utilities", // Utilidades (água, luz, etc)
+  "insurance", // Seguro
+  "other", // Outros
+]);
+
 // Enum para tipos de evento do calendário
 export const calendarEventTypeEnum = pgEnum("calendar_event_type", [
   "training",
@@ -435,6 +463,48 @@ export const calendarEventTypeEnum = pgEnum("calendar_event_type", [
   "assessment",
   "personal",
 ]);
+
+// Tabela de contas financeiras (contas a pagar e receber)
+export const financialAccounts = pgTable("financial_accounts", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  personalTrainerId: varchar("personal_trainer_id")
+    .notNull()
+    .references(() => users.id),
+  studentId: varchar("student_id").references(() => students.id), // Opcional - null para contas não relacionadas a alunos
+  type: accountTypeEnum("type").notNull(),
+  category: accountCategoryEnum("category").notNull(),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  status: paymentStatusEnum("status").notNull().default("pending"),
+  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }).default("0"),
+  paidAt: timestamp("paid_at"),
+  installments: integer("installments").default(1), // Número de parcelas
+  currentInstallment: integer("current_installment").default(1), // Parcela atual
+  isRecurring: boolean("is_recurring").default(false), // Se é recorrente (ex: mensalidade)
+  recurringInterval: varchar("recurring_interval"), // monthly, yearly, etc.
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Tabela de pagamentos (histórico de pagamentos realizados)
+export const payments = pgTable("payments", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  accountId: varchar("account_id")
+    .notNull()
+    .references(() => financialAccounts.id, { onDelete: "cascade" }),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  paymentDate: timestamp("payment_date").defaultNow(),
+  paymentMethod: varchar("payment_method"), // cash, credit_card, bank_transfer, pix
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
 
 // Tabela de eventos do calendário
 export const calendarEvents = pgTable("calendar_events", {
@@ -464,6 +534,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   students: many(students),
   workouts: many(workouts),
   calendarEvents: many(calendarEvents),
+  financialAccounts: many(financialAccounts),
 }));
 
 export const studentsRelations = relations(students, ({ one, many }) => ({
@@ -478,6 +549,7 @@ export const studentsRelations = relations(students, ({ one, many }) => ({
   workoutComments: many(workoutComments),
   physicalAssessments: many(physicalAssessments),
   calendarEvents: many(calendarEvents),
+  financialAccounts: many(financialAccounts),
 }));
 
 export const workoutsRelations = relations(workouts, ({ one, many }) => ({
@@ -617,6 +689,28 @@ export const calendarEventsRelations = relations(calendarEvents, ({ one }) => ({
   student: one(students, {
     fields: [calendarEvents.studentId],
     references: [students.id],
+  }),
+}));
+
+export const financialAccountsRelations = relations(
+  financialAccounts,
+  ({ one, many }) => ({
+    personalTrainer: one(users, {
+      fields: [financialAccounts.personalTrainerId],
+      references: [users.id],
+    }),
+    student: one(students, {
+      fields: [financialAccounts.studentId],
+      references: [students.id],
+    }),
+    payments: many(payments),
+  })
+);
+
+export const paymentsRelations = relations(payments, ({ one }) => ({
+  account: one(financialAccounts, {
+    fields: [payments.accountId],
+    references: [financialAccounts.id],
   }),
 }));
 
@@ -923,3 +1017,61 @@ export const physicalAssessmentSchema = insertPhysicalAssessmentSchema.extend({
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
 });
+
+// Financial schemas
+export const insertFinancialAccountSchema = createInsertSchema(
+  financialAccounts
+)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    amount: z.number().positive(),
+    paidAmount: z.number().min(0).optional(),
+    dueDate: z
+      .string()
+      .datetime()
+      .or(z.date())
+      .transform((val) => {
+        return val instanceof Date ? val : new Date(val);
+      }),
+    paidAt: z
+      .string()
+      .datetime()
+      .or(z.date())
+      .optional()
+      .transform((val) => {
+        if (!val) return undefined;
+        return val instanceof Date ? val : new Date(val);
+      }),
+    installments: z.number().int().positive().optional(),
+    currentInstallment: z.number().int().positive().optional(),
+  });
+
+export const insertPaymentSchema = createInsertSchema(payments)
+  .omit({
+    id: true,
+    createdAt: true,
+  })
+  .extend({
+    amount: z.number().positive(),
+    paymentDate: z
+      .string()
+      .datetime()
+      .or(z.date())
+      .optional()
+      .transform((val) => {
+        if (!val) return undefined;
+        return val instanceof Date ? val : new Date(val);
+      }),
+  });
+
+// Financial types
+export type InsertFinancialAccount = z.infer<
+  typeof insertFinancialAccountSchema
+>;
+export type FinancialAccount = typeof financialAccounts.$inferSelect;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type Payment = typeof payments.$inferSelect;

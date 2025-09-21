@@ -14,6 +14,8 @@ import {
   physicalAssessmentHistory,
   assessmentPhotos,
   calendarEvents,
+  financialAccounts,
+  payments,
   type User,
   type InsertUser,
   type UpsertUser,
@@ -43,6 +45,10 @@ import {
   type InsertAssessmentPhoto,
   type CalendarEvent,
   type InsertCalendarEvent,
+  type FinancialAccount,
+  type InsertFinancialAccount,
+  type Payment,
+  type InsertPayment,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, count, gte, lte } from "drizzle-orm";
@@ -191,6 +197,53 @@ export interface IStorage {
   deleteCalendarEvent(id: string): Promise<void>;
   getUpcomingEvents(startDate: Date, endDate: Date): Promise<CalendarEvent[]>;
   markEventReminderSent(eventId: string): Promise<void>;
+
+  // Financial operations
+  getFinancialAccounts(
+    personalTrainerId: string,
+    filters?: {
+      type?: string;
+      status?: string;
+      category?: string;
+      studentId?: string;
+    }
+  ): Promise<FinancialAccount[]>;
+  getFinancialAccount(id: string): Promise<FinancialAccount | undefined>;
+  createFinancialAccount(
+    account: InsertFinancialAccount
+  ): Promise<FinancialAccount>;
+  updateFinancialAccount(
+    id: string,
+    account: Partial<InsertFinancialAccount>
+  ): Promise<FinancialAccount>;
+  deleteFinancialAccount(id: string): Promise<void>;
+  getPaymentsByAccountId(accountId: string): Promise<Payment[]>;
+  createPayment(payment: InsertPayment): Promise<Payment>;
+  updateAccountAfterPayment(accountId: string): Promise<FinancialAccount>;
+  getOverdueAccounts(personalTrainerId: string): Promise<FinancialAccount[]>;
+  getStudentDebtSummary(studentId: string): Promise<{
+    totalDebt: number;
+    overdueAmount: number;
+    accountsCount: number;
+    lastPaymentDate?: Date;
+  }>;
+  getFinancialDashboard(personalTrainerId: string): Promise<{
+    totalReceivable: number;
+    totalPayable: number;
+    totalOverdue: number;
+    monthlyIncome: number;
+    monthlyExpenses: number;
+    netIncome: number;
+    pendingPayments: number;
+  }>;
+  getFinancialChartsData(
+    personalTrainerId: string,
+    period: string
+  ): Promise<{
+    monthlyFlow: Array<{ month: string; income: number; expenses: number }>;
+    categoryBreakdown: Array<{ category: string; amount: number }>;
+    studentDebts: Array<{ studentName: string; debt: number }>;
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2101,6 +2154,639 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date(),
       })
       .where(eq(calendarEvents.id, eventId));
+  }
+
+  // Financial operations
+  async getFinancialAccounts(
+    personalTrainerId: string,
+    filters?: {
+      type?: string;
+      status?: string;
+      category?: string;
+      studentId?: string;
+    }
+  ): Promise<FinancialAccount[]> {
+    let query = db
+      .select({
+        id: financialAccounts.id,
+        personalTrainerId: financialAccounts.personalTrainerId,
+        studentId: financialAccounts.studentId,
+        type: financialAccounts.type,
+        category: financialAccounts.category,
+        title: financialAccounts.title,
+        description: financialAccounts.description,
+        amount: financialAccounts.amount,
+        dueDate: financialAccounts.dueDate,
+        status: financialAccounts.status,
+        paidAmount: financialAccounts.paidAmount,
+        paidAt: financialAccounts.paidAt,
+        installments: financialAccounts.installments,
+        currentInstallment: financialAccounts.currentInstallment,
+        isRecurring: financialAccounts.isRecurring,
+        recurringInterval: financialAccounts.recurringInterval,
+        notes: financialAccounts.notes,
+        createdAt: financialAccounts.createdAt,
+        updatedAt: financialAccounts.updatedAt,
+        studentName: students.name,
+      })
+      .from(financialAccounts)
+      .leftJoin(students, eq(financialAccounts.studentId, students.id))
+      .where(eq(financialAccounts.personalTrainerId, personalTrainerId));
+
+    const conditions = [
+      eq(financialAccounts.personalTrainerId, personalTrainerId),
+    ];
+
+    if (filters?.type) {
+      conditions.push(eq(financialAccounts.type, filters.type as any));
+    }
+    if (filters?.status) {
+      conditions.push(eq(financialAccounts.status, filters.status as any));
+    }
+    if (filters?.category) {
+      conditions.push(eq(financialAccounts.category, filters.category as any));
+    }
+    if (filters?.studentId) {
+      conditions.push(eq(financialAccounts.studentId, filters.studentId));
+    }
+
+    const accounts = await db
+      .select({
+        id: financialAccounts.id,
+        personalTrainerId: financialAccounts.personalTrainerId,
+        studentId: financialAccounts.studentId,
+        type: financialAccounts.type,
+        category: financialAccounts.category,
+        title: financialAccounts.title,
+        description: financialAccounts.description,
+        amount: financialAccounts.amount,
+        dueDate: financialAccounts.dueDate,
+        status: financialAccounts.status,
+        paidAmount: financialAccounts.paidAmount,
+        paidAt: financialAccounts.paidAt,
+        installments: financialAccounts.installments,
+        currentInstallment: financialAccounts.currentInstallment,
+        isRecurring: financialAccounts.isRecurring,
+        recurringInterval: financialAccounts.recurringInterval,
+        notes: financialAccounts.notes,
+        createdAt: financialAccounts.createdAt,
+        updatedAt: financialAccounts.updatedAt,
+        studentName: students.name,
+      })
+      .from(financialAccounts)
+      .leftJoin(students, eq(financialAccounts.studentId, students.id))
+      .where(and(...conditions))
+      .orderBy(desc(financialAccounts.dueDate));
+
+    return accounts.map((account) => ({
+      ...account,
+      amount: account.amount ? parseFloat(account.amount as string) : 0,
+      paidAmount: account.paidAmount
+        ? parseFloat(account.paidAmount as string)
+        : 0,
+    })) as any;
+  }
+
+  async getFinancialAccount(id: string): Promise<FinancialAccount | undefined> {
+    const [account] = await db
+      .select()
+      .from(financialAccounts)
+      .where(eq(financialAccounts.id, id));
+
+    if (!account) return undefined;
+
+    return {
+      ...account,
+      amount: account.amount ? parseFloat(account.amount as string) : 0,
+      paidAmount: account.paidAmount
+        ? parseFloat(account.paidAmount as string)
+        : 0,
+    } as any;
+  }
+
+  async createFinancialAccount(
+    accountData: InsertFinancialAccount
+  ): Promise<FinancialAccount> {
+    const [account] = await db
+      .insert(financialAccounts)
+      .values({
+        ...accountData,
+        amount: accountData.amount.toString(),
+        paidAmount: (accountData.paidAmount || 0).toString(),
+      })
+      .returning();
+
+    return {
+      ...account,
+      amount: account.amount ? parseFloat(account.amount as string) : 0,
+      paidAmount: account.paidAmount
+        ? parseFloat(account.paidAmount as string)
+        : 0,
+    } as any;
+  }
+
+  async updateFinancialAccount(
+    id: string,
+    accountData: Partial<InsertFinancialAccount>
+  ): Promise<FinancialAccount> {
+    const updateData: any = {
+      ...accountData,
+      updatedAt: new Date(),
+    };
+
+    // Only allow updating safe fields - derived fields should not be updated directly
+    const { paidAmount, status, paidAt, currentInstallment, ...safeFields } =
+      accountData as any;
+
+    if (safeFields.amount !== undefined) {
+      updateData.amount = safeFields.amount.toString();
+    }
+
+    // Remove sensitive fields that should only be computed by the system
+    delete updateData.paidAmount;
+    delete updateData.status;
+    delete updateData.paidAt;
+    delete updateData.currentInstallment;
+    delete updateData.personalTrainerId; // Never allow changing ownership
+
+    const [account] = await db
+      .update(financialAccounts)
+      .set(updateData)
+      .where(eq(financialAccounts.id, id))
+      .returning();
+
+    return {
+      ...account,
+      amount: account.amount ? parseFloat(account.amount as string) : 0,
+      paidAmount: account.paidAmount
+        ? parseFloat(account.paidAmount as string)
+        : 0,
+    } as any;
+  }
+
+  async deleteFinancialAccount(id: string): Promise<void> {
+    await db.delete(financialAccounts).where(eq(financialAccounts.id, id));
+  }
+
+  async getPaymentsByAccountId(accountId: string): Promise<Payment[]> {
+    const paymentsData = await db
+      .select()
+      .from(payments)
+      .where(eq(payments.accountId, accountId))
+      .orderBy(desc(payments.paymentDate));
+
+    return paymentsData.map((payment) => ({
+      ...payment,
+      amount: payment.amount ? parseFloat(payment.amount as string) : 0,
+    })) as any;
+  }
+
+  async createPayment(paymentData: InsertPayment): Promise<Payment> {
+    return await db.transaction(async (tx) => {
+      // Verify the account exists and get its current state
+      const [account] = await tx
+        .select()
+        .from(financialAccounts)
+        .where(eq(financialAccounts.id, paymentData.accountId))
+        .for("update"); // Row-level lock
+
+      if (!account) {
+        throw new Error("Account not found");
+      }
+
+      const accountAmount = parseFloat(account.amount as string) || 0;
+      const currentPaidAmount = parseFloat(account.paidAmount as string) || 0;
+      const remainingAmount = accountAmount - currentPaidAmount;
+
+      // Validate payment amount
+      if (paymentData.amount <= 0) {
+        throw new Error("Payment amount must be positive");
+      }
+
+      if (paymentData.amount > remainingAmount) {
+        throw new Error(
+          `Payment amount (${paymentData.amount}) exceeds remaining balance (${remainingAmount})`
+        );
+      }
+
+      // Create the payment
+      const [payment] = await tx
+        .insert(payments)
+        .values({
+          ...paymentData,
+          amount: paymentData.amount.toString(),
+        })
+        .returning();
+
+      // Recalculate account totals within the transaction
+      const [result] = await tx
+        .select({
+          totalPaid: sql<string>`COALESCE(SUM(${payments.amount}), 0)`,
+        })
+        .from(payments)
+        .where(eq(payments.accountId, paymentData.accountId));
+
+      const totalPaid = parseFloat(result.totalPaid || "0");
+
+      // Determine new status
+      let newStatus: any = "pending";
+      if (totalPaid >= accountAmount) {
+        newStatus = "paid";
+      } else if (totalPaid > 0) {
+        newStatus = "partial";
+      } else if (new Date() > new Date(account.dueDate)) {
+        newStatus = "overdue";
+      }
+
+      // Update the account with new totals and status
+      await tx
+        .update(financialAccounts)
+        .set({
+          paidAmount: totalPaid.toString(),
+          status: newStatus,
+          paidAt: totalPaid >= accountAmount ? new Date() : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(financialAccounts.id, paymentData.accountId));
+
+      return {
+        ...payment,
+        amount: payment.amount ? parseFloat(payment.amount as string) : 0,
+      } as any;
+    });
+  }
+
+  async updateAccountAfterPayment(
+    accountId: string
+  ): Promise<FinancialAccount> {
+    // Get total payments for this account
+    const [result] = await db
+      .select({
+        totalPaid: sql<string>`COALESCE(SUM(${payments.amount}), 0)`,
+      })
+      .from(payments)
+      .where(eq(payments.accountId, accountId));
+
+    const totalPaid = parseFloat(result.totalPaid || "0");
+
+    // Get the account
+    const account = await this.getFinancialAccount(accountId);
+    if (!account) throw new Error("Account not found");
+
+    // Determine new status
+    let newStatus: any = "pending";
+
+    if (totalPaid >= Number(account.amount)) {
+      newStatus = "paid";
+    } else if (totalPaid > 0) {
+      newStatus = "partial";
+    } else {
+      // Converte dueDate para Date, mesmo que venha como string
+      const dueDate =
+        account.dueDate instanceof Date
+          ? account.dueDate
+          : new Date(account.dueDate);
+
+      if (new Date() > dueDate) {
+        newStatus = "overdue";
+      }
+    }
+
+    // Update the account
+    return await this.updateFinancialAccount(accountId, {
+      paidAmount: totalPaid,
+      status: newStatus,
+      // Converte para número antes de comparar
+      paidAt: totalPaid >= Number(account.amount) ? new Date() : undefined,
+    });
+  }
+
+  async getOverdueAccounts(
+    personalTrainerId: string
+  ): Promise<FinancialAccount[]> {
+    const now = new Date();
+    const accounts = await db
+      .select({
+        id: financialAccounts.id,
+        personalTrainerId: financialAccounts.personalTrainerId,
+        studentId: financialAccounts.studentId,
+        type: financialAccounts.type,
+        category: financialAccounts.category,
+        title: financialAccounts.title,
+        description: financialAccounts.description,
+        amount: financialAccounts.amount,
+        dueDate: financialAccounts.dueDate,
+        status: financialAccounts.status,
+        paidAmount: financialAccounts.paidAmount,
+        paidAt: financialAccounts.paidAt,
+        installments: financialAccounts.installments,
+        currentInstallment: financialAccounts.currentInstallment,
+        isRecurring: financialAccounts.isRecurring,
+        recurringInterval: financialAccounts.recurringInterval,
+        notes: financialAccounts.notes,
+        createdAt: financialAccounts.createdAt,
+        updatedAt: financialAccounts.updatedAt,
+        studentName: students.name,
+      })
+      .from(financialAccounts)
+      .leftJoin(students, eq(financialAccounts.studentId, students.id))
+      .where(
+        and(
+          eq(financialAccounts.personalTrainerId, personalTrainerId),
+          eq(financialAccounts.type, "receivable"),
+          lte(financialAccounts.dueDate, now),
+          sql`${financialAccounts.status} != 'paid'`
+        )
+      )
+      .orderBy(financialAccounts.dueDate);
+
+    return accounts.map((account) => ({
+      ...account,
+      amount: account.amount ? parseFloat(account.amount as string) : 0,
+      paidAmount: account.paidAmount
+        ? parseFloat(account.paidAmount as string)
+        : 0,
+    })) as any;
+  }
+
+  async getStudentDebtSummary(studentId: string): Promise<{
+    totalDebt: number;
+    overdueAmount: number;
+    accountsCount: number;
+    lastPaymentDate?: Date;
+  }> {
+    // Get all receivable accounts for student
+    const accounts = await db
+      .select()
+      .from(financialAccounts)
+      .where(
+        and(
+          eq(financialAccounts.studentId, studentId),
+          eq(financialAccounts.type, "receivable"),
+          sql`${financialAccounts.status} != 'paid'`
+        )
+      );
+
+    const totalDebt = accounts.reduce((sum, account) => {
+      const amount = parseFloat(account.amount as string) || 0;
+      const paidAmount = parseFloat(account.paidAmount as string) || 0;
+      return sum + (amount - paidAmount);
+    }, 0);
+
+    const now = new Date();
+    const overdueAmount = accounts
+      .filter((account) => new Date(account.dueDate) < now)
+      .reduce((sum, account) => {
+        const amount = parseFloat(account.amount as string) || 0;
+        const paidAmount = parseFloat(account.paidAmount as string) || 0;
+        return sum + (amount - paidAmount);
+      }, 0);
+
+    // Get last payment date
+    const [lastPayment] = await db
+      .select({ paymentDate: payments.paymentDate })
+      .from(payments)
+      .innerJoin(
+        financialAccounts,
+        eq(payments.accountId, financialAccounts.id)
+      )
+      .where(eq(financialAccounts.studentId, studentId))
+      .orderBy(desc(payments.paymentDate))
+      .limit(1);
+
+    return {
+      totalDebt,
+      overdueAmount,
+      accountsCount: accounts.length,
+      lastPaymentDate: lastPayment?.paymentDate || undefined,
+    };
+  }
+
+  async getFinancialDashboard(personalTrainerId: string): Promise<{
+    totalReceivable: number;
+    totalPayable: number;
+    totalOverdue: number;
+    monthlyIncome: number;
+    monthlyExpenses: number;
+    netIncome: number;
+    pendingPayments: number;
+  }> {
+    const accounts = await db
+      .select()
+      .from(financialAccounts)
+      .where(eq(financialAccounts.personalTrainerId, personalTrainerId));
+
+    const totalReceivable = accounts
+      .filter((account) => account.type === "receivable")
+      .reduce((sum, account) => {
+        const amount = parseFloat(account.amount as string) || 0;
+        const paidAmount = parseFloat(account.paidAmount as string) || 0;
+        return sum + (amount - paidAmount);
+      }, 0);
+
+    const totalPayable = accounts
+      .filter(
+        (account) => account.type === "payable" && account.status !== "paid"
+      )
+      .reduce((sum, account) => {
+        const amount = parseFloat(account.amount as string) || 0;
+        const paidAmount = parseFloat(account.paidAmount as string) || 0;
+        return sum + (amount - paidAmount);
+      }, 0);
+
+    const now = new Date();
+    const totalOverdue = accounts
+      .filter(
+        (account) =>
+          new Date(account.dueDate) < now && account.status !== "paid"
+      )
+      .reduce((sum, account) => {
+        const amount = parseFloat(account.amount as string) || 0;
+        const paidAmount = parseFloat(account.paidAmount as string) || 0;
+        return sum + (amount - paidAmount);
+      }, 0);
+
+    // Current month calculations
+    const currentMonth = new Date();
+    currentMonth.setDate(1);
+    const nextMonth = new Date(currentMonth);
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+    const monthlyIncome = accounts
+      .filter(
+        (account) =>
+          account.type === "receivable" &&
+          account.paidAt &&
+          new Date(account.paidAt) >= currentMonth &&
+          new Date(account.paidAt) < nextMonth
+      )
+      .reduce((sum, account) => {
+        return sum + (parseFloat(account.paidAmount as string) || 0);
+      }, 0);
+
+    const monthlyExpenses = accounts
+      .filter(
+        (account) =>
+          account.type === "payable" &&
+          account.paidAt &&
+          new Date(account.paidAt) >= currentMonth &&
+          new Date(account.paidAt) < nextMonth
+      )
+      .reduce((sum, account) => {
+        return sum + (parseFloat(account.paidAmount as string) || 0);
+      }, 0);
+
+    const pendingPayments = accounts.filter(
+      (account) => account.status === "pending" || account.status === "partial"
+    ).length;
+
+    return {
+      totalReceivable,
+      totalPayable,
+      totalOverdue,
+      monthlyIncome,
+      monthlyExpenses,
+      netIncome: monthlyIncome - monthlyExpenses,
+      pendingPayments,
+    };
+  }
+
+  async getFinancialChartsData(
+    personalTrainerId: string,
+    period: string
+  ): Promise<{
+    monthlyFlow: Array<{ month: string; income: number; expenses: number }>;
+    categoryBreakdown: Array<{ category: string; amount: number }>;
+    studentDebts: Array<{ studentName: string; debt: number }>;
+  }> {
+    const accounts = await db
+      .select({
+        id: financialAccounts.id,
+        type: financialAccounts.type,
+        category: financialAccounts.category,
+        amount: financialAccounts.amount,
+        paidAmount: financialAccounts.paidAmount,
+        paidAt: financialAccounts.paidAt,
+        status: financialAccounts.status,
+        studentId: financialAccounts.studentId,
+        studentName: students.name,
+      })
+      .from(financialAccounts)
+      .leftJoin(students, eq(financialAccounts.studentId, students.id))
+      .where(eq(financialAccounts.personalTrainerId, personalTrainerId));
+
+    // Calculate date range based on period
+    const months = period === "12months" ? 12 : 6;
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - months);
+
+    // Monthly flow
+    const monthlyFlow = [];
+    for (let i = months - 1; i >= 0; i--) {
+      const monthDate = new Date();
+      monthDate.setMonth(monthDate.getMonth() - i);
+      const monthStart = new Date(
+        monthDate.getFullYear(),
+        monthDate.getMonth(),
+        1
+      );
+      const monthEnd = new Date(
+        monthDate.getFullYear(),
+        monthDate.getMonth() + 1,
+        0
+      );
+
+      const income = accounts
+        .filter(
+          (account) =>
+            account.type === "receivable" &&
+            account.paidAt &&
+            new Date(account.paidAt) >= monthStart &&
+            new Date(account.paidAt) <= monthEnd
+        )
+        .reduce(
+          (sum, account) =>
+            sum + (parseFloat(account.paidAmount as string) || 0),
+          0
+        );
+
+      const expenses = accounts
+        .filter(
+          (account) =>
+            account.type === "payable" &&
+            account.paidAt &&
+            new Date(account.paidAt) >= monthStart &&
+            new Date(account.paidAt) <= monthEnd
+        )
+        .reduce(
+          (sum, account) =>
+            sum + (parseFloat(account.paidAmount as string) || 0),
+          0
+        );
+
+      monthlyFlow.push({
+        month: monthDate.toLocaleDateString("pt-BR", {
+          month: "short",
+          year: "numeric",
+        }),
+        income,
+        expenses,
+      });
+    }
+
+    // Category breakdown
+    const categoryTotals = new Map<string, number>();
+    accounts
+      .filter((account) => account.status === "paid")
+      .forEach((account) => {
+        const amount = parseFloat(account.paidAmount as string) || 0;
+        const current = categoryTotals.get(account.category) || 0;
+        categoryTotals.set(account.category, current + amount);
+      });
+
+    const categoryBreakdown = Array.from(categoryTotals.entries()).map(
+      ([category, amount]) => ({
+        category,
+        amount,
+      })
+    );
+
+    // Student debts
+    const studentDebtMap = new Map<string, { name: string; debt: number }>();
+    accounts
+      .filter(
+        (account) =>
+          account.type === "receivable" &&
+          account.status !== "paid" &&
+          account.studentName
+      )
+      .forEach((account) => {
+        const amount = parseFloat(account.amount as string) || 0;
+        const paidAmount = parseFloat(account.paidAmount as string) || 0;
+        const debt = amount - paidAmount;
+
+        if (debt > 0 && account.studentName) {
+          const current = studentDebtMap.get(account.studentName) || {
+            name: account.studentName,
+            debt: 0,
+          };
+          current.debt += debt;
+          studentDebtMap.set(account.studentName, current);
+        }
+      });
+
+    const studentDebts = Array.from(studentDebtMap.values()).map(
+      ({ name, debt }) => ({
+        studentName: name,
+        debt,
+      })
+    );
+
+    return {
+      monthlyFlow,
+      categoryBreakdown,
+      studentDebts,
+    };
   }
 }
 

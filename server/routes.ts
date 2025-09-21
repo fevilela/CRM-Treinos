@@ -22,9 +22,13 @@ import {
   insertAssessmentPhotoSchema,
   insertUserSchema,
   insertCalendarEventSchema,
+  insertFinancialAccountSchema,
+  insertPaymentSchema,
   type Student,
   type CalendarEvent,
   type InsertCalendarEvent,
+  type FinancialAccount,
+  type Payment,
 } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
@@ -2228,6 +2232,400 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         message: "Failed to process automated notifications",
         error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
+
+  // Financial Management Routes
+
+  // Get all financial accounts for a teacher
+  app.get("/api/finances/accounts", isTeacher, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+
+      // Validate query filters
+      const filtersSchema = z.object({
+        type: z.enum(["receivable", "payable"]).optional(),
+        status: z
+          .enum(["pending", "partial", "paid", "overdue", "cancelled"])
+          .optional(),
+        category: z
+          .enum([
+            "student_monthly",
+            "student_assessment",
+            "student_personal_training",
+            "rent",
+            "equipment",
+            "marketing",
+            "utilities",
+            "insurance",
+            "other",
+          ])
+          .optional(),
+        studentId: z.string().uuid().optional(),
+      });
+
+      const filters = filtersSchema.parse(req.query);
+
+      const accounts = await storage.getFinancialAccounts(userId, filters);
+
+      res.json({ success: true, accounts });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid query parameters",
+          errors: error.errors,
+        });
+      }
+      console.error("Error fetching financial accounts:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch financial accounts",
+      });
+    }
+  });
+
+  // Get financial dashboard summary
+  app.get("/api/finances/dashboard", isTeacher, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const summary = await storage.getFinancialDashboard(userId);
+      res.json({ success: true, summary });
+    } catch (error) {
+      console.error("Error fetching financial dashboard:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch financial dashboard",
+      });
+    }
+  });
+
+  // Get financial account by ID
+  app.get("/api/finances/accounts/:id", isTeacher, async (req: any, res) => {
+    try {
+      const account = await storage.getFinancialAccount(req.params.id);
+      if (!account) {
+        return res.status(404).json({
+          success: false,
+          message: "Financial account not found",
+        });
+      }
+
+      // Verify ownership
+      if (account.personalTrainerId !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied",
+        });
+      }
+
+      const payments = await storage.getPaymentsByAccountId(req.params.id);
+      res.json({ success: true, account, payments });
+    } catch (error) {
+      console.error("Error fetching financial account:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch financial account",
+      });
+    }
+  });
+
+  // Create new financial account
+  app.post("/api/finances/accounts", isTeacher, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const validatedData = insertFinancialAccountSchema.parse({
+        ...req.body,
+        personalTrainerId: userId,
+      });
+
+      const account = await storage.createFinancialAccount(validatedData);
+      res.status(201).json({ success: true, account });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid data",
+          errors: error.errors,
+        });
+      }
+      console.error("Error creating financial account:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to create financial account",
+      });
+    }
+  });
+
+  // Update financial account
+  app.put("/api/finances/accounts/:id", isTeacher, async (req: any, res) => {
+    try {
+      const accountId = req.params.id;
+      const userId = req.user.id;
+
+      // Verify ownership
+      const existingAccount = await storage.getFinancialAccount(accountId);
+      if (!existingAccount) {
+        return res.status(404).json({
+          success: false,
+          message: "Financial account not found",
+        });
+      }
+
+      if (existingAccount.personalTrainerId !== userId) {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied",
+        });
+      }
+
+      // Whitelist only safe fields that can be updated
+      const allowedFields = z.object({
+        title: z.string().optional(),
+        description: z.string().optional(),
+        category: z
+          .enum([
+            "student_monthly",
+            "student_assessment",
+            "student_personal_training",
+            "rent",
+            "equipment",
+            "marketing",
+            "utilities",
+            "insurance",
+            "other",
+          ])
+          .optional(),
+        amount: z.number().positive().optional(),
+        dueDate: z
+          .union([z.string(), z.date()])
+          .transform((val) => (typeof val === "string" ? new Date(val) : val))
+          .optional(),
+        notes: z.string().optional(),
+        isRecurring: z.boolean().optional(),
+        recurringInterval: z.string().optional(),
+        installments: z.number().int().positive().optional(),
+      });
+
+      const validatedData = allowedFields.parse(req.body);
+
+      // If studentId is being changed, verify the student belongs to this teacher
+      if (
+        req.body.studentId &&
+        req.body.studentId !== existingAccount.studentId
+      ) {
+        if (req.body.studentId) {
+          const student = await storage.getStudent(req.body.studentId);
+          if (!student || student.personalTrainerId !== userId) {
+            return res.status(400).json({
+              success: false,
+              message:
+                "Invalid student - student not found or not assigned to you",
+            });
+          }
+          (validatedData as any).studentId = req.body.studentId;
+        } else {
+          (validatedData as any).studentId = null;
+        }
+      }
+
+      if (validatedData.dueDate && typeof validatedData.dueDate === "string") {
+        validatedData.dueDate = new Date(validatedData.dueDate);
+      }
+
+      const account = await storage.updateFinancialAccount(
+        accountId,
+        validatedData
+      );
+
+      res.json({ success: true, account });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid data",
+          errors: error.errors,
+        });
+      }
+      console.error("Error updating financial account:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update financial account",
+      });
+    }
+  });
+
+  // Delete financial account
+  app.delete("/api/finances/accounts/:id", isTeacher, async (req: any, res) => {
+    try {
+      const accountId = req.params.id;
+      const userId = req.user.id;
+
+      // Verify ownership
+      const existingAccount = await storage.getFinancialAccount(accountId);
+      if (!existingAccount) {
+        return res.status(404).json({
+          success: false,
+          message: "Financial account not found",
+        });
+      }
+
+      if (existingAccount.personalTrainerId !== userId) {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied",
+        });
+      }
+
+      await storage.deleteFinancialAccount(accountId);
+      res.json({
+        success: true,
+        message: "Financial account deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error deleting financial account:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to delete financial account",
+      });
+    }
+  });
+
+  // Add payment to account
+  app.post(
+    "/api/finances/accounts/:id/payments",
+    isTeacher,
+    async (req: any, res) => {
+      try {
+        const accountId = req.params.id;
+        const userId = req.user.id;
+
+        // Verify account ownership
+        const account = await storage.getFinancialAccount(accountId);
+        if (!account) {
+          return res.status(404).json({
+            success: false,
+            message: "Financial account not found",
+          });
+        }
+
+        if (account.personalTrainerId !== userId) {
+          return res.status(403).json({
+            success: false,
+            message: "Access denied",
+          });
+        }
+
+        const validatedData = insertPaymentSchema.parse({
+          ...req.body,
+          accountId,
+        });
+
+        // Payment creation is now atomic and handles account updates internally
+        const payment = await storage.createPayment(validatedData);
+
+        // Get the updated account
+        const updatedAccount = await storage.getFinancialAccount(accountId);
+
+        res
+          .status(201)
+          .json({ success: true, payment, account: updatedAccount });
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid data",
+            errors: error.errors,
+          });
+        }
+
+        // Handle specific business logic errors
+        if (error instanceof Error) {
+          if (error.message.includes("exceeds remaining balance")) {
+            return res.status(400).json({
+              success: false,
+              message: error.message,
+            });
+          }
+          if (error.message === "Payment amount must be positive") {
+            return res.status(400).json({
+              success: false,
+              message: error.message,
+            });
+          }
+        }
+
+        console.error("Error creating payment:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to create payment",
+        });
+      }
+    }
+  );
+
+  // Get overdue accounts for teacher
+  app.get("/api/finances/overdue", isTeacher, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const overdueAccounts = await storage.getOverdueAccounts(userId);
+      res.json({ success: true, accounts: overdueAccounts });
+    } catch (error) {
+      console.error("Error fetching overdue accounts:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch overdue accounts",
+      });
+    }
+  });
+
+  // Get student debt summary
+  app.get(
+    "/api/finances/students/:studentId/debt",
+    isTeacher,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.id;
+        const studentId = req.params.studentId;
+
+        // Verify student belongs to teacher
+        const student = await storage.getStudent(studentId);
+        if (!student || student.personalTrainerId !== userId) {
+          return res.status(404).json({
+            success: false,
+            message: "Student not found",
+          });
+        }
+
+        const debtSummary = await storage.getStudentDebtSummary(studentId);
+        res.json({ success: true, debt: debtSummary });
+      } catch (error) {
+        console.error("Error fetching student debt:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch student debt",
+        });
+      }
+    }
+  );
+
+  // Get financial charts data
+  app.get("/api/finances/charts", isTeacher, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { period = "6months" } = req.query;
+
+      const chartsData = await storage.getFinancialChartsData(
+        userId,
+        period as string
+      );
+      res.json({ success: true, data: chartsData });
+    } catch (error) {
+      console.error("Error fetching financial charts data:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch financial charts data",
       });
     }
   });

@@ -10,6 +10,7 @@ import Students from "@/pages/students";
 import Workouts from "@/pages/workouts";
 import PhysicalAssessments from "@/pages/physical-assessments";
 import Progress from "@/pages/progress";
+import Finances from "@/pages/finances";
 import TeacherProfile from "@/pages/teacher-profile";
 import StudentProfile from "@/pages/student-profile";
 import { StudentDashboard } from "@/pages/student-dashboard";
@@ -162,6 +163,7 @@ function Router() {
                     component={() => <PhysicalAssessments />}
                   />
                   <Route path="/progress" component={Progress} />
+                  <Route path="/finances" component={Finances} />
                   <Route path="/profile" component={TeacherProfile} />
                   <Route component={NotFound} />
                 </Switch>
