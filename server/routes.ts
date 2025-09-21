@@ -2720,6 +2720,275 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Student Payment Routes
+
+  // Get student's charges/bills
+  app.get("/api/student/charges", isStudentOrTeacher, async (req: any, res) => {
+    try {
+      let studentId = req.user.id;
+
+      // If user is a teacher, they can specify studentId to view charges
+      if (req.user.role === "teacher" && req.query.studentId) {
+        // Verify the student belongs to this teacher
+        const student = await storage.getStudent(req.query.studentId);
+        if (!student || student.personalTrainerId !== req.user.id) {
+          return res.status(403).json({
+            success: false,
+            message: "Access denied - student not found or not assigned to you",
+          });
+        }
+        studentId = req.query.studentId;
+      } else if (req.user.role === "student") {
+        // For students, we need to find their record in the students table
+        const student = await storage.getStudentByEmail(req.user.email);
+        if (!student) {
+          return res.status(404).json({
+            success: false,
+            message: "Student record not found",
+          });
+        }
+        studentId = student.id;
+      }
+
+      // Get all pending charges for the student
+      const charges = await storage.getStudentCharges(studentId);
+
+      res.json({ success: true, charges });
+    } catch (error) {
+      console.error("Error fetching student charges:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch charges",
+      });
+    }
+  });
+
+  // Create PIX payment
+  app.post(
+    "/api/student/payments/pix",
+    isStudentOrTeacher,
+    async (req: any, res) => {
+      try {
+        const { accountId, amount } = req.body;
+
+        if (!accountId || !amount) {
+          return res.status(400).json({
+            success: false,
+            message: "Account ID and amount are required",
+          });
+        }
+
+        // Verify the charge belongs to the student
+        const account = await storage.getFinancialAccount(accountId);
+        if (!account) {
+          return res.status(404).json({
+            success: false,
+            message: "Charge not found",
+          });
+        }
+
+        let studentId = req.user.id;
+        if (req.user.role === "student") {
+          const student = await storage.getStudentByEmail(req.user.email);
+          if (!student) {
+            return res.status(404).json({
+              success: false,
+              message: "Student record not found",
+            });
+          }
+          studentId = student.id;
+        }
+
+        if (account.studentId !== studentId) {
+          return res.status(403).json({
+            success: false,
+            message: "Access denied - charge does not belong to you",
+          });
+        }
+
+        // TODO: Integrate with PIX payment provider (Efí Bank)
+        // For now, create a pending payment record
+        const transactionId = crypto.randomUUID();
+
+        const paymentData = {
+          accountId,
+          amount: Number(amount),
+          paymentMethod: "pix",
+          transactionId,
+          providerName: "efi_bank",
+          transactionStatus: "pending" as const,
+          pixQrCode:
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==", // Placeholder
+          pixCopyPaste:
+            "00020126330014BR.GOV.BCB.PIX0111123456789010203XXXX5204000053039865802BR5925NOME DO RECEBEDOR6009SAO PAULO62240520mpqr60221058999999999630445D5",
+          pixExpiresAt: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes
+          ipAddress: req.ip || req.connection.remoteAddress,
+          userAgent: req.headers["user-agent"],
+        };
+
+        const payment = await storage.createPayment(paymentData);
+
+        res.json({
+          success: true,
+          payment: {
+            id: payment.id,
+            transactionId: payment.transactionId,
+            amount: payment.amount,
+            pixQrCode: payment.pixQrCode,
+            pixCopyPaste: payment.pixCopyPaste,
+            expiresAt: payment.pixExpiresAt,
+            status: payment.transactionStatus,
+          },
+        });
+      } catch (error) {
+        console.error("Error creating PIX payment:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to create PIX payment",
+        });
+      }
+    }
+  );
+
+  // Create card payment
+  app.post(
+    "/api/student/payments/card",
+    isStudentOrTeacher,
+    async (req: any, res) => {
+      try {
+        const { accountId, amount, cardToken } = req.body;
+
+        if (!accountId || !amount || !cardToken) {
+          return res.status(400).json({
+            success: false,
+            message: "Account ID, amount and card token are required",
+          });
+        }
+
+        // Verify the charge belongs to the student
+        const account = await storage.getFinancialAccount(accountId);
+        if (!account) {
+          return res.status(404).json({
+            success: false,
+            message: "Charge not found",
+          });
+        }
+
+        let studentId = req.user.id;
+        if (req.user.role === "student") {
+          const student = await storage.getStudentByEmail(req.user.email);
+          if (!student) {
+            return res.status(404).json({
+              success: false,
+              message: "Student record not found",
+            });
+          }
+          studentId = student.id;
+        }
+
+        if (account.studentId !== studentId) {
+          return res.status(403).json({
+            success: false,
+            message: "Access denied - charge does not belong to you",
+          });
+        }
+
+        // TODO: Integrate with card payment provider (Efí Bank)
+        // For now, simulate a successful card payment
+        const transactionId = crypto.randomUUID();
+
+        const paymentData = {
+          accountId,
+          amount: Number(amount),
+          paymentMethod: "credit_card",
+          transactionId,
+          providerName: "efi_bank",
+          transactionStatus: "completed" as const,
+          cardBrand: "visa", // Would come from provider
+          cardLastFour: "1234", // Would come from provider
+          ipAddress: req.ip || req.connection.remoteAddress,
+          userAgent: req.headers["user-agent"],
+        };
+
+        const payment = await storage.createPayment(paymentData);
+
+        // Update account as paid if payment is successful
+        if (payment.transactionStatus === "completed") {
+          await storage.updateFinancialAccount(accountId, {
+            status: "paid",
+            paidAmount: payment.amount,
+            paidAt: new Date(),
+          });
+        }
+
+        res.json({
+          success: true,
+          payment: {
+            id: payment.id,
+            transactionId: payment.transactionId,
+            amount: payment.amount,
+            status: payment.transactionStatus,
+            cardBrand: payment.cardBrand,
+            cardLastFour: payment.cardLastFour,
+          },
+        });
+      } catch (error) {
+        console.error("Error creating card payment:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to create card payment",
+        });
+      }
+    }
+  );
+
+  // Payment webhook (for PIX confirmations)
+  app.post("/api/payments/webhook", async (req, res) => {
+    try {
+      // TODO: Implement webhook signature verification
+      const { transactionId, status, providerTransactionId } = req.body;
+
+      if (!transactionId) {
+        return res.status(400).json({
+          success: false,
+          message: "Transaction ID is required",
+        });
+      }
+
+      // Find the payment by transaction ID
+      const payment = await storage.getPaymentByTransactionId(transactionId);
+      if (!payment) {
+        return res.status(404).json({
+          success: false,
+          message: "Payment not found",
+        });
+      }
+
+      // Update payment status
+      await storage.updatePaymentStatus(payment.id, {
+        transactionStatus: status,
+        providerTransactionId,
+      });
+
+      // If payment is completed, update the financial account
+      if (status === "completed") {
+        await storage.updateFinancialAccount(payment.accountId, {
+          status: "paid",
+          paidAmount: payment.amount,
+          paidAt: new Date(),
+        });
+      }
+
+      res.json({ success: true, message: "Webhook processed" });
+    } catch (error) {
+      console.error("Error processing webhook:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to process webhook",
+      });
+    }
+  });
+
   // Create HTTP server (don't start listening here)
   const httpServer = createServer(app);
   return httpServer;

@@ -19,6 +19,7 @@ const studentMenuItems = [
     path: "/student/body-evolution",
     icon: "fas fa-male",
   },
+  { name: "Cobranças", path: "/student/debts", icon: "fas fa-credit-card" },
 ];
 
 interface StudentSidebarProps {

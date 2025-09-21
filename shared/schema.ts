@@ -456,6 +456,16 @@ export const accountCategoryEnum = pgEnum("account_category", [
   "other", // Outros
 ]);
 
+// Enum para métodos de pagamento
+export const paymentMethodEnum = pgEnum("payment_method", [
+  "cash", // Dinheiro
+  "pix", // PIX
+  "credit_card", // Cartão de crédito
+  "debit_card", // Cartão de débito
+  "bank_transfer", // Transferência bancária
+  "boleto", // Boleto bancário
+]);
+
 // Enum para tipos de evento do calendário
 export const calendarEventTypeEnum = pgEnum("calendar_event_type", [
   "training",
@@ -491,6 +501,16 @@ export const financialAccounts = pgTable("financial_accounts", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Enum para status de transação online
+export const transactionStatusEnum = pgEnum("transaction_status", [
+  "pending", // Pendente de processamento
+  "processing", // Sendo processado
+  "completed", // Completado com sucesso
+  "failed", // Falhou
+  "cancelled", // Cancelado
+  "refunded", // Estornado
+]);
+
 // Tabela de pagamentos (histórico de pagamentos realizados)
 export const payments = pgTable("payments", {
   id: varchar("id")
@@ -501,7 +521,28 @@ export const payments = pgTable("payments", {
     .references(() => financialAccounts.id, { onDelete: "cascade" }),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   paymentDate: timestamp("payment_date").defaultNow(),
-  paymentMethod: varchar("payment_method"), // cash, credit_card, bank_transfer, pix
+  paymentMethod: varchar("payment_method"), // cash, pix, credit_card, debit_card, bank_transfer, boleto
+
+  // Campos para pagamentos online seguros
+  transactionId: varchar("transaction_id").unique(), // ID único da transação no nosso sistema
+  providerTransactionId: varchar("provider_transaction_id"), // ID da transação no provedor (Efí, etc)
+  providerName: varchar("provider_name"), // efi_bank, mercado_pago, etc
+  transactionStatus:
+    transactionStatusEnum("transaction_status").default("pending"),
+
+  // Dados do PIX
+  pixQrCode: text("pix_qr_code"), // QR Code para pagamento PIX
+  pixCopyPaste: text("pix_copy_paste"), // Código PIX copia e cola
+  pixExpiresAt: timestamp("pix_expires_at"), // Expiração do PIX
+
+  // Dados do cartão (apenas referências seguras, nunca dados do cartão)
+  cardBrand: varchar("card_brand"), // visa, mastercard, etc
+  cardLastFour: varchar("card_last_four"), // Últimos 4 dígitos
+
+  // Metadados de segurança
+  ipAddress: varchar("ip_address"), // IP do pagador
+  userAgent: text("user_agent"), // User agent do navegador
+
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -1058,6 +1099,18 @@ export const insertPaymentSchema = createInsertSchema(payments)
   .extend({
     amount: z.number().positive(),
     paymentDate: z
+      .string()
+      .datetime()
+      .or(z.date())
+      .optional()
+      .transform((val) => {
+        if (!val) return undefined;
+        return val instanceof Date ? val : new Date(val);
+      }),
+    transactionId: z.string().optional(),
+    providerTransactionId: z.string().optional(),
+    providerName: z.string().optional(),
+    pixExpiresAt: z
       .string()
       .datetime()
       .or(z.date())

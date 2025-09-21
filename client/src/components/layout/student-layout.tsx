@@ -6,6 +6,7 @@ import { StudentWorkouts } from "@/pages/student-workouts";
 import { StudentPhysicalAssessments } from "@/pages/student-physical-assessments";
 import { StudentProgress } from "@/pages/student-progress";
 import { StudentBodyEvolution } from "@/pages/student-body-evolution";
+import { StudentDebts } from "@/pages/student-debts";
 import StudentProfile from "@/pages/student-profile";
 import type { Student } from "@shared/schema";
 
@@ -47,6 +48,10 @@ export function StudentLayout({ student, onLogout }: StudentLayoutProps) {
             <Route
               path="/student/body-evolution"
               component={() => <StudentBodyEvolution student={student} />}
+            />
+            <Route
+              path="/student/debts"
+              component={() => <StudentDebts student={student} />}
             />
             <Route
               path="/student/profile"

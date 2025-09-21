@@ -2788,6 +2788,49 @@ export class DatabaseStorage implements IStorage {
       studentDebts,
     };
   }
+
+  // Payment methods for online payments
+  async getPaymentByTransactionId(
+    transactionId: string
+  ): Promise<Payment | undefined> {
+    const [payment] = await db
+      .select()
+      .from(payments)
+      .where(eq(payments.transactionId, transactionId));
+
+    if (!payment) return undefined;
+
+    return {
+      ...payment,
+      amount: payment.amount ? parseFloat(payment.amount as string) : 0,
+    } as any;
+  }
+
+  async updatePaymentStatus(
+    paymentId: string,
+    updates: {
+      transactionStatus?: string;
+      providerTransactionId?: string;
+    }
+  ): Promise<Payment | undefined> {
+    const [updatedPayment] = await db
+      .update(payments)
+      .set({
+        ...updates,
+        // Add any other fields that need to be updated
+      })
+      .where(eq(payments.id, paymentId))
+      .returning();
+
+    if (!updatedPayment) return undefined;
+
+    return {
+      ...updatedPayment,
+      amount: updatedPayment.amount
+        ? parseFloat(updatedPayment.amount as string)
+        : 0,
+    } as any;
+  }
 }
 
 export const storage = new DatabaseStorage();
