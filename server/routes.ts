@@ -2399,9 +2399,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .optional(),
         amount: z.number().positive().optional(),
         dueDate: z
-          .union([z.string(), z.date()])
-          .transform((val) => (typeof val === "string" ? new Date(val) : val))
+          .preprocess((val) => {
+            if (typeof val === "string") {
+              // Se vier em dd/MM/yyyy → converte para ISO
+              const parts = val.split("/");
+              if (parts.length === 3) {
+                const [dd, mm, yyyy] = parts;
+                const iso = `${yyyy}-${mm}-${dd}`;
+                const parsed = new Date(iso);
+                return isNaN(parsed.getTime()) ? undefined : parsed;
+              }
+              const parsed = new Date(val);
+              return isNaN(parsed.getTime()) ? undefined : parsed;
+            }
+            if (val instanceof Date) return val;
+            return undefined;
+          }, z.date())
           .optional(),
+
         notes: z.string().optional(),
         isRecurring: z.boolean().optional(),
         recurringInterval: z.string().optional(),

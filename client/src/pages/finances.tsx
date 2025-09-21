@@ -533,7 +533,7 @@ function CreateAccountForm({
     description: "",
     amount: "",
     dueDate: "",
-    studentId: "",
+    studentId: "none",
     isRecurring: false,
     notes: "",
   });
@@ -555,7 +555,8 @@ function CreateAccountForm({
         body: JSON.stringify({
           ...formData,
           amount: parseFloat(formData.amount),
-          studentId: formData.studentId || null,
+          studentId:
+            formData.studentId === "none" ? null : formData.studentId || null,
         }),
       });
 
@@ -641,7 +642,7 @@ function CreateAccountForm({
             <SelectValue placeholder="Selecione um aluno" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Nenhum aluno</SelectItem>
+            <SelectItem value="none">Nenhum aluno</SelectItem>
             {students?.map((student) => (
               <SelectItem key={student.id} value={student.id}>
                 {student.name}
