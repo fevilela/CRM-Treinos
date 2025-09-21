@@ -1,5 +1,5 @@
-// Blueprint: replitmail integration
-import { sendEmail, type SmtpMessage } from "./utils/replitmail";
+// Sistema independente de notificação por email
+import { sendEmail } from "./email";
 import { storage } from "./storage";
 import { format, addDays, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -343,7 +343,7 @@ export async function getUpcomingEventsForNotification(): Promise<
         }
 
         notifications.push({
-          studentEmail: student.email,
+          studentEmail: student.email || "",
           studentName: student.name,
           trainerName: `${trainer.firstName} ${trainer.lastName}`,
           event: {
@@ -351,9 +351,9 @@ export async function getUpcomingEventsForNotification(): Promise<
             title: event.title,
             startTime: event.startTime,
             endTime: event.endTime,
-            description: event.description,
+            description: event.description || undefined,
             type: event.type,
-            location: event.location,
+            location: event.location || undefined,
           },
         });
       } catch (error) {
@@ -383,18 +383,49 @@ export async function sendEventNotification(
   try {
     const { subject, html, text } = generateNotificationEmail(notification);
 
+    // Enviar notificação para o aluno
     console.log(
-      `[NOTIFICATION] Enviando email para ${notification.studentEmail} sobre evento: ${notification.event.title}`
+      `[NOTIFICATION] Enviando email para aluno ${notification.studentEmail} sobre evento: ${notification.event.title}`
     );
 
-    const result = await sendEmail({
+    const studentResult = await sendEmail({
       to: notification.studentEmail,
+      from: `"CRM Treinos MP" <${process.env.GMAIL_USER}>`,
       subject,
       html,
       text,
     });
 
-    console.log(`[NOTIFICATION] Email enviado com sucesso:`, result.accepted);
+    // Gerar notificação para o professor/trainer
+    const trainerSubject = `📅 Lembrete: ${notification.event.title} com ${notification.studentName} amanhã`;
+    const trainerHtml = generateTrainerNotificationEmail(notification);
+
+    // Buscar email do trainer
+    const event = await storage.getCalendarEvent(notification.event.id);
+    if (event) {
+      const trainer = await storage.getUser(event.personalTrainerId);
+      if (trainer && trainer.email) {
+        console.log(
+          `[NOTIFICATION] Enviando email para professor ${trainer.email} sobre evento: ${notification.event.title}`
+        );
+
+        await sendEmail({
+          to: trainer.email,
+          from: `"CRM Treinos MP" <${process.env.GMAIL_USER}>`,
+          subject: trainerSubject,
+          html: trainerHtml,
+          text: `Lembrete: ${notification.event.title} com ${
+            notification.studentName
+          } amanhã às ${format(notification.event.startTime, "HH:mm", {
+            locale: ptBR,
+          })}.`,
+        });
+      }
+    }
+
+    console.log(
+      `[NOTIFICATION] Emails enviados com sucesso para aluno e professor`
+    );
 
     // Marcar como enviado no banco de dados
     await storage.markEventReminderSent(notification.event.id);
@@ -402,7 +433,7 @@ export async function sendEventNotification(
     return true;
   } catch (error) {
     console.error(
-      `[NOTIFICATION] Erro ao enviar email para ${notification.studentEmail}:`,
+      `[NOTIFICATION] Erro ao enviar emails para ${notification.studentEmail}:`,
       error
     );
     return false;
@@ -438,4 +469,118 @@ export async function sendAllEventNotifications(): Promise<{
   );
 
   return { success, failed, total };
+}
+
+// Gerar email de notificação para o professor/trainer
+function generateTrainerNotificationEmail(
+  notification: EventNotification
+): string {
+  const eventInfo = getEventTypeInfo(notification.event.type);
+  const eventDate = format(notification.event.startTime, "EEEE, dd 'de' MMMM", {
+    locale: ptBR,
+  });
+  const eventTime = format(notification.event.startTime, "HH:mm", {
+    locale: ptBR,
+  });
+  const endTime = format(notification.event.endTime, "HH:mm", { locale: ptBR });
+
+  return `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Lembrete de Evento - Professor</title>
+    </head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f4f4f4;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.1);">
+        
+        <!-- Header -->
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: ${eventInfo.color}; margin: 0; font-size: 28px;">
+            ${eventInfo.emoji} Lembrete de Compromisso
+          </h1>
+          <p style="color: #666; margin: 10px 0 0 0; font-size: 16px;">CRM Treinos MP - Área do Professor</p>
+        </div>
+
+        <!-- Evento Info -->
+        <div style="background-color: #f8fafc; padding: 25px; border-radius: 8px; border-left: 4px solid ${
+          eventInfo.color
+        }; margin-bottom: 25px;">
+          <h2 style="color: #1a365d; margin: 0 0 15px 0; font-size: 22px;">
+            📅 ${notification.event.title}
+          </h2>
+          
+          <div style="display: grid; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="color: ${
+                eventInfo.color
+              }; font-weight: bold;">👤 Aluno:</span>
+              <span style="font-weight: bold; color: #2d3748;">${
+                notification.studentName
+              }</span>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="color: ${
+                eventInfo.color
+              }; font-weight: bold;">📅 Data:</span>
+              <span style="color: #2d3748;">${eventDate}</span>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="color: ${
+                eventInfo.color
+              }; font-weight: bold;">⏰ Horário:</span>
+              <span style="color: #2d3748; font-weight: bold;">${eventTime} - ${endTime}</span>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="color: ${
+                eventInfo.color
+              }; font-weight: bold;">🎯 Tipo:</span>
+              <span style="background-color: ${
+                eventInfo.color
+              }; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">
+                ${eventInfo.label}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        ${
+          notification.event.description
+            ? `
+        <!-- Descrição -->
+        <div style="background-color: #f7fafc; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+          <h3 style="color: #2d3748; margin: 0 0 10px 0; font-size: 18px;">📝 Observações:</h3>
+          <p style="color: #4a5568; margin: 0; line-height: 1.6;">${notification.event.description}</p>
+        </div>
+        `
+            : ""
+        }
+
+        <!-- Ações Sugeridas -->
+        <div style="background-color: #edf2f7; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+          <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px;">💡 Lembrete para amanhã:</h3>
+          <ul style="color: #4a5568; margin: 0; padding-left: 20px;">
+            <li>Preparar equipamentos e exercícios</li>
+            <li>Revisar fichas e progresso do aluno</li>
+            <li>Confirmar presença se necessário</li>
+            <li>Verificar objetivos da sessão</li>
+          </ul>
+        </div>
+
+        <!-- Footer -->
+        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+          <p style="color: #718096; font-size: 14px; margin: 0;">
+            <strong>CRM Treinos MP</strong><br>
+            Sistema Independente de Gerenciamento para Personal Trainers<br>
+            <span style="font-size: 12px;">Este lembrete foi enviado automaticamente 1 dia antes do evento</span>
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
 }

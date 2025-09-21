@@ -1991,10 +1991,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/calendar/events", isTeacher, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const validatedData = insertCalendarEventSchema.parse({
+
+      // Debug: Log incoming data
+      console.log(
+        "[DEBUG] Incoming request body:",
+        JSON.stringify(req.body, null, 2)
+      );
+      console.log("[DEBUG] User ID:", userId);
+
+      const dataToValidate = {
         ...req.body,
         personalTrainerId: userId,
-      });
+      };
+
+      console.log(
+        "[DEBUG] Data to validate:",
+        JSON.stringify(dataToValidate, null, 2)
+      );
+
+      const validatedData = insertCalendarEventSchema.parse(dataToValidate);
 
       // If studentId is provided, verify student belongs to this teacher
       if (validatedData.studentId) {
@@ -2105,7 +2120,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await sendAllEventNotifications();
 
       res.json({
-        success: true,
         message: "Notificações processadas com sucesso",
         ...result,
       });
@@ -2114,7 +2128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         message: "Falha ao enviar notificações",
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
       });
     }
   });
@@ -2204,7 +2218,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await sendAllEventNotifications();
 
       res.json({
-        success: true,
         message: "Automated notifications processed",
         timestamp: new Date().toISOString(),
         ...result,
@@ -2214,7 +2227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         message: "Failed to process automated notifications",
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
       });
     }
   });

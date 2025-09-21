@@ -90,6 +90,20 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
     },
   });
 
+  // Buscar lista de alunos
+  const { data: students = [], isLoading: loadingStudents } = useQuery({
+    queryKey: ["students"],
+    queryFn: async () => {
+      const response = await fetch("/api/students", {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch students");
+      }
+      return response.json();
+    },
+  });
+
   // Atualizar eventos quando dados chegam do backend
   useEffect(() => {
     const formattedEvents: CalendarEvent[] = calendarEvents.map(
@@ -118,20 +132,6 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
     type: "training" as CalendarEvent["type"],
     studentId: "",
     studentName: "",
-  });
-
-  // Buscar lista de alunos
-  const { data: students = [], isLoading: loadingStudents } = useQuery({
-    queryKey: ["students"],
-    queryFn: async () => {
-      const response = await fetch("/api/students", {
-        credentials: "include",
-      });
-      if (!response.ok) {
-        throw new Error("Failed to fetch students");
-      }
-      return response.json();
-    },
   });
 
   // Calendar configuration
@@ -216,6 +216,19 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
       toast({
         title: "Erro",
         description: "Preencha todos os campos obrigatórios",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar se aluno foi selecionado para treinos e consultas
+    if (
+      (newEvent.type === "training" || newEvent.type === "consultation") &&
+      !newEvent.studentId
+    ) {
+      toast({
+        title: "Erro",
+        description: "Selecione um aluno para treinos e consultas",
         variant: "destructive",
       });
       return;
@@ -801,11 +814,11 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
                   </Select>
                 </div>
 
-                {/* Campo de seleção de aluno - apenas para treinos e consultas */}
+                {/* Campo de seleção de aluno - obrigatório para treinos e consultas */}
                 {(newEvent.type === "training" ||
                   newEvent.type === "consultation") && (
                   <div>
-                    <Label htmlFor="student">Aluno</Label>
+                    <Label htmlFor="student">Aluno *</Label>
                     <Select
                       value={newEvent.studentId}
                       onValueChange={(value) => {
@@ -819,23 +832,35 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
                         }));
                       }}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger
+                        className={!newEvent.studentId ? "border-red-300" : ""}
+                      >
                         <SelectValue
                           placeholder={
                             loadingStudents
                               ? "Carregando..."
-                              : "Selecione um aluno"
+                              : "Selecione um aluno *"
                           }
                         />
                       </SelectTrigger>
                       <SelectContent>
                         {students.map((student: any) => (
                           <SelectItem key={student.id} value={student.id}>
-                            {student.name}
+                            {student.name} - {student.email}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    {(newEvent.type === "training" ||
+                      newEvent.type === "consultation") &&
+                      !newEvent.studentId && (
+                        <p className="text-sm text-red-600 mt-1">
+                          Aluno é obrigatório para{" "}
+                          {newEvent.type === "training"
+                            ? "treinos"
+                            : "consultas"}
+                        </p>
+                      )}
                   </div>
                 )}
 

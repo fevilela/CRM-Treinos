@@ -821,13 +821,22 @@ export type PhysicalAssessment = typeof physicalAssessments.$inferSelect;
 export type InsertAssessmentPhoto = z.infer<typeof insertAssessmentPhotoSchema>;
 export type AssessmentPhoto = typeof assessmentPhotos.$inferSelect;
 
-export const insertCalendarEventSchema = createInsertSchema(
-  calendarEvents
-).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertCalendarEventSchema = createInsertSchema(calendarEvents)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    startTime: z
+      .string()
+      .datetime()
+      .transform((str) => new Date(str)),
+    endTime: z
+      .string()
+      .datetime()
+      .transform((str) => new Date(str)),
+  });
 
 export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
 export type CalendarEvent = typeof calendarEvents.$inferSelect;
