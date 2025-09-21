@@ -5,21 +5,37 @@ import { User } from "lucide-react";
 import type { Student } from "@shared/schema";
 
 const studentMenuItems = [
-  { name: "Dashboard", path: "/student", icon: "fas fa-home" },
-  { name: "Eventos", path: "/student/events", icon: "fas fa-calendar-alt" },
-  { name: "Treinos", path: "/student/workouts", icon: "fas fa-clipboard-list" },
+  { name: "Dashboard", path: "/student-area", icon: "fas fa-home" },
+  {
+    name: "Eventos",
+    path: "/student-area/events",
+    icon: "fas fa-calendar-alt",
+  },
+  {
+    name: "Treinos",
+    path: "/student-area/workouts",
+    icon: "fas fa-clipboard-list",
+  },
   {
     name: "Avaliações Físicas",
-    path: "/student/physical-assessments",
+    path: "/student-area/physical-assessments",
     icon: "fas fa-clipboard-check",
   },
-  { name: "Progresso", path: "/student/progress", icon: "fas fa-chart-line" },
+  {
+    name: "Progresso",
+    path: "/student-area/progress",
+    icon: "fas fa-chart-line",
+  },
   {
     name: "Evolução Corporal",
-    path: "/student/body-evolution",
+    path: "/student-area/body-evolution",
     icon: "fas fa-male",
   },
-  { name: "Cobranças", path: "/student/debts", icon: "fas fa-credit-card" },
+  {
+    name: "Cobranças",
+    path: "/student-area/debts",
+    icon: "fas fa-credit-card",
+  },
 ];
 
 interface StudentSidebarProps {
@@ -70,7 +86,7 @@ export default function StudentSidebar({
       {/* Student Profile */}
       <div className="absolute bottom-0 w-64 p-6 border-t bg-gray-50">
         <div className="flex items-center justify-between">
-          <Link href="/student/profile">
+          <Link href="/student-area/profile">
             <div className="flex items-center space-x-3 cursor-pointer hover:opacity-75">
               <Avatar className="h-10 w-10">
                 <AvatarImage

@@ -24,8 +24,8 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV !== "development",
-      sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+      secure: false, // Always false for Replit environment
+      sameSite: "lax", // Always lax for Replit environment
       maxAge: sessionTtl,
     },
   });

@@ -2916,7 +2916,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (payment.transactionStatus === "completed") {
           await storage.updateFinancialAccount(accountId, {
             status: "paid",
-            paidAmount: payment.amount,
+            paidAmount: Number(payment.amount),
             paidAt: new Date(),
           });
         }
@@ -2974,7 +2974,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (status === "completed") {
         await storage.updateFinancialAccount(payment.accountId, {
           status: "paid",
-          paidAmount: payment.amount,
+          paidAmount: Number(payment.amount),
           paidAt: new Date(),
         });
       }

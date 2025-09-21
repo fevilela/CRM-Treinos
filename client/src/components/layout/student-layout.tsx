@@ -24,37 +24,37 @@ export function StudentLayout({ student, onLogout }: StudentLayoutProps) {
         <div className="p-6">
           <Switch>
             <Route
-              path="/student"
+              path="/student-area"
               component={() => (
                 <StudentDashboard student={student} onLogout={onLogout} />
               )}
             />
             <Route
-              path="/student/events"
+              path="/student-area/events"
               component={() => <StudentEvents student={student} />}
             />
             <Route
-              path="/student/workouts"
+              path="/student-area/workouts"
               component={() => <StudentWorkouts student={student} />}
             />
             <Route
-              path="/student/physical-assessments"
+              path="/student-area/physical-assessments"
               component={() => <StudentPhysicalAssessments student={student} />}
             />
             <Route
-              path="/student/progress"
+              path="/student-area/progress"
               component={() => <StudentProgress student={student} />}
             />
             <Route
-              path="/student/body-evolution"
+              path="/student-area/body-evolution"
               component={() => <StudentBodyEvolution student={student} />}
             />
             <Route
-              path="/student/debts"
+              path="/student-area/debts"
               component={() => <StudentDebts student={student} />}
             />
             <Route
-              path="/student/profile"
+              path="/student-area/profile"
               component={() => <StudentProfile />}
             />
             <Route>

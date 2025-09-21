@@ -111,7 +111,7 @@ function Router() {
       ]) as AuthUser;
 
       if (freshUser?.role === "student") {
-        setLocation("/student");
+        setLocation("/student-area");
       } else if (freshUser?.role === "teacher") {
         setLocation("/");
       } else {

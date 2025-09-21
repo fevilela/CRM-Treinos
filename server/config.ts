@@ -6,7 +6,7 @@ dotenv.config();
 export const config = {
   // Configurações do servidor
   port: parseInt(process.env.PORT || "3000"),
-  host: process.env.HOST || "localhost",
+  host: process.env.HOST || "0.0.0.0",
 
   // Trust proxy (0 para local, 1+ para servidores com proxy/load balancer)
   trustProxy: process.env.TRUST_PROXY
@@ -16,7 +16,7 @@ export const config = {
     : 0,
 
   // URL base da aplicação
-  baseUrl: process.env.APP_BASE_URL || `http://localhost:3000`,
+  baseUrl: process.env.APP_BASE_URL || `http://0.0.0.0:3000`,
 
   // CORS
   allowedOrigin: process.env.ALLOWED_ORIGIN || "*",
@@ -28,7 +28,7 @@ export const config = {
     redirectUri:
       process.env.GOOGLE_REDIRECT_URI ||
       `${
-        process.env.APP_BASE_URL || "http://localhost:3000"
+        process.env.APP_BASE_URL || "http://0.0.0.0:3000"
       }/api/auth/google/callback`,
   },
 
