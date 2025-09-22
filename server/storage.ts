@@ -580,20 +580,8 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(workoutHistory.completedAt))
       .limit(50); // Add pagination limit for performance
 
-    // Normalize decimal fields to numbers, using null for missing values but preserving zeros
-    return historyData.map((record) => ({
-      ...record,
-      weight:
-        record.weight != null ? parseFloat(record.weight as string) : null,
-      previousWeight:
-        record.previousWeight != null
-          ? parseFloat(record.previousWeight as string)
-          : null,
-      percentageChange:
-        record.percentageChange != null
-          ? parseFloat(record.percentageChange as string)
-          : null,
-    })) as WorkoutHistory[];
+    // Return records as-is since database decimal fields are returned as strings
+    return historyData as WorkoutHistory[];
   }
 
   async createWorkoutHistory(
@@ -613,35 +601,39 @@ export class DatabaseStorage implements IStorage {
 
     if (
       history.weight != null &&
-      (!Number.isFinite(history.weight) || history.weight < 0)
+      (!Number.isFinite(Number(history.weight)) || Number(history.weight) < 0)
     ) {
       throw new Error("Weight must be a non-negative finite number");
     }
 
     if (
       history.previousWeight != null &&
-      (!Number.isFinite(history.previousWeight) || history.previousWeight < 0)
+      (!Number.isFinite(Number(history.previousWeight)) ||
+        Number(history.previousWeight) < 0)
     ) {
       throw new Error("Previous weight must be a non-negative finite number");
     }
 
     if (
       history.percentageChange != null &&
-      !Number.isFinite(history.percentageChange)
+      !Number.isFinite(Number(history.percentageChange))
     ) {
       throw new Error("Percentage change must be a finite number");
     }
 
-    // Normalize numeric fields to strings for database storage, preserve nulls and zeros
-    const historyData = {
-      ...history,
-      weight: history.weight != null ? String(history.weight) : null,
-      previousWeight:
-        history.previousWeight != null ? String(history.previousWeight) : null,
-      percentageChange:
-        history.percentageChange != null
-          ? String(history.percentageChange)
-          : null,
+    // Prepare data for database insertion with proper typing
+    const historyData: typeof workoutHistory.$inferInsert = {
+      studentId: history.studentId,
+      exerciseId: history.exerciseId,
+      exerciseName: history.exerciseName,
+      sets: history.sets,
+      reps: history.reps,
+      weight: history.weight ?? "0", // Use default weight if not provided
+      previousWeight: history.previousWeight || null,
+      changeType: history.changeType || null,
+      percentageChange: history.percentageChange || null,
+      comments: history.comments || null,
+      workoutSessionId: history.workoutSessionId || null,
       completedAt: new Date(), // Set server-side timestamp
     };
 
@@ -650,22 +642,8 @@ export class DatabaseStorage implements IStorage {
       .values(historyData)
       .returning();
 
-    // Convert back to numbers for response, preserve nulls and zeros
-    return {
-      ...newHistory,
-      weight:
-        newHistory.weight != null
-          ? parseFloat(newHistory.weight as string)
-          : null,
-      previousWeight:
-        newHistory.previousWeight != null
-          ? parseFloat(newHistory.previousWeight as string)
-          : null,
-      percentageChange:
-        newHistory.percentageChange != null
-          ? parseFloat(newHistory.percentageChange as string)
-          : null,
-    } as WorkoutHistory;
+    // Return the inserted record as-is
+    return newHistory as WorkoutHistory;
   }
 
   async getExerciseProgress(
@@ -688,28 +666,22 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(workoutHistory.completedAt))
       .limit(10); // Get last 10 records for progress tracking
 
-    // Normalize decimal fields to numbers, preserve nulls and zeros
-    const normalizedHistory = progressData.map((record) => ({
-      ...record,
-      weight:
-        record.weight != null ? parseFloat(record.weight as string) : null,
-      previousWeight:
-        record.previousWeight != null
-          ? parseFloat(record.previousWeight as string)
-          : null,
-      percentageChange:
-        record.percentageChange != null
-          ? parseFloat(record.percentageChange as string)
-          : null,
-    })) as WorkoutHistory[];
+    // Use data as-is since decimal fields are returned as strings
+    const normalizedHistory = progressData as WorkoutHistory[];
 
-    const latestWeight = normalizedHistory[0]?.weight ?? null;
+    const latestWeight = normalizedHistory[0]?.weight
+      ? parseFloat(normalizedHistory[0].weight)
+      : null;
     let progressTrend: "increasing" | "decreasing" | "stable" = "stable";
 
     // Calculate trend only if we have valid weight values for comparison
     if (normalizedHistory.length > 1) {
-      const currentWeight = normalizedHistory[0]?.weight;
-      const previousWeight = normalizedHistory[1]?.weight;
+      const currentWeight = normalizedHistory[0]?.weight
+        ? parseFloat(normalizedHistory[0].weight)
+        : null;
+      const previousWeight = normalizedHistory[1]?.weight
+        ? parseFloat(normalizedHistory[1].weight)
+        : null;
 
       if (currentWeight !== null && previousWeight !== null) {
         if (currentWeight > previousWeight) {
