@@ -12,6 +12,7 @@ import {
   assessmentPhotos,
   financialAccounts,
   payments,
+  workoutHistory,
   type InsertUser,
   type UpsertUser,
   type User,
@@ -39,6 +40,8 @@ import {
   type Payment,
   type InsertPhysicalAssessment,
   type PhysicalAssessment,
+  type InsertWorkoutHistory,
+  type WorkoutHistory,
 } from "@shared/schema";
 import { eq, desc, asc, and, or, gte, lte, sql, ne } from "drizzle-orm";
 import { promises as fs } from "fs";
@@ -107,6 +110,21 @@ export interface IStorage {
   createExercisePerformance(
     performance: InsertExercisePerformance
   ): Promise<ExercisePerformance>;
+
+  // Workout history operations
+  getWorkoutHistory(
+    studentId: string,
+    exerciseId?: string
+  ): Promise<WorkoutHistory[]>;
+  createWorkoutHistory(history: InsertWorkoutHistory): Promise<WorkoutHistory>;
+  getExerciseProgress(
+    studentId: string,
+    exerciseId: string
+  ): Promise<{
+    history: WorkoutHistory[];
+    latestWeight: number | null;
+    progressTrend: "increasing" | "decreasing" | "stable";
+  }>;
 
   // Body measurement operations
   getStudentMeasurements(studentId: string): Promise<BodyMeasurement[]>;
@@ -464,7 +482,12 @@ export class DatabaseStorage implements IStorage {
     return [];
   }
   async getStudentWorkouts(studentId: string): Promise<Workout[]> {
-    return [];
+    const workoutsData = await db
+      .select()
+      .from(workouts)
+      .where(eq(workouts.studentId, studentId))
+      .orderBy(desc(workouts.createdAt));
+    return workoutsData;
   }
   async getWorkout(id: string): Promise<Workout | undefined> {
     return undefined;
@@ -531,7 +554,177 @@ export class DatabaseStorage implements IStorage {
   async createExercisePerformance(
     performance: InsertExercisePerformance
   ): Promise<ExercisePerformance> {
-    return {} as ExercisePerformance;
+    const [newPerformance] = await db
+      .insert(exercisePerformances)
+      .values(performance)
+      .returning();
+    return newPerformance;
+  }
+
+  // Workout history operations
+  async getWorkoutHistory(
+    studentId: string,
+    exerciseId?: string
+  ): Promise<WorkoutHistory[]> {
+    const whereCondition = exerciseId
+      ? and(
+          eq(workoutHistory.studentId, studentId),
+          eq(workoutHistory.exerciseId, exerciseId)
+        )
+      : eq(workoutHistory.studentId, studentId);
+
+    const historyData = await db
+      .select()
+      .from(workoutHistory)
+      .where(whereCondition)
+      .orderBy(desc(workoutHistory.completedAt))
+      .limit(50); // Add pagination limit for performance
+
+    // Normalize decimal fields to numbers, using null for missing values but preserving zeros
+    return historyData.map((record) => ({
+      ...record,
+      weight:
+        record.weight != null ? parseFloat(record.weight as string) : null,
+      previousWeight:
+        record.previousWeight != null
+          ? parseFloat(record.previousWeight as string)
+          : null,
+      percentageChange:
+        record.percentageChange != null
+          ? parseFloat(record.percentageChange as string)
+          : null,
+    })) as WorkoutHistory[];
+  }
+
+  async createWorkoutHistory(
+    history: InsertWorkoutHistory
+  ): Promise<WorkoutHistory> {
+    // Server-side validation
+    if (!history.studentId || !history.exerciseId) {
+      throw new Error("studentId and exerciseId are required");
+    }
+
+    if (
+      history.sets != null &&
+      (history.sets <= 0 || !Number.isInteger(history.sets))
+    ) {
+      throw new Error("Sets must be a positive integer");
+    }
+
+    if (
+      history.weight != null &&
+      (!Number.isFinite(history.weight) || history.weight < 0)
+    ) {
+      throw new Error("Weight must be a non-negative finite number");
+    }
+
+    if (
+      history.previousWeight != null &&
+      (!Number.isFinite(history.previousWeight) || history.previousWeight < 0)
+    ) {
+      throw new Error("Previous weight must be a non-negative finite number");
+    }
+
+    if (
+      history.percentageChange != null &&
+      !Number.isFinite(history.percentageChange)
+    ) {
+      throw new Error("Percentage change must be a finite number");
+    }
+
+    // Normalize numeric fields to strings for database storage, preserve nulls and zeros
+    const historyData = {
+      ...history,
+      weight: history.weight != null ? String(history.weight) : null,
+      previousWeight:
+        history.previousWeight != null ? String(history.previousWeight) : null,
+      percentageChange:
+        history.percentageChange != null
+          ? String(history.percentageChange)
+          : null,
+      completedAt: new Date(), // Set server-side timestamp
+    };
+
+    const [newHistory] = await db
+      .insert(workoutHistory)
+      .values(historyData)
+      .returning();
+
+    // Convert back to numbers for response, preserve nulls and zeros
+    return {
+      ...newHistory,
+      weight:
+        newHistory.weight != null
+          ? parseFloat(newHistory.weight as string)
+          : null,
+      previousWeight:
+        newHistory.previousWeight != null
+          ? parseFloat(newHistory.previousWeight as string)
+          : null,
+      percentageChange:
+        newHistory.percentageChange != null
+          ? parseFloat(newHistory.percentageChange as string)
+          : null,
+    } as WorkoutHistory;
+  }
+
+  async getExerciseProgress(
+    studentId: string,
+    exerciseId: string
+  ): Promise<{
+    history: WorkoutHistory[];
+    latestWeight: number | null;
+    progressTrend: "increasing" | "decreasing" | "stable";
+  }> {
+    const progressData = await db
+      .select()
+      .from(workoutHistory)
+      .where(
+        and(
+          eq(workoutHistory.studentId, studentId),
+          eq(workoutHistory.exerciseId, exerciseId)
+        )
+      )
+      .orderBy(desc(workoutHistory.completedAt))
+      .limit(10); // Get last 10 records for progress tracking
+
+    // Normalize decimal fields to numbers, preserve nulls and zeros
+    const normalizedHistory = progressData.map((record) => ({
+      ...record,
+      weight:
+        record.weight != null ? parseFloat(record.weight as string) : null,
+      previousWeight:
+        record.previousWeight != null
+          ? parseFloat(record.previousWeight as string)
+          : null,
+      percentageChange:
+        record.percentageChange != null
+          ? parseFloat(record.percentageChange as string)
+          : null,
+    })) as WorkoutHistory[];
+
+    const latestWeight = normalizedHistory[0]?.weight ?? null;
+    let progressTrend: "increasing" | "decreasing" | "stable" = "stable";
+
+    // Calculate trend only if we have valid weight values for comparison
+    if (normalizedHistory.length > 1) {
+      const currentWeight = normalizedHistory[0]?.weight;
+      const previousWeight = normalizedHistory[1]?.weight;
+
+      if (currentWeight !== null && previousWeight !== null) {
+        if (currentWeight > previousWeight) {
+          progressTrend = "increasing";
+        } else if (currentWeight < previousWeight) {
+          progressTrend = "decreasing";
+        }
+      }
+    }
+
+    return {
+      history: normalizedHistory,
+      latestWeight,
+      progressTrend,
+    };
   }
   async getStudentMeasurements(studentId: string): Promise<BodyMeasurement[]> {
     return [];

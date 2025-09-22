@@ -148,7 +148,7 @@ export function StudentDebts({ student }: StudentDebtsProps) {
       return data.payment;
     },
     enabled: pixPollingActive && !!paymentResult?.id,
-    refetchInterval: 5000, // Poll every 5 seconds
+    refetchInterval: 3000, // Poll every 5 seconds
   });
 
   // Timer para PIX expiration

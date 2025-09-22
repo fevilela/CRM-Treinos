@@ -5,7 +5,7 @@ dotenv.config();
 
 export const config = {
   // Configurações do servidor
-  port: parseInt(process.env.PORT || "5000"),
+  port: parseInt(process.env.PORT || "3000"),
   host: process.env.HOST || "0.0.0.0",
 
   // Trust proxy (1 para Replit que usa proxy/load balancer)
@@ -16,14 +16,14 @@ export const config = {
     : 1,
 
   // URL base da aplicação
-  baseUrl: process.env.APP_BASE_URL || `http://0.0.0.0:5000`,
+  baseUrl: process.env.APP_BASE_URL || `http://0.0.0.0:3000`,
 
-  // CORS - usa domínio específico do Replit (frontend na porta 5000)
+  // CORS - usa domínio específico do Replit (frontend na porta 3000)
   allowedOrigin:
     process.env.ALLOWED_ORIGIN ||
     (process.env.REPLIT_DEV_DOMAIN
       ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-      : "http://localhost:5000"),
+      : "http://localhost:3000"),
 
   // Google Calendar
   google: {
@@ -32,7 +32,7 @@ export const config = {
     redirectUri:
       process.env.GOOGLE_REDIRECT_URI ||
       `${
-        process.env.APP_BASE_URL || "http://0.0.0.0:5000"
+        process.env.APP_BASE_URL || "http://0.0.0.0:3000"
       }/api/auth/google/callback`,
   },
 
