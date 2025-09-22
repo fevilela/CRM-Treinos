@@ -128,7 +128,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/student/setup-password" component={StudentSetupPassword} />
-      <Route path="/student-area" component={StudentApp} />
+      <Route path="/student-area">{() => <StudentApp />}</Route>
 
       <Route>
         {() => {
@@ -144,9 +144,14 @@ function Router() {
             return <LoginPage onSuccess={handleLoginSuccess} />;
           }
 
-          // Interface específica para alunos
+          // Redirecionar alunos para sua área específica
           if (authUser?.role === "student") {
-            return <StudentInterface user={authUser} onLogout={logout} />;
+            setLocation("/student-area");
+            return (
+              <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+              </div>
+            );
           }
 
           // Interface completa para professores

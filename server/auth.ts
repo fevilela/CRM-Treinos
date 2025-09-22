@@ -104,9 +104,10 @@ passport.deserializeUser(async (serializedData: any, done) => {
     if (source === "students") {
       // For invited students, fetch from students table and reconstruct user object
       const student = await storage.getStudent(userId);
+
       if (!student) {
         // if (process.env.NODE_ENV === "development") {
-        //   console.log("[AUTH DEBUG] Student not found:", userId);
+        //   console.log("[AUTH DEBUG] Student not found by ID:", userId);
         // }
         return done(null, false);
       }

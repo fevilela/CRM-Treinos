@@ -43,6 +43,7 @@ import {
 import { eq, desc, asc, and, or, gte, lte, sql, ne } from "drizzle-orm";
 import { promises as fs } from "fs";
 import path from "path";
+import bcrypt from "bcryptjs";
 
 // Storage interface defining all operations
 export interface IStorage {
@@ -56,6 +57,11 @@ export interface IStorage {
   // Student operations
   getStudents(personalTrainerId: string): Promise<Student[]>;
   getStudent(id: string): Promise<Student | undefined>;
+  getStudentByEmail(email: string): Promise<Student | undefined>;
+  validateStudentPassword(
+    email: string,
+    password: string
+  ): Promise<Student | undefined>;
   createStudent(student: InsertStudent): Promise<Student>;
   updateStudent(id: string, student: Partial<InsertStudent>): Promise<Student>;
   deleteStudent(id: string): Promise<void>;
@@ -368,6 +374,24 @@ export class DatabaseStorage implements IStorage {
       weight: student.weight ? parseFloat(student.weight as string) : null,
       height: student.height ? parseFloat(student.height as string) : null,
     } as any;
+  }
+
+  async validateStudentPassword(
+    email: string,
+    password: string
+  ): Promise<Student | undefined> {
+    const student = await this.getStudentByEmail(email);
+
+    if (!student || !student.password) {
+      return undefined;
+    }
+
+    const isValidPassword = await bcrypt.compare(password, student.password);
+    if (!isValidPassword) {
+      return undefined;
+    }
+
+    return student;
   }
 
   async getStudentByInviteToken(token: string): Promise<Student | undefined> {
