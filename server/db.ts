@@ -7,6 +7,14 @@ import * as schema from "@shared/schema";
 // Carrega variáveis do arquivo .env
 dotenv.config();
 
+// Configuração SSL apenas para desenvolvimento
+if (process.env.NODE_ENV === "development") {
+  // Ignorar verificação SSL APENAS em desenvolvimento
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+  neonConfig.pipelineTLS = false;
+}
+
+// Configuração WebSocket
 neonConfig.webSocketConstructor = ws;
 
 if (!process.env.DATABASE_URL) {

@@ -14,22 +14,25 @@ app.set("trust proxy", config.trustProxy);
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
-  // Se allowedOrigin for "*", permitir qualquer origem, mas sem credentials
-  if (config.allowedOrigin === "*") {
-    res.header("Access-Control-Allow-Origin", "*");
-    // Não definir Allow-Credentials quando Origin é wildcard
-  } else {
-    // Se origem específica, localhost ou 127.0.0.1, permitir com credentials
-    const allowedOrigins = [config.allowedOrigin];
-    if (config.isDevelopment) {
-      allowedOrigins.push("http://localhost:3000", "http://127.0.0.1:3000");
-    }
+  // Usar origem específica do config com credentials
+  const allowedOrigins = [config.allowedOrigin];
+  if (config.isDevelopment) {
+    allowedOrigins.push(
+      "http://localhost:5000",
+      "http://127.0.0.1:5000",
+      "http://localhost:5173",
+      "http://127.0.0.1:5173"
+    );
+  }
 
-    if (origin && allowedOrigins.includes(origin)) {
-      res.header("Access-Control-Allow-Origin", origin);
-      res.header("Access-Control-Allow-Credentials", "true");
-      res.header("Vary", "Origin");
-    }
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header("Vary", "Origin");
+  } else if (!origin) {
+    // Para requisições do mesmo domínio (sem cabeçalho Origin)
+    res.header("Access-Control-Allow-Origin", config.allowedOrigin);
+    res.header("Access-Control-Allow-Credentials", "true");
   }
 
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
