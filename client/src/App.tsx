@@ -1,4 +1,5 @@
 import { Switch, Route, useLocation } from "wouter";
+import { useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -102,6 +103,33 @@ function Router() {
 
       <Route>
         {() => {
+          // Component para redirecionamento seguro
+          const SafeRedirect = () => {
+            useEffect(() => {
+              if (isAuthenticated && authUser?.role) {
+                if (authUser.role === "teacher") {
+                  setLocation("/teacher-area");
+                } else if (authUser.role === "student") {
+                  setLocation("/student-area");
+                }
+              }
+            }, [isAuthenticated, authUser?.role]);
+
+            // Fallback para seleção de área se não houver role definido
+            if (isAuthenticated && !authUser?.role) {
+              return (
+                <AreaSelection userRole={authUser?.role} onLogout={logout} />
+              );
+            }
+
+            // Mostra loading enquanto redireciona
+            return (
+              <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+              </div>
+            );
+          };
+
           if (isLoading) {
             return (
               <div className="min-h-screen flex items-center justify-center">
@@ -114,8 +142,7 @@ function Router() {
             return <LoginPage onSuccess={handleLoginSuccess} />;
           }
 
-          // Página de seleção de área para usuários autenticados
-          return <AreaSelection userRole={authUser?.role} onLogout={logout} />;
+          return <SafeRedirect />;
         }}
       </Route>
     </Switch>
