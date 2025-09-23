@@ -6,18 +6,34 @@ import { useQuery } from "@tanstack/react-query";
 import { User } from "lucide-react";
 
 const menuItems = [
-  { name: "Dashboard", path: "/", icon: "fas fa-home" },
-  { name: "Alunos", path: "/students", icon: "fas fa-users" },
-  { name: "Treinos", path: "/workouts", icon: "fas fa-clipboard-list" },
+  { name: "Dashboard", path: "/teacher-area", icon: "fas fa-home" },
+  { name: "Alunos", path: "/teacher-area/students", icon: "fas fa-users" },
+  {
+    name: "Treinos",
+    path: "/teacher-area/workouts",
+    icon: "fas fa-clipboard-list",
+  },
   {
     name: "Avaliações Físicas",
-    path: "/physical-assessments",
+    path: "/teacher-area/physical-assessments",
     icon: "fas fa-clipboard-check",
   },
-  { name: "Progresso", path: "/progress", icon: "fas fa-chart-line" },
-  { name: "Evolução Corporal", path: "/body-evolution", icon: "fas fa-male" },
-  { name: "Finanças", path: "/finances", icon: "fas fa-dollar-sign" },
-  { name: "Configurações", path: "/settings", icon: "fas fa-cog" },
+  {
+    name: "Progresso",
+    path: "/teacher-area/progress",
+    icon: "fas fa-chart-line",
+  },
+  {
+    name: "Evolução Corporal",
+    path: "/teacher-area/body-evolution",
+    icon: "fas fa-male",
+  },
+  {
+    name: "Finanças",
+    path: "/teacher-area/finances",
+    icon: "fas fa-dollar-sign",
+  },
+  { name: "Configurações", path: "/teacher-area/settings", icon: "fas fa-cog" },
 ];
 
 export function Sidebar() {
@@ -75,7 +91,7 @@ export function Sidebar() {
       {/* User Profile */}
       <div className="absolute bottom-0 w-64 p-6 border-t bg-gray-50">
         <div className="flex items-center justify-between">
-          <Link href="/profile">
+          <Link href="/teacher-area/profile">
             <div className="flex items-center space-x-3 cursor-pointer hover:opacity-75">
               <Avatar className="h-10 w-10">
                 <AvatarImage src={user?.profileImageUrl} alt="Foto de perfil" />

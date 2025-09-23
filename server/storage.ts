@@ -150,6 +150,15 @@ export interface IStorage {
     event: Partial<InsertCalendarEvent>
   ): Promise<CalendarEvent>;
   deleteCalendarEvent(id: string): Promise<void>;
+  getCalendarEvent(eventId: string): Promise<CalendarEvent | undefined>;
+  getUpcomingEvents(startDate: Date, endDate: Date): Promise<CalendarEvent[]>;
+  markEventReminderSent(eventId: string): Promise<void>;
+
+  // Workout comments operations
+  getWorkoutComments(workoutId: string): Promise<any[]>;
+  createWorkoutComment(comment: any): Promise<any>;
+  updateWorkoutComment(id: string, comment: any): Promise<any>;
+  deleteWorkoutComment(id: string): Promise<void>;
 
   // Body evolution tracking
   getEvolutionPhotos(studentId: string): Promise<AssessmentPhoto[]>;
@@ -241,6 +250,13 @@ export interface IStorage {
       providerTransactionId?: string;
     }
   ): Promise<Payment | undefined>;
+
+  // Financial dashboard and charts
+  getFinancialDashboard(personalTrainerId: string): Promise<any>;
+  getFinancialChartsData(
+    personalTrainerId: string,
+    period: string
+  ): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -733,6 +749,85 @@ export class DatabaseStorage implements IStorage {
     return {} as CalendarEvent;
   }
   async deleteCalendarEvent(id: string): Promise<void> {}
+
+  async getCalendarEvent(eventId: string): Promise<CalendarEvent | undefined> {
+    const [event] = await db
+      .select()
+      .from(calendarEvents)
+      .where(eq(calendarEvents.id, eventId));
+    return event;
+  }
+
+  async getUpcomingEvents(
+    startDate: Date,
+    endDate: Date
+  ): Promise<CalendarEvent[]> {
+    return await db
+      .select()
+      .from(calendarEvents)
+      .where(
+        and(
+          gte(calendarEvents.startTime, startDate),
+          lte(calendarEvents.startTime, endDate)
+        )
+      )
+      .orderBy(asc(calendarEvents.startTime));
+  }
+
+  async markEventReminderSent(eventId: string): Promise<void> {
+    await db
+      .update(calendarEvents)
+      .set({ reminderSent: true })
+      .where(eq(calendarEvents.id, eventId));
+  }
+
+  // Workout comments operations
+  async getWorkoutComments(workoutId: string): Promise<any[]> {
+    return [];
+  }
+
+  async createWorkoutComment(comment: any): Promise<any> {
+    return {};
+  }
+
+  async updateWorkoutComment(id: string, comment: any): Promise<any> {
+    return {};
+  }
+
+  async deleteWorkoutComment(id: string): Promise<void> {}
+
+  // Assessment photo operations
+  async getAssessmentPhotos(studentId: string): Promise<AssessmentPhoto[]> {
+    return [];
+  }
+
+  async createAssessmentPhoto(photo: any): Promise<any> {
+    return {};
+  }
+
+  async getAssessmentPhoto(photoId: string): Promise<any> {
+    return undefined;
+  }
+
+  async deleteAssessmentPhoto(photoId: string): Promise<void> {}
+
+  // Student assessment history operations
+  async getStudentAssessmentHistory(studentId: string): Promise<any[]> {
+    return [];
+  }
+
+  async getPhysicalAssessmentHistory(assessmentId: string): Promise<any[]> {
+    return [];
+  }
+
+  // Other missing methods
+  async generateProgressAnalysisPDF(
+    currentAssessment: any,
+    previousAssessment?: any
+  ): Promise<Buffer> {
+    return Buffer.from("");
+  }
+
   async getEvolutionPhotos(studentId: string): Promise<AssessmentPhoto[]> {
     return [];
   }
@@ -823,6 +918,28 @@ export class DatabaseStorage implements IStorage {
     updates: any
   ): Promise<Payment | undefined> {
     return undefined;
+  }
+
+  async getFinancialDashboard(personalTrainerId: string): Promise<any> {
+    return {
+      totalRevenue: 0,
+      totalExpenses: 0,
+      pendingPayments: 0,
+      overdueAccounts: 0,
+      monthlyFlow: [],
+      recentTransactions: [],
+    };
+  }
+
+  async getFinancialChartsData(
+    personalTrainerId: string,
+    period: string
+  ): Promise<any> {
+    return {
+      incomeExpenseChart: [],
+      categoryBreakdown: [],
+      studentPaymentTrends: [],
+    };
   }
 }
 

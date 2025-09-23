@@ -1065,8 +1065,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           exerciseId
         );
         const previousWeight =
-          previousHistory.length > 0
-            ? parseFloat(previousHistory[0].weight)
+          previousHistory.history.length > 0
+            ? parseFloat(previousHistory.history[0].weight)
             : null;
 
         const currentWeightFloat = parseFloat(currentWeight);
@@ -1215,7 +1215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/physical-assessments", isTeacher, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const assessments = await storage.getPhysicalAssessments(userId);
+      const assessments = await storage.getStudentAssessments(userId);
       res.json(assessments);
     } catch (error) {
       console.error("Error fetching physical assessments:", error);
@@ -1233,7 +1233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Se for um professor, retorna todos os assessments seus
         if (user.role === "teacher") {
-          const assessments = await storage.getPhysicalAssessments(user.id);
+          const assessments = await storage.getStudentAssessments(user.id);
           res.json(assessments);
           return;
         }
@@ -1244,9 +1244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ message: "Student not found" });
         }
 
-        const assessments = await storage.getStudentPhysicalAssessments(
-          student.id
-        );
+        const assessments = await storage.getStudentAssessments(student.id);
         res.json(assessments);
       } catch (error) {
         console.error("Error fetching my physical assessments:", error);
@@ -1262,7 +1260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     isAuthenticated,
     async (req: any, res) => {
       try {
-        const assessments = await storage.getStudentPhysicalAssessments(
+        const assessments = await storage.getStudentAssessments(
           req.params.studentId
         );
         res.json(assessments);
@@ -1977,7 +1975,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(403).json({ message: "Access denied" });
         }
 
-        const events = await storage.getStudentCalendarEvents(studentId);
+        const events = await storage.getStudentEvents(studentId);
         res.json(events);
       } catch (error) {
         console.error("Error fetching student calendar events:", error);
