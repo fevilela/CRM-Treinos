@@ -2,12 +2,9 @@ import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { registerCalendarRoutes } from "./calendar-routes";
-import {
-  setupAuth,
-  isAuthenticated,
-  isTeacher,
-  isStudentOrTeacher,
-} from "./auth";
+import { setupAuth, isAuthenticated } from "./localAuth";
+
+import { isTeacher, isStudentOrTeacher } from "./localAuth";
 import {
   insertStudentSchema,
   insertWorkoutSchema,
