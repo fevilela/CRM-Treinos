@@ -265,10 +265,12 @@ export function StudentDebts({ student }: StudentDebtsProps) {
   });
 
   const formatCurrency = (value: number) => {
+    // Handle NaN, null, undefined, or invalid numbers
+    const numericValue = isNaN(value) || value == null ? 0 : value;
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency: "BRL",
-    }).format(value);
+    }).format(numericValue);
   };
 
   const formatDate = (dateString: string) => {

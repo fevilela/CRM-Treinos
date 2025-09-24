@@ -2258,6 +2258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ])
           .optional(),
         studentId: z.string().uuid().optional(),
+        period: z.enum(["week", "month", "semester", "year"]).optional(),
       });
 
       const filters = filtersSchema.parse(req.query);

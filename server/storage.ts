@@ -723,6 +723,258 @@ export class DatabaseStorage implements IStorage {
       progressTrend,
     };
   }
+
+  // Financial Account Operations
+  async getFinancialAccounts(
+    personalTrainerId: string,
+    filters?: {
+      type?: "receivable" | "payable";
+      status?: string;
+      category?: string;
+      studentId?: string;
+      period?: "week" | "month" | "semester" | "year";
+    }
+  ): Promise<FinancialAccount[]> {
+    let query = db
+      .select({
+        id: financialAccounts.id,
+        personalTrainerId: financialAccounts.personalTrainerId,
+        studentId: financialAccounts.studentId,
+        studentName: students.name,
+        type: financialAccounts.type,
+        category: financialAccounts.category,
+        title: financialAccounts.title,
+        description: financialAccounts.description,
+        amount: financialAccounts.amount,
+        dueDate: financialAccounts.dueDate,
+        status: financialAccounts.status,
+        paidAmount: financialAccounts.paidAmount,
+        paidAt: financialAccounts.paidAt,
+        installments: financialAccounts.installments,
+        currentInstallment: financialAccounts.currentInstallment,
+        isRecurring: financialAccounts.isRecurring,
+        recurringInterval: financialAccounts.recurringInterval,
+        notes: financialAccounts.notes,
+        createdAt: financialAccounts.createdAt,
+        updatedAt: financialAccounts.updatedAt,
+      })
+      .from(financialAccounts)
+      .leftJoin(students, eq(financialAccounts.studentId, students.id));
+
+    // Apply filters
+    const conditions = [
+      eq(financialAccounts.personalTrainerId, personalTrainerId),
+    ];
+
+    if (filters?.type) {
+      conditions.push(eq(financialAccounts.type, filters.type));
+    }
+
+    if (filters?.status) {
+      conditions.push(eq(financialAccounts.status, filters.status));
+    }
+
+    if (filters?.category) {
+      conditions.push(eq(financialAccounts.category, filters.category));
+    }
+
+    if (filters?.studentId) {
+      conditions.push(eq(financialAccounts.studentId, filters.studentId));
+    }
+
+    // Period filters
+    if (filters?.period) {
+      const now = new Date();
+      let startDate: Date;
+      let endDate: Date;
+
+      switch (filters.period) {
+        case "week":
+          startDate = new Date(now);
+          startDate.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
+          startDate.setHours(0, 0, 0, 0);
+
+          endDate = new Date(startDate);
+          endDate.setDate(startDate.getDate() + 6); // End of week
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case "month":
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          endDate = new Date(
+            now.getFullYear(),
+            now.getMonth() + 1,
+            0,
+            23,
+            59,
+            59,
+            999
+          );
+          break;
+        case "semester":
+          const currentMonth = now.getMonth();
+          const semesterStart = currentMonth < 6 ? 0 : 6; // Jan-Jun or Jul-Dec
+          startDate = new Date(now.getFullYear(), semesterStart, 1);
+          endDate = new Date(
+            now.getFullYear(),
+            semesterStart + 6,
+            0,
+            23,
+            59,
+            59,
+            999
+          );
+          break;
+        case "year":
+          startDate = new Date(now.getFullYear(), 0, 1);
+          endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+          break;
+        default:
+          startDate = new Date(0);
+          endDate = new Date();
+      }
+
+      if (filters.period !== "all") {
+        conditions.push(
+          and(
+            gte(financialAccounts.dueDate, startDate),
+            lte(financialAccounts.dueDate, endDate)
+          )
+        );
+      }
+    }
+
+    const result = await query
+      .where(and(...conditions))
+      .orderBy(desc(financialAccounts.dueDate));
+
+    // Convert decimal strings to numbers for frontend
+    return result.map((account) => ({
+      ...account,
+      amount: parseFloat(account.amount as string),
+      paidAmount: account.paidAmount
+        ? parseFloat(account.paidAmount as string)
+        : 0,
+    }));
+  }
+
+  async getFinancialAccount(id: string): Promise<FinancialAccount | undefined> {
+    const [account] = await db
+      .select()
+      .from(financialAccounts)
+      .where(eq(financialAccounts.id, id));
+
+    if (!account) return undefined;
+
+    return {
+      ...account,
+      amount: parseFloat(account.amount as string),
+      paidAmount: account.paidAmount
+        ? parseFloat(account.paidAmount as string)
+        : 0,
+    };
+  }
+
+  async createFinancialAccount(
+    account: InsertFinancialAccount
+  ): Promise<FinancialAccount> {
+    const [newAccount] = await db
+      .insert(financialAccounts)
+      .values({
+        ...account,
+        amount: account.amount.toString(),
+        paidAmount: account.paidAmount?.toString() || "0",
+      })
+      .returning();
+
+    return {
+      ...newAccount,
+      amount: parseFloat(newAccount.amount as string),
+      paidAmount: newAccount.paidAmount
+        ? parseFloat(newAccount.paidAmount as string)
+        : 0,
+    };
+  }
+
+  async updateFinancialAccount(
+    id: string,
+    account: Partial<InsertFinancialAccount>
+  ): Promise<FinancialAccount> {
+    const updateData = {
+      ...account,
+      updatedAt: new Date(),
+    };
+
+    // Convert numeric fields to strings for decimal storage
+    if (account.amount !== undefined) {
+      updateData.amount = account.amount.toString();
+    }
+    if (account.paidAmount !== undefined) {
+      updateData.paidAmount = account.paidAmount.toString();
+    }
+
+    const [updatedAccount] = await db
+      .update(financialAccounts)
+      .set(updateData)
+      .where(eq(financialAccounts.id, id))
+      .returning();
+
+    return {
+      ...updatedAccount,
+      amount: parseFloat(updatedAccount.amount as string),
+      paidAmount: updatedAccount.paidAmount
+        ? parseFloat(updatedAccount.paidAmount as string)
+        : 0,
+    };
+  }
+
+  async deleteFinancialAccount(id: string): Promise<void> {
+    await db.delete(financialAccounts).where(eq(financialAccounts.id, id));
+  }
+
+  async getFinancialDashboard(personalTrainerId: string): Promise<any> {
+    const accounts = await this.getFinancialAccounts(personalTrainerId);
+
+    const totalReceivable = accounts
+      .filter((acc) => acc.type === "receivable" && acc.status !== "paid")
+      .reduce((sum, acc) => sum + (acc.amount - (acc.paidAmount || 0)), 0);
+
+    const totalPayable = accounts
+      .filter((acc) => acc.type === "payable" && acc.status !== "paid")
+      .reduce((sum, acc) => sum + (acc.amount - (acc.paidAmount || 0)), 0);
+
+    const totalOverdue = accounts
+      .filter((acc) => acc.status === "overdue")
+      .reduce((sum, acc) => sum + (acc.amount - (acc.paidAmount || 0)), 0);
+
+    // Calculate monthly income/expenses for current month
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const monthlyAccounts = accounts.filter(
+      (acc) => new Date(acc.dueDate) >= monthStart
+    );
+
+    const monthlyIncome = monthlyAccounts
+      .filter((acc) => acc.type === "receivable")
+      .reduce((sum, acc) => sum + acc.amount, 0);
+
+    const monthlyExpenses = monthlyAccounts
+      .filter((acc) => acc.type === "payable")
+      .reduce((sum, acc) => sum + acc.amount, 0);
+
+    const netIncome = monthlyIncome - monthlyExpenses;
+
+    return {
+      totalReceivable,
+      totalPayable,
+      totalOverdue,
+      monthlyIncome,
+      monthlyExpenses,
+      netIncome,
+      pendingPayments: accounts.filter((acc) => acc.status === "pending")
+        .length,
+    };
+  }
   async getStudentMeasurements(studentId: string): Promise<BodyMeasurement[]> {
     return [];
   }

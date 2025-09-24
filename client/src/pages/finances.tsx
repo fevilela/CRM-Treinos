@@ -122,6 +122,7 @@ function Finances() {
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [filterPeriod, setFilterPeriod] = useState<string>("all");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [selectedAccount, setSelectedAccount] =
@@ -148,6 +149,7 @@ function Finances() {
     if (filterType !== "all") params.append("type", filterType);
     if (filterStatus !== "all") params.append("status", filterStatus);
     if (filterCategory !== "all") params.append("category", filterCategory);
+    if (filterPeriod !== "all") params.append("period", filterPeriod);
     return params.toString();
   };
 
@@ -162,6 +164,7 @@ function Finances() {
       filterType,
       filterStatus,
       filterCategory,
+      filterPeriod,
     ],
     queryFn: async () => {
       const queryParams = buildQueryParams();
@@ -195,10 +198,12 @@ function Finances() {
   });
 
   const formatCurrency = (value: number) => {
+    // Handle NaN, null, undefined, or invalid numbers
+    const numericValue = isNaN(value) || value == null ? 0 : value;
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency: "BRL",
-    }).format(value);
+    }).format(numericValue);
   };
 
   const formatDate = (dateString: string) => {
@@ -336,7 +341,7 @@ function Finances() {
           <CardTitle>Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <Label>Tipo</Label>
               <Select value={filterType} onValueChange={setFilterType}>
@@ -379,6 +384,21 @@ function Finances() {
                       {option.label}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Período</Label>
+              <Select value={filterPeriod} onValueChange={setFilterPeriod}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos os períodos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os períodos</SelectItem>
+                  <SelectItem value="week">Esta semana</SelectItem>
+                  <SelectItem value="month">Este mês</SelectItem>
+                  <SelectItem value="semester">Este semestre</SelectItem>
+                  <SelectItem value="year">Este ano</SelectItem>
                 </SelectContent>
               </Select>
             </div>
