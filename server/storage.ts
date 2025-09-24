@@ -8,6 +8,7 @@ import {
   workoutSessions,
   exercisePerformances,
   bodyMeasurements,
+  physicalAssessments,
   calendarEvents,
   assessmentPhotos,
   financialAccounts,
@@ -166,6 +167,9 @@ export interface IStorage {
 
   // Physical assessment operations
   getStudentAssessments(studentId: string): Promise<PhysicalAssessment[]>;
+  getPhysicalAssessmentsByTrainer(
+    personalTrainerId: string
+  ): Promise<PhysicalAssessment[]>;
   createPhysicalAssessment(
     assessment: InsertPhysicalAssessment
   ): Promise<PhysicalAssessment>;
@@ -493,9 +497,14 @@ export class DatabaseStorage implements IStorage {
     })) as any;
   }
 
-  // Placeholder methods for remaining operations - simplified to get server running
+  // Workout operations
   async getWorkouts(personalTrainerId: string): Promise<Workout[]> {
-    return [];
+    const workoutsData = await db
+      .select()
+      .from(workouts)
+      .where(eq(workouts.personalTrainerId, personalTrainerId))
+      .orderBy(workouts.createdAt);
+    return workoutsData;
   }
   async getStudentWorkouts(studentId: string): Promise<Workout[]> {
     const workoutsData = await db
@@ -839,7 +848,24 @@ export class DatabaseStorage implements IStorage {
   async getStudentAssessments(
     studentId: string
   ): Promise<PhysicalAssessment[]> {
-    return [];
+    const assessments = await db
+      .select()
+      .from(physicalAssessments)
+      .where(eq(physicalAssessments.studentId, studentId))
+      .orderBy(desc(physicalAssessments.createdAt));
+    return assessments;
+  }
+
+  // Método para buscar todas as avaliações físicas dos alunos de um personal trainer
+  async getPhysicalAssessmentsByTrainer(
+    personalTrainerId: string
+  ): Promise<PhysicalAssessment[]> {
+    const assessments = await db
+      .select()
+      .from(physicalAssessments)
+      .where(eq(physicalAssessments.personalTrainerId, personalTrainerId))
+      .orderBy(desc(physicalAssessments.createdAt));
+    return assessments;
   }
   async createPhysicalAssessment(
     assessment: InsertPhysicalAssessment

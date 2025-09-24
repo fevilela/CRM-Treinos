@@ -1215,7 +1215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/physical-assessments", isTeacher, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const assessments = await storage.getStudentAssessments(userId);
+      const assessments = await storage.getPhysicalAssessmentsByTrainer(userId);
       res.json(assessments);
     } catch (error) {
       console.error("Error fetching physical assessments:", error);
