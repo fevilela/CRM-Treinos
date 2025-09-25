@@ -44,6 +44,7 @@ import {
   Calendar,
   DollarSign,
   Users,
+  FileDown,
 } from "lucide-react";
 
 // Types
@@ -127,6 +128,7 @@ function Finances() {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [selectedAccount, setSelectedAccount] =
     useState<FinancialAccount | null>(null);
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
 
   // Fetch dashboard summary
   const { data: dashboardData, isLoading: isDashboardLoading } = useQuery({
@@ -226,6 +228,83 @@ function Finances() {
     return option?.label || category;
   };
 
+  // Handle PDF download
+  const handleDownloadPDF = async () => {
+    setIsDownloadingPDF(true);
+    try {
+      const params = new URLSearchParams();
+      if (filterType !== "all") params.append("accountType", filterType);
+      if (filterStatus !== "all") params.append("status", filterStatus);
+      if (filterCategory !== "all") params.append("category", filterCategory);
+
+      // Add date filters based on period selection
+      const now = new Date();
+      if (filterPeriod === "week") {
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        params.append("startDate", weekAgo.toISOString().split("T")[0]);
+        params.append("endDate", now.toISOString().split("T")[0]);
+      } else if (filterPeriod === "month") {
+        const monthAgo = new Date(
+          now.getFullYear(),
+          now.getMonth() - 1,
+          now.getDate()
+        );
+        params.append("startDate", monthAgo.toISOString().split("T")[0]);
+        params.append("endDate", now.toISOString().split("T")[0]);
+      } else if (filterPeriod === "semester") {
+        const semesterAgo = new Date(
+          now.getFullYear(),
+          now.getMonth() - 6,
+          now.getDate()
+        );
+        params.append("startDate", semesterAgo.toISOString().split("T")[0]);
+        params.append("endDate", now.toISOString().split("T")[0]);
+      } else if (filterPeriod === "year") {
+        const yearAgo = new Date(
+          now.getFullYear() - 1,
+          now.getMonth(),
+          now.getDate()
+        );
+        params.append("startDate", yearAgo.toISOString().split("T")[0]);
+        params.append("endDate", now.toISOString().split("T")[0]);
+      }
+
+      const url = `/api/financial/report/pdf${
+        params.toString() ? `?${params.toString()}` : ""
+      }`;
+
+      const response = await fetch(url, {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Falha ao gerar PDF");
+      }
+
+      // Get filename from response headers or create default
+      const contentDisposition = response.headers.get("content-disposition");
+      const filename = contentDisposition
+        ? contentDisposition.split("filename=")[1].replace(/['"]/g, "")
+        : "relatorio_financeiro.pdf";
+
+      // Download the file
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error("Erro ao baixar PDF:", error);
+      alert("Erro ao gerar PDF financeiro. Tente novamente.");
+    } finally {
+      setIsDownloadingPDF(false);
+    }
+  };
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex justify-between items-center">
@@ -237,26 +316,36 @@ function Finances() {
             Controle suas contas a receber e a pagar
           </p>
         </div>
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Conta
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Criar Nova Conta</DialogTitle>
-            </DialogHeader>
-            <CreateAccountForm
-              students={students}
-              onSuccess={() => {
-                setShowCreateDialog(false);
-                refetchAccounts();
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleDownloadPDF}
+            disabled={isDownloadingPDF}
+            variant="outline"
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            {isDownloadingPDF ? "Gerando..." : "Baixar PDF"}
+          </Button>
+          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Conta
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Criar Nova Conta</DialogTitle>
+              </DialogHeader>
+              <CreateAccountForm
+                students={students}
+                onSuccess={() => {
+                  setShowCreateDialog(false);
+                  refetchAccounts();
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Dashboard Cards */}

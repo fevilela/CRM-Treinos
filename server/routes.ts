@@ -1741,6 +1741,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Generate financial report PDF
+  app.get(
+    "/api/financial/report/pdf",
+    isAuthenticated,
+    async (req: any, res) => {
+      console.log(
+        "📄 Gerando PDF de relatório financeiro para personal trainer:",
+        req.user.id
+      );
+
+      try {
+        const personalTrainerId = req.user.id;
+        const filters = {
+          startDate: req.query.startDate as string,
+          endDate: req.query.endDate as string,
+          paymentMethod: req.query.paymentMethod as string,
+          accountType: req.query.accountType as "receivable" | "payable",
+          status: req.query.status as string,
+          category: req.query.category as string,
+        };
+
+        // Remove undefined values
+        Object.keys(filters).forEach((key) => {
+          if (filters[key as keyof typeof filters] === undefined) {
+            delete filters[key as keyof typeof filters];
+          }
+        });
+
+        console.log("📊 Gerando relatório com filtros:", filters);
+
+        // Generate PDF
+        const pdfBuffer = await storage.generateFinancialReportPDF(
+          personalTrainerId,
+          undefined, // No specific student
+          filters
+        );
+
+        // Get trainer info for filename
+        const trainer = await storage.getUser(personalTrainerId);
+        const trainerName =
+          trainer?.firstName?.replace(/[^a-zA-Z0-9]/g, "_") || "personal";
+        const date = new Date().toISOString().split("T")[0];
+        const filename = `relatorio_financeiro_${trainerName}_${date}.pdf`;
+
+        console.log("✅ PDF financeiro gerado com sucesso:", filename);
+
+        // Set response headers
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${filename}"`
+        );
+        res.setHeader("Content-Length", pdfBuffer.length);
+
+        // Send PDF
+        res.send(pdfBuffer);
+      } catch (error) {
+        console.error("Error generating financial PDF:", error);
+        res.status(500).json({ message: "Falha ao gerar PDF financeiro" });
+      }
+    }
+  );
+
+  // Generate financial report PDF for specific student
+  app.get(
+    "/api/financial/student/:studentId/report/pdf",
+    isAuthenticated,
+    async (req: any, res) => {
+      console.log(
+        "📄 Gerando PDF de relatório financeiro para aluno:",
+        req.params.studentId
+      );
+
+      try {
+        const personalTrainerId = req.user.id;
+        const studentId = req.params.studentId;
+        const filters = {
+          startDate: req.query.startDate as string,
+          endDate: req.query.endDate as string,
+          paymentMethod: req.query.paymentMethod as string,
+          accountType: req.query.accountType as "receivable" | "payable",
+          status: req.query.status as string,
+          category: req.query.category as string,
+        };
+
+        // Remove undefined values
+        Object.keys(filters).forEach((key) => {
+          if (filters[key as keyof typeof filters] === undefined) {
+            delete filters[key as keyof typeof filters];
+          }
+        });
+
+        // Verify student belongs to this trainer
+        const student = await storage.getStudent(studentId);
+        if (!student || student.personalTrainerId !== personalTrainerId) {
+          console.log(
+            "❌ Acesso negado - Aluno não encontrado ou não autorizado"
+          );
+          return res.status(403).json({ message: "Access denied" });
+        }
+
+        console.log(
+          "📊 Gerando relatório do aluno:",
+          student.name,
+          "com filtros:",
+          filters
+        );
+
+        // Generate PDF
+        const pdfBuffer = await storage.generateFinancialReportPDF(
+          personalTrainerId,
+          studentId,
+          filters
+        );
+
+        // Create filename
+        const studentName =
+          student.name.replace(/[^a-zA-Z0-9]/g, "_") || "aluno";
+        const date = new Date().toISOString().split("T")[0];
+        const filename = `relatorio_financeiro_${studentName}_${date}.pdf`;
+
+        console.log("✅ PDF financeiro do aluno gerado com sucesso:", filename);
+
+        // Set response headers
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${filename}"`
+        );
+        res.setHeader("Content-Length", pdfBuffer.length);
+
+        // Send PDF
+        res.send(pdfBuffer);
+      } catch (error) {
+        console.error("Error generating student financial PDF:", error);
+        res
+          .status(500)
+          .json({ message: "Falha ao gerar PDF financeiro do aluno" });
+      }
+    }
+  );
+
   // Profile image upload configuration
   const profileUploadsDir = path.join(
     process.cwd(),

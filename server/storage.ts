@@ -49,6 +49,7 @@ import { eq, desc, asc, and, or, gte, lte, sql, ne } from "drizzle-orm";
 import { promises as fs } from "fs";
 import path from "path";
 import bcrypt from "bcryptjs";
+import PDFDocument from "pdfkit";
 
 // Storage interface defining all operations
 export interface IStorage {
@@ -276,12 +277,31 @@ export interface IStorage {
       paymentMethod?: string;
       accountType?: "receivable" | "payable";
       status?: string;
+      category?: string;
       minAmount?: number;
       maxAmount?: number;
     },
     page?: number,
     limit?: number
   ): Promise<any>;
+
+  // PDF generation operations
+  generateProgressAnalysisPDF(
+    currentAssessment: any,
+    previousAssessment?: any
+  ): Promise<Buffer>;
+  generateFinancialReportPDF(
+    personalTrainerId: string,
+    studentId?: string,
+    filters?: {
+      startDate?: string;
+      endDate?: string;
+      paymentMethod?: string;
+      accountType?: "receivable" | "payable";
+      status?: string;
+      category?: string;
+    }
+  ): Promise<Buffer>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1242,6 +1262,271 @@ export class DatabaseStorage implements IStorage {
     return Buffer.from("");
   }
 
+  async generateFinancialReportPDF(
+    personalTrainerId: string,
+    studentId?: string,
+    filters: {
+      startDate?: string;
+      endDate?: string;
+      paymentMethod?: string;
+      accountType?: "receivable" | "payable";
+      status?: string;
+      category?: string;
+    } = {}
+  ): Promise<Buffer> {
+    try {
+      // Get financial data
+      const reportData = await this.getPaymentReports(
+        personalTrainerId,
+        {
+          ...filters,
+          studentId,
+        },
+        1,
+        1000
+      ); // Get all records for PDF
+
+      // Get student info if specific student report
+      let studentInfo = null;
+      if (studentId) {
+        studentInfo = await this.getStudent(studentId);
+      }
+
+      // Get trainer info
+      const trainerInfo = await this.getUser(personalTrainerId);
+
+      // Create PDF document
+      const doc = new PDFDocument({ margin: 50 });
+      const chunks: Buffer[] = [];
+
+      doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+
+      return new Promise((resolve, reject) => {
+        doc.on("end", () => {
+          resolve(Buffer.concat(chunks));
+        });
+
+        doc.on("error", reject);
+
+        // Header
+        doc
+          .fontSize(20)
+          .font("Helvetica-Bold")
+          .text("RELATÓRIO FINANCEIRO", { align: "center" });
+        doc.moveDown();
+
+        // Trainer info
+        doc
+          .fontSize(12)
+          .font("Helvetica")
+          .text(
+            `Personal Trainer: ${trainerInfo?.firstName} ${trainerInfo?.lastName}`
+          );
+        if (studentInfo) {
+          doc.text(`Aluno: ${studentInfo.name}`);
+          doc.text(`Email: ${studentInfo.email}`);
+        }
+
+        // Report period
+        const today = new Date().toLocaleDateString("pt-BR");
+        doc.text(`Data do relatório: ${today}`);
+        if (filters.startDate || filters.endDate) {
+          const start = filters.startDate
+            ? new Date(filters.startDate).toLocaleDateString("pt-BR")
+            : "Início";
+          const end = filters.endDate
+            ? new Date(filters.endDate).toLocaleDateString("pt-BR")
+            : "Hoje";
+          doc.text(`Período: ${start} até ${end}`);
+        }
+        doc.moveDown();
+
+        // Summary
+        doc.fontSize(16).font("Helvetica-Bold").text("RESUMO FINANCEIRO");
+        doc.fontSize(12).font("Helvetica");
+        doc.text(`Total de transações: ${reportData.totalCount}`);
+        doc.text(
+          `Valor total: R$ ${reportData.summary.totalAmount.toFixed(2)}`
+        );
+        doc.text(
+          `Valor médio por transação: R$ ${reportData.summary.averagePayment.toFixed(
+            2
+          )}`
+        );
+        doc.moveDown();
+
+        // Payment method breakdown
+        if (Object.keys(reportData.summary.paymentMethodBreakdown).length > 0) {
+          doc.fontSize(14).font("Helvetica-Bold").text("Métodos de Pagamento:");
+          doc.fontSize(10).font("Helvetica");
+          for (const [method, amount] of Object.entries(
+            reportData.summary.paymentMethodBreakdown
+          )) {
+            const methodName = this.getPaymentMethodName(method);
+            doc.text(`• ${methodName}: R$ ${amount.toFixed(2)}`);
+          }
+          doc.moveDown();
+        }
+
+        // Category breakdown
+        if (Object.keys(reportData.summary.categoryBreakdown).length > 0) {
+          doc.fontSize(14).font("Helvetica-Bold").text("Categorias:");
+          doc.fontSize(10).font("Helvetica");
+          for (const [category, amount] of Object.entries(
+            reportData.summary.categoryBreakdown
+          )) {
+            const categoryName = this.getCategoryName(category);
+            doc.text(`• ${categoryName}: R$ ${amount.toFixed(2)}`);
+          }
+          doc.moveDown();
+        }
+
+        // Payments table
+        doc
+          .fontSize(16)
+          .font("Helvetica-Bold")
+          .text("DETALHAMENTO DE TRANSAÇÕES");
+        doc.moveDown();
+
+        // Table headers
+        const startX = 50;
+        let currentY = doc.y;
+        doc.fontSize(10).font("Helvetica-Bold");
+        doc.text("Data", startX, currentY);
+        doc.text("Descrição", startX + 80, currentY);
+        doc.text("Método", startX + 200, currentY);
+        doc.text("Status", startX + 270, currentY);
+        doc.text("Valor Total", startX + 320, currentY);
+        doc.text("Valor Pago", startX + 390, currentY);
+        doc.text("Saldo", startX + 460, currentY);
+
+        currentY += 20;
+        doc
+          .moveTo(startX, currentY - 10)
+          .lineTo(startX + 500, currentY - 10)
+          .stroke();
+
+        // Table rows
+        doc.fontSize(8).font("Helvetica");
+        for (const payment of reportData.payments) {
+          // Check if we need a new page
+          if (currentY > 700) {
+            doc.addPage();
+            currentY = 50;
+            // Repeat headers on new page
+            doc.fontSize(10).font("Helvetica-Bold");
+            doc.text("Data", startX, currentY);
+            doc.text("Descrição", startX + 80, currentY);
+            doc.text("Método", startX + 200, currentY);
+            doc.text("Status", startX + 270, currentY);
+            doc.text("Valor Total", startX + 320, currentY);
+            doc.text("Valor Pago", startX + 390, currentY);
+            doc.text("Saldo", startX + 460, currentY);
+            currentY += 20;
+            doc
+              .moveTo(startX, currentY - 10)
+              .lineTo(startX + 500, currentY - 10)
+              .stroke();
+            doc.fontSize(8).font("Helvetica");
+          }
+
+          const paymentDate = new Date(payment.paymentDate).toLocaleDateString(
+            "pt-BR"
+          );
+          const description = payment.account.title;
+          const method = this.getPaymentMethodName(payment.paymentMethod);
+          const status = this.getStatusName(payment.account.status);
+          const totalAmount = payment.account.totalAmount;
+          const paidAmount = payment.amount;
+          const balance = totalAmount - paidAmount;
+
+          doc.text(paymentDate, startX, currentY, {
+            width: 70,
+            ellipsis: true,
+          });
+          doc.text(description, startX + 80, currentY, {
+            width: 110,
+            ellipsis: true,
+          });
+          doc.text(method, startX + 200, currentY, {
+            width: 60,
+            ellipsis: true,
+          });
+          doc.text(status, startX + 270, currentY, {
+            width: 45,
+            ellipsis: true,
+          });
+          doc.text(`R$ ${totalAmount.toFixed(2)}`, startX + 320, currentY, {
+            width: 60,
+            ellipsis: true,
+          });
+          doc.text(`R$ ${paidAmount.toFixed(2)}`, startX + 390, currentY, {
+            width: 60,
+            ellipsis: true,
+          });
+          doc.text(`R$ ${balance.toFixed(2)}`, startX + 460, currentY, {
+            width: 60,
+            ellipsis: true,
+          });
+
+          currentY += 15;
+        }
+
+        // Footer
+        doc.fontSize(8).font("Helvetica");
+        doc.text(
+          "Relatório gerado automaticamente pelo sistema CRM Treinos MP",
+          50,
+          750,
+          { align: "center" }
+        );
+
+        doc.end();
+      });
+    } catch (error) {
+      console.error("Error generating financial PDF:", error);
+      throw new Error("Falha ao gerar PDF financeiro");
+    }
+  }
+
+  private getPaymentMethodName(method: string): string {
+    const methods: { [key: string]: string } = {
+      cash: "Dinheiro",
+      pix: "PIX",
+      credit_card: "Cartão de Crédito",
+      debit_card: "Cartão de Débito",
+      bank_transfer: "Transferência",
+      boleto: "Boleto",
+    };
+    return methods[method] || method;
+  }
+
+  private getCategoryName(category: string): string {
+    const categories: { [key: string]: string } = {
+      student_monthly: "Mensalidade",
+      student_assessment: "Avaliação Física",
+      student_personal_training: "Personal Training",
+      rent: "Aluguel",
+      equipment: "Equipamentos",
+      marketing: "Marketing",
+      utilities: "Utilidades",
+      insurance: "Seguro",
+      other: "Outros",
+    };
+    return categories[category] || category;
+  }
+
+  private getStatusName(status: string): string {
+    const statuses: { [key: string]: string } = {
+      pending: "Pendente",
+      partial: "Parcial",
+      paid: "Pago",
+      overdue: "Atrasado",
+      cancelled: "Cancelado",
+    };
+    return statuses[status] || status;
+  }
+
   async getEvolutionPhotos(studentId: string): Promise<AssessmentPhoto[]> {
     return [];
   }
@@ -1444,6 +1729,7 @@ export class DatabaseStorage implements IStorage {
       paymentMethod?: string;
       accountType?: "receivable" | "payable";
       status?: string;
+      category?: string;
       minAmount?: number;
       maxAmount?: number;
     } = {},
@@ -1482,7 +1768,7 @@ export class DatabaseStorage implements IStorage {
     const offset = (page - 1) * limit;
 
     // Build the query with joins
-    let query = db
+    const baseQuery = db
       .select({
         paymentId: payments.id,
         paymentAccountId: payments.accountId,
@@ -1504,8 +1790,7 @@ export class DatabaseStorage implements IStorage {
         financialAccounts,
         eq(payments.accountId, financialAccounts.id)
       )
-      .leftJoin(students, eq(financialAccounts.studentId, students.id))
-      .where(eq(financialAccounts.personalTrainerId, personalTrainerId));
+      .leftJoin(students, eq(financialAccounts.studentId, students.id));
 
     // Apply filters
     const conditions = [
@@ -1516,7 +1801,10 @@ export class DatabaseStorage implements IStorage {
       conditions.push(gte(payments.paymentDate, new Date(filters.startDate)));
     }
     if (filters.endDate) {
-      conditions.push(lte(payments.paymentDate, new Date(filters.endDate)));
+      // Add 1 day to include transactions on the end date
+      const endDate = new Date(filters.endDate);
+      endDate.setDate(endDate.getDate() + 1);
+      conditions.push(lte(payments.paymentDate, endDate));
     }
     if (filters.studentId) {
       conditions.push(eq(financialAccounts.studentId, filters.studentId));
@@ -1528,8 +1816,17 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(financialAccounts.type, filters.accountType));
     }
     if (filters.status) {
-      conditions.push(eq(financialAccounts.status, filters.status));
+      conditions.push(eq(financialAccounts.status, filters.status as any));
     }
+    if (filters.category) {
+      conditions.push(
+        eq(
+          financialAccounts.category,
+          filters.category as (typeof financialAccounts.category.enumValues)[number]
+        )
+      );
+    }
+
     if (filters.minAmount) {
       conditions.push(
         gte(sql`CAST(${payments.amount} AS DECIMAL)`, filters.minAmount)
@@ -1541,9 +1838,12 @@ export class DatabaseStorage implements IStorage {
       );
     }
 
-    if (conditions.length > 1) {
-      query = query.where(and(...conditions));
-    }
+    const query =
+      conditions.length > 0
+        ? baseQuery.where(and(...conditions))
+        : baseQuery.where(
+            eq(financialAccounts.personalTrainerId, personalTrainerId)
+          );
 
     // Get total count
     const countQuery = db
@@ -1554,7 +1854,7 @@ export class DatabaseStorage implements IStorage {
         eq(payments.accountId, financialAccounts.id)
       );
 
-    if (conditions.length > 1) {
+    if (conditions.length > 0) {
       countQuery.where(and(...conditions));
     }
 
@@ -1569,28 +1869,33 @@ export class DatabaseStorage implements IStorage {
       .offset(offset);
 
     // Transform results
-    const paymentsData = results.map((row) => ({
-      id: row.paymentId,
-      accountId: row.paymentAccountId,
-      amount: parseFloat(row.paymentAmount),
-      paymentDate: row.paymentDate || new Date(),
-      paymentMethod: row.paymentMethod || "",
-      transactionId: row.transactionId || undefined,
-      account: {
-        title: row.accountTitle,
-        category: row.accountCategory,
-        type: row.accountType as "receivable" | "payable",
-        status: row.accountStatus,
-        totalAmount: parseFloat(row.accountAmount),
-      },
-      student: row.studentId
-        ? {
-            id: row.studentId,
-            name: row.studentName,
-            email: row.studentEmail,
-          }
-        : undefined,
-    }));
+    const paymentsData = results.map((row) => {
+      const payment: any = {
+        id: row.paymentId,
+        accountId: row.paymentAccountId,
+        amount: parseFloat(row.paymentAmount),
+        paymentDate: row.paymentDate || new Date(),
+        paymentMethod: row.paymentMethod || "",
+        transactionId: row.transactionId || undefined,
+        account: {
+          title: row.accountTitle,
+          category: row.accountCategory as string,
+          type: row.accountType as "receivable" | "payable",
+          status: row.accountStatus as string,
+          totalAmount: parseFloat(row.accountAmount),
+        },
+      };
+
+      if (row.studentId) {
+        payment.student = {
+          id: row.studentId,
+          name: row.studentName,
+          email: row.studentEmail,
+        };
+      }
+
+      return payment;
+    });
 
     // Calculate summary statistics
     const totalAmount = paymentsData.reduce(
