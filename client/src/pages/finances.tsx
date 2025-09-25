@@ -273,13 +273,9 @@ function Finances() {
         params.toString() ? `?${params.toString()}` : ""
       }`;
 
-      console.log("Requesting PDF from:", url);
       const response = await fetch(url, {
         credentials: "include",
       });
-
-      console.log("PDF response status:", response.status);
-      console.log("PDF response headers:", [...response.headers]);
 
       if (!response.ok) {
         const errorText = await response.text();

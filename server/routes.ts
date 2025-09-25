@@ -350,6 +350,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get(
+    "/api/workouts/grouped-by-student",
+    isTeacher,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.id;
+        const groupedWorkouts = await storage.getWorkoutsGroupedByStudent(
+          userId
+        );
+        res.json(groupedWorkouts);
+      } catch (error) {
+        console.error("Error fetching workouts grouped by student:", error);
+        res.status(500).json({ message: "Failed to fetch grouped workouts" });
+      }
+    }
+  );
+
   app.get("/api/workouts/:id", isStudentOrTeacher, async (req: any, res) => {
     try {
       const workout = await storage.getWorkout(req.params.id);

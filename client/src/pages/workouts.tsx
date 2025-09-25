@@ -9,8 +9,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import WorkoutModal from "@/components/modals/workout-modal";
 import type { Workout, Student } from "@shared/schema";
+
+type GroupedWorkout = {
+  student: Student;
+  workouts: Workout[];
+};
 
 export default function Workouts() {
   const { toast } = useToast();
@@ -19,13 +31,10 @@ export default function Workouts() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
 
-  const { data: workouts, isLoading: workoutsLoading } = useQuery<Workout[]>({
-    queryKey: ["/api/workouts"],
-    enabled: isAuthenticated,
-  });
-
-  const { data: students } = useQuery<Student[]>({
-    queryKey: ["/api/students"],
+  const { data: groupedWorkouts, isLoading: workoutsLoading } = useQuery<
+    GroupedWorkout[]
+  >({
+    queryKey: ["/api/workouts/grouped-by-student"],
     enabled: isAuthenticated,
   });
 
@@ -34,7 +43,9 @@ export default function Workouts() {
       await apiRequest("DELETE", `/api/workouts/${workoutId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/workouts"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/workouts/grouped-by-student"],
+      });
       toast({
         title: "Sucesso",
         description: "Treino removido com sucesso!",
@@ -60,15 +71,42 @@ export default function Workouts() {
     },
   });
 
-  const filteredWorkouts =
-    workouts?.filter((workout) =>
-      workout.name.toLowerCase().includes(searchTerm.toLowerCase())
-    ) || [];
+  // Filtrar alunos e treinos baseado no termo de busca
+  const filteredGroupedWorkouts =
+    groupedWorkouts
+      ?.map((group) => {
+        const studentMatch = group.student.name
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
 
-  const getStudentName = (studentId: string) => {
-    const student = students?.find((s) => s.id === studentId);
-    return student?.name || "Aluno não encontrado";
-  };
+        // Se o nome do aluno corresponder, mostrar todos os treinos
+        if (studentMatch) {
+          return group;
+        }
+
+        // Caso contrário, filtrar apenas os treinos que correspondem ao termo de busca
+        const filteredWorkouts = group.workouts.filter((workout) =>
+          workout.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+        // Só incluir o grupo se tiver treinos correspondentes
+        if (filteredWorkouts.length > 0) {
+          return {
+            ...group,
+            workouts: filteredWorkouts,
+          };
+        }
+
+        return null;
+      })
+      .filter((group) => group !== null) || [];
+
+  // Contar total de treinos
+  const totalWorkouts =
+    groupedWorkouts?.reduce(
+      (total, group) => total + group.workouts.length,
+      0
+    ) || 0;
 
   const getCategoryLabel = (category: string) => {
     const categories = {
@@ -160,21 +198,21 @@ export default function Workouts() {
               <p className="mt-2 text-gray-600">Carregando treinos...</p>
             </div>
           </div>
-        ) : filteredWorkouts.length === 0 ? (
+        ) : filteredGroupedWorkouts.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
               <i className="fas fa-clipboard-list text-gray-400 text-4xl mb-4"></i>
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {workouts?.length === 0
+                {totalWorkouts === 0
                   ? "Nenhum treino cadastrado"
                   : "Nenhum treino encontrado"}
               </h3>
               <p className="text-gray-600 mb-4">
-                {workouts?.length === 0
+                {totalWorkouts === 0
                   ? "Comece criando seu primeiro treino personalizado"
                   : "Tente ajustar os termos de busca"}
               </p>
-              {workouts?.length === 0 && (
+              {totalWorkouts === 0 && (
                 <Button
                   onClick={handleCreateWorkout}
                   data-testid="button-create-first-workout"
@@ -186,90 +224,137 @@ export default function Workouts() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredWorkouts.map((workout) => (
-              <Card
-                key={workout.id}
-                className="hover:shadow-md transition-shadow"
-              >
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle
-                      className="text-lg"
-                      data-testid={`text-workout-name-${workout.id}`}
-                    >
-                      {workout.name}
-                    </CardTitle>
-                    <Badge className={getCategoryColor(workout.category)}>
-                      {getCategoryLabel(workout.category)}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3 mb-4">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <i className="fas fa-user mr-2 w-4"></i>
-                      <span>{getStudentName(workout.studentId)}</span>
-                    </div>
-
-                    {workout.description && (
-                      <div className="flex items-start text-sm text-gray-600">
-                        <i className="fas fa-align-left mr-2 w-4 mt-0.5"></i>
-                        <span>{workout.description}</span>
+          <div className="space-y-6">
+            <Accordion type="multiple" className="space-y-4">
+              {filteredGroupedWorkouts.map((group) => (
+                <AccordionItem
+                  key={group.student.id}
+                  value={group.student.id}
+                  className="border border-gray-200 rounded-lg shadow-sm"
+                >
+                  <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                    <div className="flex items-center space-x-4 w-full">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage
+                          src={group.student.profileImage || undefined}
+                          alt={group.student.name}
+                        />
+                        <AvatarFallback>
+                          {group.student.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 text-left">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {group.student.name}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          {group.workouts.length} treino(s) cadastrado(s)
+                        </p>
                       </div>
-                    )}
-
-                    <div className="flex items-center text-sm text-gray-600">
-                      <i className="fas fa-clock mr-2 w-4"></i>
-                      <span>
-                        Criado em{" "}
-                        {new Date(workout.createdAt!).toLocaleDateString(
-                          "pt-BR"
-                        )}
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <Badge
+                          variant={
+                            group.student.status === "active"
+                              ? "default"
+                              : "secondary"
+                          }
+                        >
+                          {group.student.status === "active"
+                            ? "Ativo"
+                            : "Inativo"}
+                        </Badge>
+                      </div>
                     </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-6 pb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {group.workouts.map((workout) => (
+                        <Card
+                          key={workout.id}
+                          className="hover:shadow-md transition-shadow"
+                        >
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between">
+                              <CardTitle
+                                className="text-base"
+                                data-testid={`text-workout-name-${workout.id}`}
+                              >
+                                {workout.name}
+                              </CardTitle>
+                              <Badge
+                                className={getCategoryColor(workout.category)}
+                              >
+                                {getCategoryLabel(workout.category)}
+                              </Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-0">
+                            <div className="space-y-2 mb-4">
+                              {workout.description && (
+                                <div className="flex items-start text-sm text-gray-600">
+                                  <i className="fas fa-align-left mr-2 w-4 mt-0.5 flex-shrink-0"></i>
+                                  <span className="line-clamp-2">
+                                    {workout.description}
+                                  </span>
+                                </div>
+                              )}
 
-                    <div className="flex items-center text-sm text-gray-600 mb-2">
-                      <i className="fas fa-dumbbell mr-2 w-4"></i>
-                      <span data-testid={`text-exercise-count-${workout.id}`}>
-                        {(workout as any).exercises?.length || 0} exercício(s)
-                      </span>
+                              <div className="flex items-center text-sm text-gray-600">
+                                <i className="fas fa-calendar mr-2 w-4"></i>
+                                <span>
+                                  {new Date(
+                                    workout.createdAt!
+                                  ).toLocaleDateString("pt-BR")}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <Badge
+                                  variant={
+                                    workout.isActive ? "default" : "secondary"
+                                  }
+                                >
+                                  {workout.isActive ? "Ativo" : "Inativo"}
+                                </Badge>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-end space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditWorkout(workout)}
+                                data-testid={`button-edit-workout-${workout.id}`}
+                              >
+                                <i className="fas fa-edit mr-1"></i>
+                                Editar
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDeleteWorkout(workout.id)}
+                                className="text-red-600 border-red-200 hover:bg-red-50"
+                                disabled={deleteWorkoutMutation.isPending}
+                                data-testid={`button-delete-workout-${workout.id}`}
+                              >
+                                <i className="fas fa-trash mr-1"></i>
+                                {deleteWorkoutMutation.isPending
+                                  ? "..."
+                                  : "Remover"}
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
-
-                    <div className="flex items-center">
-                      <Badge
-                        variant={workout.isActive ? "default" : "secondary"}
-                      >
-                        {workout.isActive ? "Ativo" : "Inativo"}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditWorkout(workout)}
-                      data-testid={`button-edit-workout-${workout.id}`}
-                    >
-                      <i className="fas fa-edit mr-1"></i>
-                      Editar
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteWorkout(workout.id)}
-                      className="text-red-600 border-red-200 hover:bg-red-50"
-                      disabled={deleteWorkoutMutation.isPending}
-                      data-testid={`button-delete-workout-${workout.id}`}
-                    >
-                      <i className="fas fa-trash mr-1"></i>
-                      {deleteWorkoutMutation.isPending ? "..." : "Remover"}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
           </div>
         )}
       </main>

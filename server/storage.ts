@@ -74,6 +74,12 @@ export interface IStorage {
 
   // Workout operations
   getWorkouts(personalTrainerId: string): Promise<Workout[]>;
+  getWorkoutsGroupedByStudent(personalTrainerId: string): Promise<
+    {
+      student: Student;
+      workouts: Workout[];
+    }[]
+  >;
   getStudentWorkouts(studentId: string): Promise<Workout[]>;
   getWorkout(id: string): Promise<Workout | undefined>;
   createWorkout(workout: InsertWorkout): Promise<Workout>;
@@ -548,6 +554,40 @@ export class DatabaseStorage implements IStorage {
       .where(eq(workouts.personalTrainerId, personalTrainerId))
       .orderBy(workouts.createdAt);
     return workoutsData;
+  }
+
+  async getWorkoutsGroupedByStudent(personalTrainerId: string): Promise<
+    {
+      student: Student;
+      workouts: Workout[];
+    }[]
+  > {
+    // Primeiro buscar todos os alunos do personal trainer
+    const studentsData = await this.getStudents(personalTrainerId);
+
+    // Para cada aluno, buscar seus treinos
+    const result = await Promise.all(
+      studentsData.map(async (student) => {
+        const studentWorkouts = await db
+          .select()
+          .from(workouts)
+          .where(
+            and(
+              eq(workouts.personalTrainerId, personalTrainerId),
+              eq(workouts.studentId, student.id)
+            )
+          )
+          .orderBy(desc(workouts.createdAt));
+
+        return {
+          student,
+          workouts: studentWorkouts,
+        };
+      })
+    );
+
+    // Retornar apenas alunos que têm pelo menos um treino
+    return result.filter((item) => item.workouts.length > 0);
   }
   async getStudentWorkouts(studentId: string): Promise<Workout[]> {
     const workoutsData = await db
