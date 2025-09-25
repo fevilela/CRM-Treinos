@@ -273,12 +273,20 @@ function Finances() {
         params.toString() ? `?${params.toString()}` : ""
       }`;
 
+      console.log("Requesting PDF from:", url);
       const response = await fetch(url, {
         credentials: "include",
       });
 
+      console.log("PDF response status:", response.status);
+      console.log("PDF response headers:", [...response.headers]);
+
       if (!response.ok) {
-        throw new Error("Falha ao gerar PDF");
+        const errorText = await response.text();
+        console.error("PDF generation failed:", response.status, errorText);
+        throw new Error(
+          `Falha ao gerar PDF: ${response.status} - ${errorText}`
+        );
       }
 
       // Get filename from response headers or create default
