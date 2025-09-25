@@ -770,12 +770,31 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(financialAccounts.type, filters.type));
     }
 
-    if (filters?.status) {
-      conditions.push(eq(financialAccounts.status, filters.status));
+    if (
+      filters?.status &&
+      (filters.status === "pending" ||
+        filters.status === "partial" ||
+        filters.status === "paid" ||
+        filters.status === "overdue" ||
+        filters.status === "cancelled")
+    ) {
+      conditions.push(eq(financialAccounts.status, filters.status as any));
     }
 
-    if (filters?.category) {
-      conditions.push(eq(financialAccounts.category, filters.category));
+    if (
+      filters?.category &&
+      [
+        "equipment",
+        "student_monthly",
+        "student_assessment",
+        "student_personal_training",
+        "supplements",
+        "marketing",
+        "infrastructure",
+        "other",
+      ].includes(filters.category)
+    ) {
+      conditions.push(eq(financialAccounts.category, filters.category as any));
     }
 
     if (filters?.studentId) {
@@ -833,28 +852,50 @@ export class DatabaseStorage implements IStorage {
           endDate = new Date();
       }
 
-      if (filters.period !== "all") {
-        conditions.push(
-          and(
-            gte(financialAccounts.dueDate, startDate),
-            lte(financialAccounts.dueDate, endDate)
-          )
-        );
-      }
+      conditions.push(
+        and(
+          gte(financialAccounts.dueDate, startDate),
+          lte(financialAccounts.dueDate, endDate)
+        ) as any
+      );
     }
 
     const result = await query
-      .where(and(...conditions))
+      .where(conditions.length > 0 ? (and(...conditions) as any) : undefined)
       .orderBy(desc(financialAccounts.dueDate));
 
-    // Convert decimal strings to numbers for frontend
-    return result.map((account) => ({
-      ...account,
-      amount: parseFloat(account.amount as string),
-      paidAmount: account.paidAmount
-        ? parseFloat(account.paidAmount as string)
-        : 0,
-    }));
+    // Convert decimal strings to numbers for frontend and maintain proper typing
+    return result.map(
+      (account): FinancialAccount & { studentName?: string | null } => ({
+        id: account.id,
+        createdAt: account.createdAt,
+        updatedAt: account.updatedAt,
+        personalTrainerId: account.personalTrainerId,
+        studentId: account.studentId,
+        type: account.type,
+        category: account.category,
+        title: account.title,
+        description: account.description,
+        amount:
+          typeof account.amount === "string"
+            ? parseFloat(account.amount)
+            : account.amount,
+        dueDate: account.dueDate,
+        status: account.status,
+        paidAmount: account.paidAmount
+          ? typeof account.paidAmount === "string"
+            ? parseFloat(account.paidAmount)
+            : account.paidAmount
+          : 0,
+        paidAt: account.paidAt,
+        installments: account.installments,
+        currentInstallment: account.currentInstallment,
+        isRecurring: account.isRecurring,
+        recurringInterval: account.recurringInterval,
+        notes: account.notes,
+        studentName: account.studentName,
+      })
+    );
   }
 
   async getFinancialAccount(id: string): Promise<FinancialAccount | undefined> {
@@ -866,11 +907,32 @@ export class DatabaseStorage implements IStorage {
     if (!account) return undefined;
 
     return {
-      ...account,
-      amount: parseFloat(account.amount as string),
+      id: account.id,
+      createdAt: account.createdAt,
+      updatedAt: account.updatedAt,
+      personalTrainerId: account.personalTrainerId,
+      studentId: account.studentId,
+      type: account.type,
+      category: account.category,
+      title: account.title,
+      description: account.description,
+      amount:
+        typeof account.amount === "string"
+          ? parseFloat(account.amount)
+          : account.amount,
+      dueDate: account.dueDate,
+      status: account.status,
       paidAmount: account.paidAmount
-        ? parseFloat(account.paidAmount as string)
+        ? typeof account.paidAmount === "string"
+          ? parseFloat(account.paidAmount)
+          : account.paidAmount
         : 0,
+      paidAt: account.paidAt,
+      installments: account.installments,
+      currentInstallment: account.currentInstallment,
+      isRecurring: account.isRecurring,
+      recurringInterval: account.recurringInterval,
+      notes: account.notes,
     };
   }
 
@@ -881,17 +943,45 @@ export class DatabaseStorage implements IStorage {
       .insert(financialAccounts)
       .values({
         ...account,
-        amount: account.amount.toString(),
-        paidAmount: account.paidAmount?.toString() || "0",
+        amount:
+          typeof account.amount === "number"
+            ? account.amount.toString()
+            : account.amount,
+        paidAmount: account.paidAmount
+          ? typeof account.paidAmount === "number"
+            ? account.paidAmount.toString()
+            : account.paidAmount
+          : "0",
       })
       .returning();
 
     return {
-      ...newAccount,
-      amount: parseFloat(newAccount.amount as string),
+      id: newAccount.id,
+      createdAt: newAccount.createdAt,
+      updatedAt: newAccount.updatedAt,
+      personalTrainerId: newAccount.personalTrainerId,
+      studentId: newAccount.studentId,
+      type: newAccount.type,
+      category: newAccount.category,
+      title: newAccount.title,
+      description: newAccount.description,
+      amount:
+        typeof newAccount.amount === "string"
+          ? parseFloat(newAccount.amount)
+          : newAccount.amount,
+      dueDate: newAccount.dueDate,
+      status: newAccount.status,
       paidAmount: newAccount.paidAmount
-        ? parseFloat(newAccount.paidAmount as string)
+        ? typeof newAccount.paidAmount === "string"
+          ? parseFloat(newAccount.paidAmount)
+          : newAccount.paidAmount
         : 0,
+      paidAt: newAccount.paidAt,
+      installments: newAccount.installments,
+      currentInstallment: newAccount.currentInstallment,
+      isRecurring: newAccount.isRecurring,
+      recurringInterval: newAccount.recurringInterval,
+      notes: newAccount.notes,
     };
   }
 
@@ -906,24 +996,51 @@ export class DatabaseStorage implements IStorage {
 
     // Convert numeric fields to strings for decimal storage
     if (account.amount !== undefined) {
-      updateData.amount = account.amount.toString();
+      (updateData as any).amount =
+        typeof account.amount === "number"
+          ? account.amount.toString()
+          : account.amount;
     }
     if (account.paidAmount !== undefined) {
-      updateData.paidAmount = account.paidAmount.toString();
+      (updateData as any).paidAmount =
+        typeof account.paidAmount === "number"
+          ? account.paidAmount.toString()
+          : account.paidAmount;
     }
 
     const [updatedAccount] = await db
       .update(financialAccounts)
-      .set(updateData)
+      .set(updateData as any)
       .where(eq(financialAccounts.id, id))
       .returning();
 
     return {
-      ...updatedAccount,
-      amount: parseFloat(updatedAccount.amount as string),
+      id: updatedAccount.id,
+      createdAt: updatedAccount.createdAt,
+      updatedAt: updatedAccount.updatedAt,
+      personalTrainerId: updatedAccount.personalTrainerId,
+      studentId: updatedAccount.studentId,
+      type: updatedAccount.type,
+      category: updatedAccount.category,
+      title: updatedAccount.title,
+      description: updatedAccount.description,
+      amount:
+        typeof updatedAccount.amount === "string"
+          ? parseFloat(updatedAccount.amount)
+          : updatedAccount.amount,
+      dueDate: updatedAccount.dueDate,
+      status: updatedAccount.status,
       paidAmount: updatedAccount.paidAmount
-        ? parseFloat(updatedAccount.paidAmount as string)
+        ? typeof updatedAccount.paidAmount === "string"
+          ? parseFloat(updatedAccount.paidAmount)
+          : updatedAccount.paidAmount
         : 0,
+      paidAt: updatedAccount.paidAt,
+      installments: updatedAccount.installments,
+      currentInstallment: updatedAccount.currentInstallment,
+      isRecurring: updatedAccount.isRecurring,
+      recurringInterval: updatedAccount.recurringInterval,
+      notes: updatedAccount.notes,
     };
   }
 
@@ -936,15 +1053,24 @@ export class DatabaseStorage implements IStorage {
 
     const totalReceivable = accounts
       .filter((acc) => acc.type === "receivable" && acc.status !== "paid")
-      .reduce((sum, acc) => sum + (acc.amount - (acc.paidAmount || 0)), 0);
+      .reduce(
+        (sum, acc) => sum + (Number(acc.amount) - Number(acc.paidAmount || 0)),
+        0
+      );
 
     const totalPayable = accounts
       .filter((acc) => acc.type === "payable" && acc.status !== "paid")
-      .reduce((sum, acc) => sum + (acc.amount - (acc.paidAmount || 0)), 0);
+      .reduce(
+        (sum, acc) => sum + (Number(acc.amount) - Number(acc.paidAmount || 0)),
+        0
+      );
 
     const totalOverdue = accounts
       .filter((acc) => acc.status === "overdue")
-      .reduce((sum, acc) => sum + (acc.amount - (acc.paidAmount || 0)), 0);
+      .reduce(
+        (sum, acc) => sum + (Number(acc.amount) - Number(acc.paidAmount || 0)),
+        0
+      );
 
     // Calculate monthly income/expenses for current month
     const now = new Date();
@@ -956,11 +1082,11 @@ export class DatabaseStorage implements IStorage {
 
     const monthlyIncome = monthlyAccounts
       .filter((acc) => acc.type === "receivable")
-      .reduce((sum, acc) => sum + acc.amount, 0);
+      .reduce((sum, acc) => sum + Number(acc.amount), 0);
 
     const monthlyExpenses = monthlyAccounts
       .filter((acc) => acc.type === "payable")
-      .reduce((sum, acc) => sum + acc.amount, 0);
+      .reduce((sum, acc) => sum + Number(acc.amount), 0);
 
     const netIncome = monthlyIncome - monthlyExpenses;
 
@@ -1136,77 +1262,54 @@ export class DatabaseStorage implements IStorage {
     return {} as PhysicalAssessment;
   }
   async deletePhysicalAssessment(id: string): Promise<void> {}
-  async getFinancialAccounts(
-    personalTrainerId: string,
-    filters?: any
-  ): Promise<FinancialAccount[]> {
-    return [];
-  }
-  async getFinancialAccount(id: string): Promise<FinancialAccount | undefined> {
-    return undefined;
-  }
-  async createFinancialAccount(
-    account: InsertFinancialAccount
-  ): Promise<FinancialAccount> {
-    return {} as FinancialAccount;
-  }
-  async updateFinancialAccount(
-    id: string,
-    account: Partial<InsertFinancialAccount>
-  ): Promise<FinancialAccount> {
-    return {} as FinancialAccount;
-  }
-  async deleteFinancialAccount(id: string): Promise<void> {}
+
   async getPayments(accountId: string): Promise<Payment[]> {
     return [];
   }
+
   async createPayment(payment: InsertPayment): Promise<Payment> {
     return {} as Payment;
   }
+
   async getPaymentsByAccountId(accountId: string): Promise<Payment[]> {
     return [];
   }
+
   async addPaymentToAccount(
     accountId: string,
     amount: number
   ): Promise<FinancialAccount> {
     return {} as FinancialAccount;
   }
+
   async getOverdueAccounts(
     personalTrainerId: string
   ): Promise<FinancialAccount[]> {
     return [];
   }
+
   async getStudentDebtSummary(studentId: string): Promise<any> {
     return { totalDebt: 0, overdueAmount: 0, accountsCount: 0 };
   }
+
   async getFinancialSummary(
     personalTrainerId: string,
     period: string
   ): Promise<any> {
     return { monthlyFlow: [], categoryBreakdown: [], studentDebts: [] };
   }
+
   async getPaymentByTransactionId(
     transactionId: string
   ): Promise<Payment | undefined> {
     return undefined;
   }
+
   async updatePaymentStatus(
     paymentId: string,
     updates: any
   ): Promise<Payment | undefined> {
     return undefined;
-  }
-
-  async getFinancialDashboard(personalTrainerId: string): Promise<any> {
-    return {
-      totalRevenue: 0,
-      totalExpenses: 0,
-      pendingPayments: 0,
-      overdueAccounts: 0,
-      monthlyFlow: [],
-      recentTransactions: [],
-    };
   }
 
   async getFinancialChartsData(
