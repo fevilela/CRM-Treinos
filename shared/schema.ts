@@ -1128,3 +1128,12 @@ export type InsertFinancialAccount = z.infer<
 export type FinancialAccount = typeof financialAccounts.$inferSelect;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type Payment = typeof payments.$inferSelect;
+
+// Frontend-friendly types with number conversion
+export type FinancialAccountFrontend = Omit<
+  FinancialAccount,
+  "amount" | "paidAmount"
+> & {
+  amount: number;
+  paidAmount: number;
+};

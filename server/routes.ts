@@ -2716,6 +2716,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Payment reports route
+  app.get("/api/finances/payment-reports", isTeacher, async (req: any, res) => {
+    try {
+      const personalTrainerId = req.user.id;
+      const {
+        startDate,
+        endDate,
+        studentId,
+        paymentMethod,
+        accountType,
+        status,
+        minAmount,
+        maxAmount,
+        page = 1,
+        limit = 50,
+      } = req.query;
+
+      const filters: any = {};
+
+      if (startDate) filters.startDate = startDate;
+      if (endDate) filters.endDate = endDate;
+      if (studentId) filters.studentId = studentId;
+      if (paymentMethod) filters.paymentMethod = paymentMethod;
+      if (accountType) filters.accountType = accountType;
+      if (status) filters.status = status;
+      if (minAmount) filters.minAmount = parseFloat(minAmount);
+      if (maxAmount) filters.maxAmount = parseFloat(maxAmount);
+
+      const paymentsReport = await storage.getPaymentReports(
+        personalTrainerId,
+        filters,
+        parseInt(page),
+        parseInt(limit)
+      );
+
+      res.json({ success: true, data: paymentsReport });
+    } catch (error) {
+      console.error("Error fetching payment reports:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch payment reports",
+      });
+    }
+  });
+
   // Student Payment Routes
 
   // Get student's charges/bills

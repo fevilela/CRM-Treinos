@@ -37,6 +37,7 @@ import {
   type AssessmentPhoto,
   type InsertFinancialAccount,
   type FinancialAccount,
+  type FinancialAccountFrontend,
   type InsertPayment,
   type Payment,
   type InsertPhysicalAssessment,
@@ -197,15 +198,17 @@ export interface IStorage {
       category?: string;
       studentId?: string;
     }
-  ): Promise<FinancialAccount[]>;
-  getFinancialAccount(id: string): Promise<FinancialAccount | undefined>;
+  ): Promise<FinancialAccountFrontend[]>;
+  getFinancialAccount(
+    id: string
+  ): Promise<FinancialAccountFrontend | undefined>;
   createFinancialAccount(
     account: InsertFinancialAccount
-  ): Promise<FinancialAccount>;
+  ): Promise<FinancialAccountFrontend>;
   updateFinancialAccount(
     id: string,
     account: Partial<InsertFinancialAccount>
-  ): Promise<FinancialAccount>;
+  ): Promise<FinancialAccountFrontend>;
   deleteFinancialAccount(id: string): Promise<void>;
 
   // Payment operations
@@ -215,10 +218,12 @@ export interface IStorage {
   addPaymentToAccount(
     accountId: string,
     amount: number
-  ): Promise<FinancialAccount>;
+  ): Promise<FinancialAccountFrontend>;
 
   // Financial reporting
-  getOverdueAccounts(personalTrainerId: string): Promise<FinancialAccount[]>;
+  getOverdueAccounts(
+    personalTrainerId: string
+  ): Promise<FinancialAccountFrontend[]>;
   getStudentDebtSummary(studentId: string): Promise<{
     totalDebt: number;
     overdueAmount: number;
@@ -235,7 +240,7 @@ export interface IStorage {
   }>;
 
   // Student charges
-  getStudentCharges(studentId: string): Promise<FinancialAccount[]>;
+  getStudentCharges(studentId: string): Promise<FinancialAccountFrontend[]>;
 
   // Payment status updates
   getPaymentByTransactionId(
@@ -260,6 +265,22 @@ export interface IStorage {
   getFinancialChartsData(
     personalTrainerId: string,
     period: string
+  ): Promise<any>;
+
+  getPaymentReports(
+    personalTrainerId: string,
+    filters?: {
+      startDate?: string;
+      endDate?: string;
+      studentId?: string;
+      paymentMethod?: string;
+      accountType?: "receivable" | "payable";
+      status?: string;
+      minAmount?: number;
+      maxAmount?: number;
+    },
+    page?: number,
+    limit?: number
   ): Promise<any>;
 }
 
@@ -475,7 +496,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Student charges method
-  async getStudentCharges(studentId: string): Promise<FinancialAccount[]> {
+  async getStudentCharges(
+    studentId: string
+  ): Promise<FinancialAccountFrontend[]> {
     const accounts = await db
       .select()
       .from(financialAccounts)
@@ -494,7 +517,7 @@ export class DatabaseStorage implements IStorage {
       paidAmount: account.paidAmount
         ? parseFloat(account.paidAmount as string)
         : 0,
-    })) as any;
+    })) as FinancialAccountFrontend[];
   }
 
   // Workout operations
@@ -734,7 +757,7 @@ export class DatabaseStorage implements IStorage {
       studentId?: string;
       period?: "week" | "month" | "semester" | "year";
     }
-  ): Promise<FinancialAccount[]> {
+  ): Promise<FinancialAccountFrontend[]> {
     let query = db
       .select({
         id: financialAccounts.id,
@@ -866,7 +889,9 @@ export class DatabaseStorage implements IStorage {
 
     // Convert decimal strings to numbers for frontend and maintain proper typing
     return result.map(
-      (account): FinancialAccount & { studentName?: string | null } => ({
+      (
+        account
+      ): FinancialAccountFrontend & { studentName?: string | null } => ({
         id: account.id,
         createdAt: account.createdAt,
         updatedAt: account.updatedAt,
@@ -898,7 +923,9 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
-  async getFinancialAccount(id: string): Promise<FinancialAccount | undefined> {
+  async getFinancialAccount(
+    id: string
+  ): Promise<FinancialAccountFrontend | undefined> {
     const [account] = await db
       .select()
       .from(financialAccounts)
@@ -938,7 +965,7 @@ export class DatabaseStorage implements IStorage {
 
   async createFinancialAccount(
     account: InsertFinancialAccount
-  ): Promise<FinancialAccount> {
+  ): Promise<FinancialAccountFrontend> {
     const [newAccount] = await db
       .insert(financialAccounts)
       .values({
@@ -988,7 +1015,7 @@ export class DatabaseStorage implements IStorage {
   async updateFinancialAccount(
     id: string,
     account: Partial<InsertFinancialAccount>
-  ): Promise<FinancialAccount> {
+  ): Promise<FinancialAccountFrontend> {
     const updateData = {
       ...account,
       updatedAt: new Date(),
@@ -1264,28 +1291,113 @@ export class DatabaseStorage implements IStorage {
   async deletePhysicalAssessment(id: string): Promise<void> {}
 
   async getPayments(accountId: string): Promise<Payment[]> {
-    return [];
+    return this.getPaymentsByAccountId(accountId);
   }
 
   async createPayment(payment: InsertPayment): Promise<Payment> {
-    return {} as Payment;
+    // Validate that account exists
+    const account = await this.getFinancialAccount(payment.accountId);
+    if (!account) {
+      throw new Error("Financial account not found");
+    }
+
+    if (payment.amount <= 0) {
+      throw new Error("Payment amount must be positive");
+    }
+
+    // Validate payment doesn't exceed remaining balance
+    const remainingBalance = account.amount - account.paidAmount;
+    if (payment.amount > remainingBalance) {
+      throw new Error(
+        `Payment amount (${payment.amount.toFixed(
+          2
+        )}) exceeds remaining balance (${remainingBalance.toFixed(2)})`
+      );
+    }
+
+    // Create payment record
+    const [createdPayment] = await db
+      .insert(payments)
+      .values({
+        ...payment,
+        amount: payment.amount.toString(), // Convert to decimal string for database
+        paymentDate: payment.paymentDate || new Date(),
+      })
+      .returning();
+
+    // Update financial account with new paid amount
+    const newPaidAmount = account.paidAmount + payment.amount;
+    const totalAmount = account.amount;
+
+    let newStatus: typeof account.status = account.status;
+    if (newPaidAmount >= totalAmount) {
+      newStatus = "paid";
+    } else if (newPaidAmount > 0) {
+      newStatus = "partial";
+    }
+
+    // Update the financial account
+    await this.updateFinancialAccount(payment.accountId, {
+      paidAmount: newPaidAmount,
+      status: newStatus,
+      paidAt: newStatus === "paid" ? new Date() : undefined,
+    });
+
+    return createdPayment;
   }
 
   async getPaymentsByAccountId(accountId: string): Promise<Payment[]> {
-    return [];
+    const paymentsList = await db
+      .select()
+      .from(payments)
+      .where(eq(payments.accountId, accountId))
+      .orderBy(desc(payments.paymentDate));
+
+    return paymentsList;
   }
 
   async addPaymentToAccount(
     accountId: string,
     amount: number
-  ): Promise<FinancialAccount> {
-    return {} as FinancialAccount;
+  ): Promise<FinancialAccountFrontend> {
+    // Get the current account
+    const account = await this.getFinancialAccount(accountId);
+    if (!account) {
+      throw new Error("Account not found");
+    }
+
+    // Update paid amount
+    const newPaidAmount = account.paidAmount + amount;
+    return this.updateFinancialAccount(accountId, {
+      paidAmount: newPaidAmount,
+    });
   }
 
   async getOverdueAccounts(
     personalTrainerId: string
-  ): Promise<FinancialAccount[]> {
-    return [];
+  ): Promise<FinancialAccountFrontend[]> {
+    const accounts = await db
+      .select()
+      .from(financialAccounts)
+      .where(
+        and(
+          eq(financialAccounts.personalTrainerId, personalTrainerId),
+          eq(financialAccounts.status, "overdue")
+        )
+      );
+
+    return accounts.map((account) => ({
+      ...account,
+      amount:
+        typeof account.amount === "string"
+          ? parseFloat(account.amount)
+          : account.amount,
+      paidAmount: account.paidAmount
+        ? typeof account.paidAmount === "string"
+          ? parseFloat(account.paidAmount)
+          : account.paidAmount
+        : 0,
+    })) as FinancialAccountFrontend[];
   }
 
   async getStudentDebtSummary(studentId: string): Promise<any> {
@@ -1320,6 +1432,201 @@ export class DatabaseStorage implements IStorage {
       incomeExpenseChart: [],
       categoryBreakdown: [],
       studentPaymentTrends: [],
+    };
+  }
+
+  async getPaymentReports(
+    personalTrainerId: string,
+    filters: {
+      startDate?: string;
+      endDate?: string;
+      studentId?: string;
+      paymentMethod?: string;
+      accountType?: "receivable" | "payable";
+      status?: string;
+      minAmount?: number;
+      maxAmount?: number;
+    } = {},
+    page: number = 1,
+    limit: number = 50
+  ): Promise<{
+    payments: Array<{
+      id: string;
+      accountId: string;
+      amount: number;
+      paymentDate: Date;
+      paymentMethod: string;
+      transactionId?: string;
+      account: {
+        title: string;
+        category: string;
+        type: "receivable" | "payable";
+        status: string;
+        totalAmount: number;
+      };
+      student?: {
+        id: string;
+        name: string;
+        email: string;
+      };
+    }>;
+    totalCount: number;
+    totalPages: number;
+    summary: {
+      totalAmount: number;
+      averagePayment: number;
+      paymentMethodBreakdown: { [key: string]: number };
+      categoryBreakdown: { [key: string]: number };
+    };
+  }> {
+    const offset = (page - 1) * limit;
+
+    // Build the query with joins
+    let query = db
+      .select({
+        paymentId: payments.id,
+        paymentAccountId: payments.accountId,
+        paymentAmount: payments.amount,
+        paymentDate: payments.paymentDate,
+        paymentMethod: payments.paymentMethod,
+        transactionId: payments.transactionId,
+        accountTitle: financialAccounts.title,
+        accountCategory: financialAccounts.category,
+        accountType: financialAccounts.type,
+        accountStatus: financialAccounts.status,
+        accountAmount: financialAccounts.amount,
+        studentId: students.id,
+        studentName: students.name,
+        studentEmail: students.email,
+      })
+      .from(payments)
+      .innerJoin(
+        financialAccounts,
+        eq(payments.accountId, financialAccounts.id)
+      )
+      .leftJoin(students, eq(financialAccounts.studentId, students.id))
+      .where(eq(financialAccounts.personalTrainerId, personalTrainerId));
+
+    // Apply filters
+    const conditions = [
+      eq(financialAccounts.personalTrainerId, personalTrainerId),
+    ];
+
+    if (filters.startDate) {
+      conditions.push(gte(payments.paymentDate, new Date(filters.startDate)));
+    }
+    if (filters.endDate) {
+      conditions.push(lte(payments.paymentDate, new Date(filters.endDate)));
+    }
+    if (filters.studentId) {
+      conditions.push(eq(financialAccounts.studentId, filters.studentId));
+    }
+    if (filters.paymentMethod) {
+      conditions.push(eq(payments.paymentMethod, filters.paymentMethod));
+    }
+    if (filters.accountType) {
+      conditions.push(eq(financialAccounts.type, filters.accountType));
+    }
+    if (filters.status) {
+      conditions.push(eq(financialAccounts.status, filters.status));
+    }
+    if (filters.minAmount) {
+      conditions.push(
+        gte(sql`CAST(${payments.amount} AS DECIMAL)`, filters.minAmount)
+      );
+    }
+    if (filters.maxAmount) {
+      conditions.push(
+        lte(sql`CAST(${payments.amount} AS DECIMAL)`, filters.maxAmount)
+      );
+    }
+
+    if (conditions.length > 1) {
+      query = query.where(and(...conditions));
+    }
+
+    // Get total count
+    const countQuery = db
+      .select({ count: sql`count(*)` })
+      .from(payments)
+      .innerJoin(
+        financialAccounts,
+        eq(payments.accountId, financialAccounts.id)
+      );
+
+    if (conditions.length > 1) {
+      countQuery.where(and(...conditions));
+    }
+
+    const [{ count }] = await countQuery;
+    const totalCount = Number(count);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // Get paginated results
+    const results = await query
+      .orderBy(desc(payments.paymentDate))
+      .limit(limit)
+      .offset(offset);
+
+    // Transform results
+    const paymentsData = results.map((row) => ({
+      id: row.paymentId,
+      accountId: row.paymentAccountId,
+      amount: parseFloat(row.paymentAmount),
+      paymentDate: row.paymentDate || new Date(),
+      paymentMethod: row.paymentMethod || "",
+      transactionId: row.transactionId || undefined,
+      account: {
+        title: row.accountTitle,
+        category: row.accountCategory,
+        type: row.accountType as "receivable" | "payable",
+        status: row.accountStatus,
+        totalAmount: parseFloat(row.accountAmount),
+      },
+      student: row.studentId
+        ? {
+            id: row.studentId,
+            name: row.studentName,
+            email: row.studentEmail,
+          }
+        : undefined,
+    }));
+
+    // Calculate summary statistics
+    const totalAmount = paymentsData.reduce(
+      (sum, payment) => sum + payment.amount,
+      0
+    );
+    const averagePayment =
+      paymentsData.length > 0 ? totalAmount / paymentsData.length : 0;
+
+    const paymentMethodBreakdown: { [key: string]: number } = {};
+    const categoryBreakdown: { [key: string]: number } = {};
+
+    paymentsData.forEach((payment) => {
+      // Payment method breakdown
+      if (payment.paymentMethod) {
+        paymentMethodBreakdown[payment.paymentMethod] =
+          (paymentMethodBreakdown[payment.paymentMethod] || 0) + payment.amount;
+      }
+
+      // Category breakdown
+      if (payment.account.category) {
+        categoryBreakdown[payment.account.category] =
+          (categoryBreakdown[payment.account.category] || 0) + payment.amount;
+      }
+    });
+
+    return {
+      payments: paymentsData,
+      totalCount,
+      totalPages,
+      summary: {
+        totalAmount,
+        averagePayment,
+        paymentMethodBreakdown,
+        categoryBreakdown,
+      },
     };
   }
 }
