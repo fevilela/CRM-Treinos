@@ -14,6 +14,10 @@ import {
   financialAccounts,
   payments,
   workoutHistory,
+  postureAssessments,
+  posturePhotos,
+  postureObservations,
+  postureOptions,
   type InsertUser,
   type UpsertUser,
   type User,
@@ -44,6 +48,14 @@ import {
   type PhysicalAssessment,
   type InsertWorkoutHistory,
   type WorkoutHistory,
+  type PostureAssessment,
+  type InsertPostureAssessment,
+  type PosturePhoto,
+  type InsertPosturePhoto,
+  type PostureObservation,
+  type InsertPostureObservation,
+  type PostureOption,
+  type InsertPostureOption,
 } from "@shared/schema";
 import { eq, desc, asc, and, or, gte, lte, sql, ne } from "drizzle-orm";
 import { promises as fs } from "fs";
@@ -1973,6 +1985,114 @@ export class DatabaseStorage implements IStorage {
         categoryBreakdown,
       },
     };
+  }
+
+  // ==================== POSTURE ASSESSMENT METHODS ====================
+
+  async createPostureAssessment(data: InsertPostureAssessment) {
+    const [assessment] = await db
+      .insert(postureAssessments)
+      .values(data)
+      .returning();
+    return assessment;
+  }
+
+  async getPostureAssessment(id: string) {
+    const [assessment] = await db
+      .select()
+      .from(postureAssessments)
+      .where(eq(postureAssessments.id, id));
+    return assessment;
+  }
+
+  async getPostureAssessmentsByStudent(studentId: string) {
+    return await db
+      .select()
+      .from(postureAssessments)
+      .where(eq(postureAssessments.studentId, studentId))
+      .orderBy(desc(postureAssessments.createdAt));
+  }
+
+  async updatePostureAssessment(
+    id: string,
+    data: Partial<InsertPostureAssessment>
+  ) {
+    const [assessment] = await db
+      .update(postureAssessments)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(postureAssessments.id, id))
+      .returning();
+    return assessment;
+  }
+
+  async deletePostureAssessment(id: string) {
+    await db.delete(postureAssessments).where(eq(postureAssessments.id, id));
+  }
+
+  async createPosturePhoto(data: InsertPosturePhoto) {
+    const [photo] = await db.insert(posturePhotos).values(data).returning();
+    return photo;
+  }
+
+  async getPosturePhotos(assessmentId: string) {
+    return await db
+      .select()
+      .from(posturePhotos)
+      .where(eq(posturePhotos.assessmentId, assessmentId))
+      .orderBy(asc(posturePhotos.photoType));
+  }
+
+  async deletePosturePhoto(id: string) {
+    await db.delete(posturePhotos).where(eq(posturePhotos.id, id));
+  }
+
+  async createPostureObservation(data: InsertPostureObservation) {
+    const [observation] = await db
+      .insert(postureObservations)
+      .values(data)
+      .returning();
+    return observation;
+  }
+
+  async getPostureObservations(assessmentId: string) {
+    return await db
+      .select()
+      .from(postureObservations)
+      .where(eq(postureObservations.assessmentId, assessmentId))
+      .orderBy(asc(postureObservations.joint));
+  }
+
+  async deletePostureObservation(id: string) {
+    await db.delete(postureObservations).where(eq(postureObservations.id, id));
+  }
+
+  async createPostureOption(data: InsertPostureOption) {
+    const [option] = await db.insert(postureOptions).values(data).returning();
+    return option;
+  }
+
+  async getPostureOptionsByJoint(joint: string) {
+    return await db
+      .select()
+      .from(postureOptions)
+      .where(
+        and(
+          eq(
+            postureOptions.joint,
+            joint as (typeof postureOptions.joint.enumValues)[number]
+          ),
+          eq(postureOptions.isActive, true)
+        )
+      )
+      .orderBy(asc(postureOptions.optionText));
+  }
+
+  async getAllPostureOptions() {
+    return await db
+      .select()
+      .from(postureOptions)
+      .where(eq(postureOptions.isActive, true))
+      .orderBy(asc(postureOptions.joint), asc(postureOptions.optionText));
   }
 }
 

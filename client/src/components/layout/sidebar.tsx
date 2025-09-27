@@ -19,6 +19,11 @@ const menuItems = [
     icon: "fas fa-clipboard-check",
   },
   {
+    name: "Avaliação Postural",
+    path: "/teacher-area/posture-assessments",
+    icon: "fas fa-body",
+  },
+  {
     name: "Progresso",
     path: "/teacher-area/progress",
     icon: "fas fa-chart-line",

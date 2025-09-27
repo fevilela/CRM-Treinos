@@ -10,6 +10,7 @@ import Dashboard from "@/pages/dashboard";
 import Students from "@/pages/students";
 import Workouts from "@/pages/workouts";
 import PhysicalAssessments from "@/pages/physical-assessments";
+import { PostureAssessments } from "@/pages/posture-assessments";
 import Progress from "@/pages/progress";
 import Finances from "@/pages/finances";
 import TeacherProfile from "@/pages/teacher-profile";
@@ -110,6 +111,13 @@ function Router() {
         {() => (
           <TeacherLayout>
             <PhysicalAssessments />
+          </TeacherLayout>
+        )}
+      </Route>
+      <Route path="/teacher-area/posture-assessments">
+        {() => (
+          <TeacherLayout>
+            <PostureAssessments />
           </TeacherLayout>
         )}
       </Route>

@@ -1137,3 +1137,179 @@ export type FinancialAccountFrontend = Omit<
   amount: number;
   paidAmount: number;
 };
+
+// Enum para tipos de foto postural
+export const posturePhotoTypeEnum = pgEnum("posture_photo_type", [
+  "front", // frente
+  "back", // costas
+  "side_left", // lado esquerdo
+  "side_right", // lado direito
+]);
+
+// Enum para articulações
+export const jointEnum = pgEnum("joint", [
+  "head",
+  "neck",
+  "shoulder_left",
+  "shoulder_right",
+  "elbow_left",
+  "elbow_right",
+  "wrist_left",
+  "wrist_right",
+  "hip_left",
+  "hip_right",
+  "knee_left",
+  "knee_right",
+  "ankle_left",
+  "ankle_right",
+  "spine_cervical",
+  "spine_thoracic",
+  "spine_lumbar",
+]);
+
+// Enum para severidade dos desvios posturais
+export const severityEnum = pgEnum("severity", [
+  "normal", // normal
+  "mild", // leve
+  "moderate", // moderado
+  "severe", // severo
+]);
+
+// Tabela de avaliações posturais
+export const postureAssessments = pgTable("posture_assessments", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  studentId: varchar("student_id")
+    .notNull()
+    .references(() => students.id, { onDelete: "cascade" }),
+  personalTrainerId: varchar("personal_trainer_id")
+    .notNull()
+    .references(() => users.id),
+  title: varchar("title").notNull(),
+  notes: text("notes"),
+  aiAnalysis: text("ai_analysis"), // Análise completa da IA
+  aiRecommendations: text("ai_recommendations"), // Recomendações da IA
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Tabela de fotos posturais
+export const posturePhotos = pgTable("posture_photos", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  assessmentId: varchar("assessment_id")
+    .notNull()
+    .references(() => postureAssessments.id, { onDelete: "cascade" }),
+  photoType: posturePhotoTypeEnum("photo_type").notNull(),
+  photoUrl: varchar("photo_url").notNull(),
+  fileName: varchar("file_name").notNull(),
+  fileSize: integer("file_size"),
+  mimeType: varchar("mime_type").notNull(),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+});
+
+// Tabela de observações por articulação
+export const postureObservations = pgTable("posture_observations", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  assessmentId: varchar("assessment_id")
+    .notNull()
+    .references(() => postureAssessments.id, { onDelete: "cascade" }),
+  joint: jointEnum("joint").notNull(),
+  observation: varchar("observation").notNull(), // Ex: "ombro caído", "muito para frente"
+  severity: severityEnum("severity").notNull().default("mild"),
+  customObservation: text("custom_observation"), // Observação personalizada do professor
+  isCustom: boolean("is_custom").default(false), // Se foi uma observação customizada
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Tabela de opções pré-definidas por articulação
+export const postureOptions = pgTable("posture_options", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  joint: jointEnum("joint").notNull(),
+  optionText: varchar("option_text").notNull(), // Ex: "Ombro caído", "Cabeça muito para frente"
+  description: text("description"), // Descrição mais detalhada
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Relations para avaliação postural
+export const postureAssessmentsRelations = relations(
+  postureAssessments,
+  ({ one, many }) => ({
+    student: one(students, {
+      fields: [postureAssessments.studentId],
+      references: [students.id],
+    }),
+    personalTrainer: one(users, {
+      fields: [postureAssessments.personalTrainerId],
+      references: [users.id],
+    }),
+    photos: many(posturePhotos),
+    observations: many(postureObservations),
+  })
+);
+
+export const posturePhotosRelations = relations(posturePhotos, ({ one }) => ({
+  assessment: one(postureAssessments, {
+    fields: [posturePhotos.assessmentId],
+    references: [postureAssessments.id],
+  }),
+}));
+
+export const postureObservationsRelations = relations(
+  postureObservations,
+  ({ one }) => ({
+    assessment: one(postureAssessments, {
+      fields: [postureObservations.assessmentId],
+      references: [postureAssessments.id],
+    }),
+  })
+);
+
+// Insert schemas para avaliação postural
+export const insertPostureAssessmentSchema = createInsertSchema(
+  postureAssessments
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPosturePhotoSchema = createInsertSchema(posturePhotos).omit({
+  id: true,
+  uploadedAt: true,
+});
+
+export const insertPostureObservationSchema = createInsertSchema(
+  postureObservations
+).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPostureOptionSchema = createInsertSchema(
+  postureOptions
+).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types para avaliação postural
+export type PostureAssessment = typeof postureAssessments.$inferSelect;
+export type InsertPostureAssessment = z.infer<
+  typeof insertPostureAssessmentSchema
+>;
+export type PosturePhoto = typeof posturePhotos.$inferSelect;
+export type InsertPosturePhoto = z.infer<typeof insertPosturePhotoSchema>;
+export type PostureObservation = typeof postureObservations.$inferSelect;
+export type InsertPostureObservation = z.infer<
+  typeof insertPostureObservationSchema
+>;
+export type PostureOption = typeof postureOptions.$inferSelect;
+export type InsertPostureOption = z.infer<typeof insertPostureOptionSchema>;

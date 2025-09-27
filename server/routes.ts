@@ -21,6 +21,9 @@ import {
   insertCalendarEventSchema,
   insertFinancialAccountSchema,
   insertPaymentSchema,
+  insertPostureAssessmentSchema,
+  insertPosturePhotoSchema,
+  insertPostureObservationSchema,
   type Student,
   type CalendarEvent,
   type InsertCalendarEvent,
@@ -38,6 +41,16 @@ import {
   getUpcomingEventsForNotification,
 } from "./notification-service";
 import { getSchedulerStatus } from "./notification-scheduler";
+import {
+  analyzePostureImages,
+  generateCorrectedPostureVisualization,
+} from "./posture-ai";
+
+// Interface for image data in posture assessment
+interface PostureImageData {
+  type: string;
+  base64: string;
+}
 
 // Helper function to sanitize student objects by removing sensitive fields
 function sanitizeStudent(
@@ -1473,6 +1486,285 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res
           .status(500)
           .json({ message: "Failed to fetch student assessment history" });
+      }
+    }
+  );
+
+  // ==================== POSTURE ASSESSMENT ROUTES ====================
+
+  // Get all posture assessments for a student
+  app.get(
+    "/api/students/:studentId/posture-assessments",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const studentId = req.params.studentId;
+        const assessments = await storage.getPostureAssessmentsByStudent(
+          studentId
+        );
+        res.json(assessments);
+      } catch (error) {
+        console.error("Error fetching posture assessments:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch posture assessments" });
+      }
+    }
+  );
+
+  // Get specific posture assessment
+  app.get(
+    "/api/posture-assessments/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const assessment = await storage.getPostureAssessment(req.params.id);
+        if (!assessment) {
+          return res
+            .status(404)
+            .json({ message: "Posture assessment not found" });
+        }
+        res.json(assessment);
+      } catch (error) {
+        console.error("Error fetching posture assessment:", error);
+        res.status(500).json({ message: "Failed to fetch posture assessment" });
+      }
+    }
+  );
+
+  // Create new posture assessment with AI analysis
+  app.post("/api/posture-assessments", isTeacher, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { images, observations, ...assessmentData } = req.body;
+
+      // Validate required data
+      const validatedData = insertPostureAssessmentSchema.parse({
+        ...assessmentData,
+        personalTrainerId: userId,
+      });
+
+      // Create the assessment first
+      const assessment = await storage.createPostureAssessment(validatedData);
+
+      // Process and save images
+      if (images && images.length > 0) {
+        const photoPromises = images.map(async (image: PostureImageData) => {
+          // Save image file
+          const buffer = Buffer.from(image.base64, "base64");
+          const ext = ".jpg";
+          const filename = `posture-${Date.now()}-${Math.round(
+            Math.random() * 1e9
+          )}${ext}`;
+          const filepath = path.join(
+            process.cwd(),
+            "uploads",
+            "posture-photos",
+            filename
+          );
+
+          // Ensure directory exists
+          await fs.mkdir(path.dirname(filepath), { recursive: true });
+          await fs.writeFile(filepath, buffer);
+
+          const photoData = {
+            assessmentId: assessment.id,
+            photoType: image.type as
+              | "front"
+              | "back"
+              | "side_left"
+              | "side_right", // ✅
+            photoUrl: `/uploads/posture-photos/${filename}`,
+            fileName: filename,
+            fileSize: buffer.length,
+            mimeType: "image/jpeg",
+          };
+
+          return storage.createPosturePhoto(photoData);
+        });
+
+        await Promise.all(photoPromises);
+      }
+
+      // Save observations
+      if (observations && observations.length > 0) {
+        const observationPromises = observations.map((obs: any) => {
+          const obsData = {
+            assessmentId: assessment.id,
+            joint: obs.joint,
+            observation: obs.observation,
+            severity: obs.severity,
+            isCustom: obs.isCustom,
+            customObservation: obs.isCustom ? obs.observation : null,
+          };
+          return storage.createPostureObservation(obsData);
+        });
+
+        await Promise.all(observationPromises);
+      }
+
+      // Perform AI analysis
+      try {
+        const aiResult = await analyzePostureImages(images, observations);
+
+        // Update assessment with AI analysis
+        await storage.updatePostureAssessment(assessment.id, {
+          aiAnalysis: aiResult.analysis,
+          aiRecommendations: aiResult.recommendations,
+        });
+
+        // Generate corrected posture visualization
+        const visualization = await generateCorrectedPostureVisualization(
+          aiResult
+        );
+
+        res.status(201).json({
+          ...assessment,
+          aiAnalysis: aiResult.analysis,
+          aiRecommendations: aiResult.recommendations,
+          correctedPostureImageUrl: visualization.imageUrl,
+          deviations: aiResult.deviations,
+        });
+      } catch (aiError) {
+        console.error("AI analysis failed:", aiError);
+        // Return assessment without AI analysis
+        res.status(201).json({
+          ...assessment,
+          aiAnalysisError:
+            "AI analysis failed, but assessment was saved successfully",
+        });
+      }
+    } catch (error) {
+      console.error("Error creating posture assessment:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: error.errors.map((e) => ({
+            field: e.path.join("."),
+            message: e.message,
+          })),
+        });
+      }
+      res.status(500).json({ message: "Failed to create posture assessment" });
+    }
+  });
+
+  // Update posture assessment
+  app.put("/api/posture-assessments/:id", isTeacher, async (req: any, res) => {
+    try {
+      const assessmentId = req.params.id;
+
+      // Verify assessment exists and belongs to teacher
+      const existingAssessment = await storage.getPostureAssessment(
+        assessmentId
+      );
+      if (!existingAssessment) {
+        return res
+          .status(404)
+          .json({ message: "Posture assessment not found" });
+      }
+
+      if (existingAssessment.personalTrainerId !== req.user.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Remove fields that shouldn't be updated
+      const { personalTrainerId, ...updateData } = req.body;
+
+      const updatedAssessment = await storage.updatePostureAssessment(
+        assessmentId,
+        updateData
+      );
+      res.json(updatedAssessment);
+    } catch (error) {
+      console.error("Error updating posture assessment:", error);
+      res.status(500).json({ message: "Failed to update posture assessment" });
+    }
+  });
+
+  // Delete posture assessment
+  app.delete(
+    "/api/posture-assessments/:id",
+    isTeacher,
+    async (req: any, res) => {
+      try {
+        const assessmentId = req.params.id;
+
+        // Verify assessment exists and belongs to teacher
+        const existingAssessment = await storage.getPostureAssessment(
+          assessmentId
+        );
+        if (!existingAssessment) {
+          return res
+            .status(404)
+            .json({ message: "Posture assessment not found" });
+        }
+
+        if (existingAssessment.personalTrainerId !== req.user.id) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+
+        // Get photos to delete files
+        const photos = await storage.getPosturePhotos(assessmentId);
+
+        // Delete physical files
+        const deletePromises = photos.map(async (photo) => {
+          const filepath = path.join(
+            process.cwd(),
+            "uploads",
+            "posture-photos",
+            photo.fileName
+          );
+          await fs.unlink(filepath).catch(() => {
+            console.warn(`File not found: ${filepath}`);
+          });
+        });
+
+        await Promise.all(deletePromises);
+
+        // Delete from database (cascade will handle related records)
+        await storage.deletePostureAssessment(assessmentId);
+
+        res.status(204).send();
+      } catch (error) {
+        console.error("Error deleting posture assessment:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to delete posture assessment" });
+      }
+    }
+  );
+
+  // Get photos for posture assessment
+  app.get(
+    "/api/posture-assessments/:id/photos",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const assessmentId = req.params.id;
+        const photos = await storage.getPosturePhotos(assessmentId);
+        res.json(photos);
+      } catch (error) {
+        console.error("Error fetching posture photos:", error);
+        res.status(500).json({ message: "Failed to fetch posture photos" });
+      }
+    }
+  );
+
+  // Get observations for posture assessment
+  app.get(
+    "/api/posture-assessments/:id/observations",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const assessmentId = req.params.id;
+        const observations = await storage.getPostureObservations(assessmentId);
+        res.json(observations);
+      } catch (error) {
+        console.error("Error fetching posture observations:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch posture observations" });
       }
     }
   );
