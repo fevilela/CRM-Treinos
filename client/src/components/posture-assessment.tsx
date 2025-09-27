@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,11 +93,28 @@ const PREDEFINED_OBSERVATIONS = {
 interface PostureAssessmentProps {
   studentId: string;
   onSave: (assessment: any) => void;
+  initialData?: {
+    id?: string;
+    title?: string;
+    notes?: string;
+    photos?: Array<{
+      type: "front" | "back" | "side_left" | "side_right";
+      url: string;
+    }>;
+    observations?: Array<{
+      joint: string;
+      observation: string;
+      severity: "normal" | "mild" | "moderate" | "severe";
+    }>;
+  };
+  mode?: "create" | "edit";
 }
 
 export function PostureAssessment({
   studentId,
   onSave,
+  initialData,
+  mode = "create",
 }: PostureAssessmentProps) {
   const [photos, setPhotos] = useState<PosturePhoto[]>([]);
   const [title, setTitle] = useState("");
@@ -110,6 +127,38 @@ export function PostureAssessment({
   const [selectedSeverity, setSelectedSeverity] = useState<
     "normal" | "mild" | "moderate" | "severe"
   >("mild");
+
+  // Load initial data when in edit mode
+  useEffect(() => {
+    if (mode === "edit" && initialData) {
+      setTitle(initialData.title || "");
+      setNotes(initialData.notes || "");
+
+      // Load observations
+      if (initialData.observations) {
+        setObservations(
+          initialData.observations.map((obs) => ({
+            joint: obs.joint,
+            observation: obs.observation,
+            severity: obs.severity,
+            isCustom: false, // For existing observations, we'll consider them custom
+          }))
+        );
+      }
+
+      // For photos in edit mode, we would need to fetch them from URLs
+      // This is a simplified version - in a real app, you might want to
+      // convert URLs back to File objects or handle differently
+      if (initialData.photos) {
+        // Note: This doesn't load actual photos for editing since we'd need
+        // to fetch URLs and convert to File objects. For now, we'll just
+        // show that photos exist but they'd need to be re-uploaded to edit.
+        console.log(
+          "Edit mode: Photos exist but need to be re-uploaded for editing"
+        );
+      }
+    }
+  }, [mode, initialData]);
 
   const handleFileUpload = useCallback(
     (
@@ -198,6 +247,7 @@ export function PostureAssessment({
       const images = await Promise.all(imagePromises);
 
       const assessmentData = {
+        ...(mode === "edit" && initialData?.id && { id: initialData.id }),
         studentId,
         title,
         notes,
@@ -463,12 +513,16 @@ export function PostureAssessment({
             {isAnalyzing ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Analisando com IA...
+                {mode === "edit"
+                  ? "Atualizando análise..."
+                  : "Analisando com IA..."}
               </>
             ) : (
               <>
                 <Upload className="w-4 h-4 mr-2" />
-                Analisar Postura com IA
+                {mode === "edit"
+                  ? "Atualizar Análise"
+                  : "Analisar Postura com IA"}
               </>
             )}
           </Button>

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Eye, Trash2, Calendar, User } from "lucide-react";
+import { Plus, Eye, Trash2, Calendar, User, Edit } from "lucide-react";
 import { PostureAssessment } from "@/components/posture-assessment";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -46,6 +46,9 @@ interface Student {
 export function PostureAssessments() {
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingAssessment, setEditingAssessment] =
+    useState<PostureAssessmentData | null>(null);
   const [selectedAssessment, setSelectedAssessment] =
     useState<PostureAssessmentData | null>(null);
   const queryClient = useQueryClient();
@@ -81,23 +84,32 @@ export function PostureAssessments() {
     enabled: !!selectedStudentId,
   });
 
-  // Create assessment mutation
-  const createAssessmentMutation = useMutation({
+  // Create/Update assessment mutation
+  const saveAssessmentMutation = useMutation({
     mutationFn: async (assessmentData: any) => {
-      const response = await fetch("/api/posture-assessments", {
-        method: "POST",
+      const isEdit = assessmentData.id;
+      const url = isEdit
+        ? `/api/posture-assessments/${assessmentData.id}`
+        : "/api/posture-assessments";
+      const method = isEdit ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
         },
         credentials: "include",
         body: JSON.stringify(assessmentData),
       });
-      if (!response.ok) throw new Error("Failed to create assessment");
+      if (!response.ok)
+        throw new Error(`Failed to ${isEdit ? "update" : "create"} assessment`);
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["posture-assessments"] });
       setIsCreateDialogOpen(false);
+      setIsEditDialogOpen(false);
+      setEditingAssessment(null);
     },
   });
 
@@ -116,7 +128,16 @@ export function PostureAssessments() {
   });
 
   const handleCreateAssessment = (assessmentData: any) => {
-    createAssessmentMutation.mutate(assessmentData);
+    saveAssessmentMutation.mutate(assessmentData);
+  };
+
+  const handleEditAssessment = (assessment: PostureAssessmentData) => {
+    setEditingAssessment(assessment);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateAssessment = (assessmentData: any) => {
+    saveAssessmentMutation.mutate(assessmentData);
   };
 
   const handleDeleteAssessment = (assessmentId: string) => {
@@ -243,6 +264,14 @@ export function PostureAssessments() {
                             <Eye className="w-4 h-4 mr-1" />
                             Ver
                           </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditAssessment(assessment)}
+                          >
+                            <Edit className="w-4 h-4 mr-1" />
+                            Editar
+                          </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="outline" size="sm">
@@ -281,6 +310,30 @@ export function PostureAssessments() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Edit Assessment Dialog */}
+      {editingAssessment && (
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                Editar Avaliação - {editingAssessment.title}
+              </DialogTitle>
+            </DialogHeader>
+            <PostureAssessment
+              studentId={editingAssessment.studentId}
+              onSave={handleUpdateAssessment}
+              initialData={{
+                id: editingAssessment.id,
+                title: editingAssessment.title,
+                notes: editingAssessment.notes,
+                // TODO: Add photos and observations when available in the data
+              }}
+              mode="edit"
+            />
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Assessment Details Dialog */}

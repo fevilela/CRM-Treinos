@@ -8,12 +8,13 @@ import connectPg from "connect-pg-simple";
 
 // Configure session store
 export function getSession() {
-  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+  const sessionTtlSeconds = 7 * 24 * 60 * 60; // 1 week in seconds for store
+  const sessionTtlMs = sessionTtlSeconds * 1000; // 1 week in ms for cookie
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
     createTableIfMissing: true,
-    ttl: sessionTtl,
+    ttl: sessionTtlSeconds,
     tableName: "sessions",
   });
 
@@ -24,9 +25,9 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // True para produção
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // None para cross-site em produção
-      maxAge: sessionTtl,
+      secure: process.env.REPLIT_DEV_DOMAIN ? true : false, // True para Replit HTTPS
+      sameSite: process.env.REPLIT_DEV_DOMAIN ? "none" : "lax", // None para iframe Replit
+      maxAge: sessionTtlMs,
     },
   });
 }
@@ -64,25 +65,25 @@ passport.serializeUser((user: any, done) => {
   const source = user.personalTrainerId !== undefined ? "students" : "users";
   const serializedData = { id: user.id, role: user.role, source };
 
-  // if (process.env.NODE_ENV === "development") {
-  //   console.log("[AUTH DEBUG] serializeUser:", {
-  //     user: {
-  //       id: user.id,
-  //       role: user.role,
-  //       personalTrainerId: user.personalTrainerId,
-  //     },
-  //     serializedData,
-  //   });
-  // }
+  if (process.env.NODE_ENV === "development") {
+    console.log("[AUTH DEBUG] serializeUser:", {
+      user: {
+        id: user.id,
+        role: user.role,
+        personalTrainerId: user.personalTrainerId,
+      },
+      serializedData,
+    });
+  }
 
   done(null, serializedData);
 });
 
 passport.deserializeUser(async (serializedData: any, done) => {
   try {
-    // if (process.env.NODE_ENV === "development") {
-    //   console.log("[AUTH DEBUG] deserializeUser input:", serializedData);
-    // }
+    if (process.env.NODE_ENV === "development") {
+      console.log("[AUTH DEBUG] deserializeUser input:", serializedData);
+    }
 
     // Handle both old string format (id only) and new object format {id, role, source}
     let userId: string;
@@ -106,9 +107,9 @@ passport.deserializeUser(async (serializedData: any, done) => {
       const student = await storage.getStudent(userId);
 
       if (!student) {
-        // if (process.env.NODE_ENV === "development") {
-        //   console.log("[AUTH DEBUG] Student not found by ID:", userId);
-        // }
+        if (process.env.NODE_ENV === "development") {
+          console.log("[AUTH DEBUG] Student not found by ID:", userId);
+        }
         return done(null, false);
       }
 
@@ -122,30 +123,30 @@ passport.deserializeUser(async (serializedData: any, done) => {
         personalTrainerId: student.personalTrainerId,
       };
 
-      // if (process.env.NODE_ENV === "development") {
-      //   console.log("[AUTH DEBUG] deserializeUser success (student):", {
-      //     id: studentUser.id,
-      //     role: studentUser.role,
-      //   });
-      // }
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AUTH DEBUG] deserializeUser success (student):", {
+          id: studentUser.id,
+          role: studentUser.role,
+        });
+      }
 
       done(null, studentUser);
     } else {
       // For teachers and self-registered students, fetch from users table
       const user = await storage.getUser(userId);
       if (!user) {
-        // if (process.env.NODE_ENV === "development") {
-        //   console.log("[AUTH DEBUG] User not found:", userId);
-        // }
+        if (process.env.NODE_ENV === "development") {
+          console.log("[AUTH DEBUG] User not found:", userId);
+        }
         return done(null, false);
       }
 
-      // if (process.env.NODE_ENV === "development") {
-      //   console.log("[AUTH DEBUG] deserializeUser success (user):", {
-      //     id: user.id,
-      //     role: user.role,
-      //   });
-      // }
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AUTH DEBUG] deserializeUser success (user):", {
+          id: user.id,
+          role: user.role,
+        });
+      }
 
       done(null, user);
     }
@@ -239,6 +240,10 @@ export const isAuthenticated: RequestHandler = (req: any, res, next) => {
       isAuth: req.isAuthenticated(),
       userRole: req.user?.role,
       cookies: req.headers.cookie ? "present" : "missing",
+      cookieDetails: req.headers.cookie?.substring(0, 100), // First 100 chars
+      sessionData: req.session ? Object.keys(req.session) : "no session",
+      url: req.url,
+      method: req.method,
     });
   }
 

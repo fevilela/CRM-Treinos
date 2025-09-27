@@ -14,12 +14,31 @@ app.set("trust proxy", config.trustProxy);
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
+  // Debug logging for CORS (auth, login, logout)
+  if (
+    process.env.NODE_ENV === "development" &&
+    (req.path.startsWith("/api/auth") ||
+      req.path.startsWith("/api/login") ||
+      req.path.startsWith("/api/logout"))
+  ) {
+    console.log("[CORS DEBUG]", {
+      origin,
+      path: req.path,
+      method: req.method,
+      allowedOrigin: config.allowedOrigin,
+      cookies: req.headers.cookie ? "present" : "missing",
+      userAgent: req.headers["user-agent"]?.includes("Mozilla")
+        ? "browser"
+        : "other",
+    });
+  }
+
   // Usar origem específica do config com credentials
   const allowedOrigins = [config.allowedOrigin];
   if (config.isDevelopment) {
     allowedOrigins.push(
-      "http://localhost:3000",
-      "http://127.0.0.1:3000",
+      "http://localhost:5000",
+      "http://127.0.0.1:5000",
       "http://localhost:5173",
       "http://127.0.0.1:5173"
     );

@@ -64,7 +64,7 @@ Responda em formato JSON com a seguinte estrutura:
 Seja específico e técnico, mas mantenha a linguagem acessível para personal trainers.`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: "gpt-4o",
       messages: [
         {
           role: "user",
