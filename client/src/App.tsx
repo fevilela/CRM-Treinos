@@ -83,7 +83,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/student/setup-password" component={StudentSetupPassword} />
-      <Route path="/student-area">{() => <StudentApp />}</Route>
+      <Route path="/student-area/:rest?">{() => <StudentApp />}</Route>
 
       {/* Rotas do professor - usando rotas absolutas ao invés de aninhadas */}
       <Route path="/teacher-area">
