@@ -1190,6 +1190,8 @@ export const postureAssessments = pgTable("posture_assessments", {
   notes: text("notes"),
   aiAnalysis: text("ai_analysis"), // Análise completa da IA
   aiRecommendations: text("ai_recommendations"), // Recomendações da IA
+  aiDeviations: text("ai_deviations"), // JSON com desvios identificados pela IA
+  correctedVisualizationUrl: varchar("corrected_visualization_url"), // URL da imagem corrigida
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
