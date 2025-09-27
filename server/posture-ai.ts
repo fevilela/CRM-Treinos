@@ -81,7 +81,12 @@ Seja específico e técnico, mas mantenha a linguagem acessível para personal t
       max_completion_tokens: 2048,
     });
 
-    const result = JSON.parse(response.choices[0].message.content || "{}");
+    const content = response.choices?.[0]?.message?.content;
+    if (!content) {
+      throw new Error("Resposta da API de análise postural veio vazia.");
+    }
+
+    const result = JSON.parse(content);
     return result as PostureAnalysisResult;
   } catch (error) {
     console.error("Error analyzing posture images:", error);
@@ -115,7 +120,11 @@ O diagrama deve:
       quality: "standard",
     });
 
-    return { imageUrl: response.data[0]?.url || "" };
+    if (!response.data || response.data.length === 0 || !response.data[0].url) {
+      throw new Error("Nenhuma imagem foi retornada pela API.");
+    }
+
+    return { imageUrl: response.data[0].url };
   } catch (error) {
     console.error("Error generating corrected posture visualization:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
