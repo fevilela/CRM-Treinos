@@ -36,11 +36,21 @@ export function StudentApp() {
     queryClient.setQueryData(["/api/auth/student/me"], studentData);
   };
 
-  const handleLogout = () => {
-    // Limpa o cache e força uma nova busca
-    queryClient.removeQueries({ queryKey: ["/api/auth/student/me"] });
-    queryClient.removeQueries({ queryKey: ["/api/auth/user"] });
-    window.location.href = "/";
+  const handleLogout = async () => {
+    try {
+      // Call the backend logout endpoint to destroy the session
+      await fetch("/api/logout", {
+        method: "POST",
+        credentials: "include", // Include cookies for session
+      });
+    } catch (error) {
+      console.error("Error during logout:", error);
+    } finally {
+      // Always clear the cache and redirect, even if logout request fails
+      queryClient.removeQueries({ queryKey: ["/api/auth/student/me"] });
+      queryClient.removeQueries({ queryKey: ["/api/auth/user"] });
+      window.location.href = "/";
+    }
   };
 
   if (studentLoading) {

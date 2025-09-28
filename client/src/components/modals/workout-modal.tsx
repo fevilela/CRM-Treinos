@@ -312,22 +312,35 @@ export default function WorkoutModal({
     createWorkoutMutation.reset();
     updateWorkoutMutation.reset();
 
+    const exercisesForSubmission = exercises.map((exercise, index) => ({
+      templateId: exercise.templateId,
+      name: exercise.name,
+      sets: exercise.sets,
+      reps: exercise.reps,
+      weight: exercise.weight,
+      restTime: exercise.restTime,
+      notes: exercise.notes,
+      videoUrl: exercise.videoUrl,
+      order: index + 1,
+    }));
+
+    console.log("=== WORKOUT MODAL SUBMISSION ===");
+    console.log("Exercises being submitted:", exercisesForSubmission);
+    exercisesForSubmission.forEach((ex, idx) => {
+      console.log(`Exercise ${idx + 1}:`, {
+        name: ex.name,
+        templateId: ex.templateId,
+        sets: ex.sets,
+        reps: ex.reps,
+      });
+    });
+
     const workoutWithExercises = {
       ...data,
-      exercises: exercises.map((exercise, index) => ({
-        templateId: exercise.templateId,
-        name: exercise.name,
-        sets: exercise.sets,
-        reps: exercise.reps,
-        weight: exercise.weight,
-        restTime: exercise.restTime,
-        notes: exercise.notes,
-        videoUrl: exercise.videoUrl,
-        order: index + 1,
-      })),
+      exercises: exercisesForSubmission,
     };
 
-    console.log("Final workout data:", workoutWithExercises);
+    console.log("Submitting workout with exercises:", workoutWithExercises);
 
     if (workout) {
       updateWorkoutMutation.mutate(workoutWithExercises);

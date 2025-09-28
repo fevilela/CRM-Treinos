@@ -613,7 +613,13 @@ export class DatabaseStorage implements IStorage {
     return undefined;
   }
   async createWorkout(workout: InsertWorkout): Promise<Workout> {
-    return {} as Workout;
+    console.log("STORAGE: Creating workout with data:", workout);
+    const [createdWorkout] = await db
+      .insert(workouts)
+      .values(workout)
+      .returning();
+    console.log("STORAGE: Created workout:", createdWorkout);
+    return createdWorkout;
   }
   async updateWorkout(
     id: string,
@@ -628,21 +634,55 @@ export class DatabaseStorage implements IStorage {
     return undefined;
   }
   async getExerciseTemplates(): Promise<ExerciseTemplate[]> {
-    return [];
+    console.log("STORAGE: Fetching exercise templates");
+    const templates = await db
+      .select()
+      .from(exerciseTemplates)
+      .orderBy(exerciseTemplates.name);
+    console.log("STORAGE: Found exercise templates:", templates);
+    return templates;
   }
   async createExerciseTemplate(
     template: InsertExerciseTemplate
   ): Promise<ExerciseTemplate> {
-    return {} as ExerciseTemplate;
+    console.log("STORAGE: Creating exercise template with data:", template);
+    const [createdTemplate] = await db
+      .insert(exerciseTemplates)
+      .values(template)
+      .returning();
+    console.log("STORAGE: Created exercise template:", createdTemplate);
+    return createdTemplate;
   }
   async searchExerciseTemplates(query: string): Promise<ExerciseTemplate[]> {
-    return [];
+    console.log("STORAGE: Searching exercise templates with query:", query);
+    const searchResults = await db
+      .select()
+      .from(exerciseTemplates)
+      .where(
+        sql`LOWER(${exerciseTemplates.name}) LIKE LOWER(${"%" + query + "%"})`
+      )
+      .orderBy(exerciseTemplates.name);
+    console.log("STORAGE: Search results:", searchResults);
+    return searchResults;
   }
   async getWorkoutExercises(workoutId: string): Promise<Exercise[]> {
-    return [];
+    console.log("STORAGE: Fetching exercises for workout:", workoutId);
+    const workoutExercises = await db
+      .select()
+      .from(exercises)
+      .where(eq(exercises.workoutId, workoutId))
+      .orderBy(exercises.order);
+    console.log("STORAGE: Found exercises:", workoutExercises);
+    return workoutExercises;
   }
   async createExercise(exercise: InsertExercise): Promise<Exercise> {
-    return {} as Exercise;
+    console.log("STORAGE: Creating exercise with data:", exercise);
+    const [createdExercise] = await db
+      .insert(exercises)
+      .values(exercise)
+      .returning();
+    console.log("STORAGE: Created exercise in database:", createdExercise);
+    return createdExercise;
   }
   async updateExercise(
     id: string,

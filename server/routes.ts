@@ -476,7 +476,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Criar exercícios se fornecidos
       if (exercises && exercises.length > 0) {
+        console.log("POST /api/workouts - Creating exercises:", exercises);
         for (const exercise of exercises) {
+          console.log("Processing exercise:", {
+            name: exercise.name,
+            templateId: exercise.templateId,
+            sets: exercise.sets,
+            reps: exercise.reps,
+          });
+
           const exerciseData = {
             ...exercise,
             workoutId: workout.id,
@@ -486,8 +494,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 : exercise.weight,
           };
 
+          console.log("Exercise data before validation:", exerciseData);
           const validatedExercise = insertExerciseSchema.parse(exerciseData);
-          await storage.createExercise(validatedExercise);
+          console.log("Validated exercise:", validatedExercise);
+
+          const createdExercise = await storage.createExercise(
+            validatedExercise
+          );
+          console.log("Created exercise in DB:", createdExercise);
         }
       }
 

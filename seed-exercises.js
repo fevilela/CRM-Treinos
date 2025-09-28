@@ -73,7 +73,7 @@ async function seedExercises() {
   
   for (const exercise of exerciseTemplates) {
     try {
-      const response = await fetch(`http://0.0.0.0:3000/api/exercise-templates`, {
+      const response = await fetch(`http://0.0.0.0:5000/api/exercise-templates`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
