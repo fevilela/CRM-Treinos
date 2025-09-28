@@ -185,7 +185,7 @@ export function StudentDashboard({ student }: StudentDashboardProps) {
             <Button
               variant="outline"
               className="h-20 flex-col space-y-2"
-              onClick={() => (window.location.href = "/student/workouts")}
+              onClick={() => (window.location.href = "/student-area/workouts")}
             >
               <Dumbbell className="h-6 w-6" />
               <span>Meus Treinos</span>
@@ -193,7 +193,7 @@ export function StudentDashboard({ student }: StudentDashboardProps) {
             <Button
               variant="outline"
               className="h-20 flex-col space-y-2"
-              onClick={() => (window.location.href = "/student/progress")}
+              onClick={() => (window.location.href = "/student-area/progress")}
             >
               <TrendingUp className="h-6 w-6" />
               <span>Meu Progresso</span>
