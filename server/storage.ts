@@ -607,10 +607,33 @@ export class DatabaseStorage implements IStorage {
       .from(workouts)
       .where(eq(workouts.studentId, studentId))
       .orderBy(desc(workouts.createdAt));
-    return workoutsData;
+
+    // Para cada treino, buscar seus exercícios
+    const workoutsWithExercises = await Promise.all(
+      workoutsData.map(async (workout) => {
+        const workoutExercises = await db
+          .select()
+          .from(exercises)
+          .where(eq(exercises.workoutId, workout.id))
+          .orderBy(exercises.order);
+
+        return {
+          ...workout,
+          exercises: workoutExercises,
+        };
+      })
+    );
+
+    return workoutsWithExercises as Workout[];
   }
   async getWorkout(id: string): Promise<Workout | undefined> {
-    return undefined;
+    console.log("STORAGE: Fetching workout with id:", id);
+    const [workout] = await db
+      .select()
+      .from(workouts)
+      .where(eq(workouts.id, id));
+    console.log("STORAGE: Found workout:", workout);
+    return workout;
   }
   async createWorkout(workout: InsertWorkout): Promise<Workout> {
     console.log("STORAGE: Creating workout with data:", workout);
@@ -625,7 +648,17 @@ export class DatabaseStorage implements IStorage {
     id: string,
     workout: Partial<InsertWorkout>
   ): Promise<Workout> {
-    return {} as Workout;
+    console.log("STORAGE: Updating workout with id:", id, "data:", workout);
+    const [updatedWorkout] = await db
+      .update(workouts)
+      .set({
+        ...workout,
+        updatedAt: new Date(),
+      })
+      .where(eq(workouts.id, id))
+      .returning();
+    console.log("STORAGE: Updated workout:", updatedWorkout);
+    return updatedWorkout;
   }
   async deleteWorkout(id: string): Promise<void> {}
   async getStudentMostRecentWorkout(
@@ -691,25 +724,58 @@ export class DatabaseStorage implements IStorage {
     return {} as Exercise;
   }
   async deleteExercise(id: string): Promise<void> {}
-  async deleteWorkoutExercises(workoutId: string): Promise<void> {}
+  async deleteWorkoutExercises(workoutId: string): Promise<void> {
+    console.log("STORAGE: Deleting exercises for workout:", workoutId);
+    await db.delete(exercises).where(eq(exercises.workoutId, workoutId));
+    console.log("STORAGE: Deleted exercises for workout:", workoutId);
+  }
   async getWorkoutSessions(studentId: string): Promise<WorkoutSession[]> {
-    return [];
+    const sessions = await db
+      .select()
+      .from(workoutSessions)
+      .where(eq(workoutSessions.studentId, studentId))
+      .orderBy(desc(workoutSessions.completedAt));
+    return sessions;
   }
   async createWorkoutSession(
     session: InsertWorkoutSession
   ): Promise<WorkoutSession> {
-    return {} as WorkoutSession;
+    const [newSession] = await db
+      .insert(workoutSessions)
+      .values(session)
+      .returning();
+    return newSession;
   }
   async getRecentSessions(
     personalTrainerId: string,
     limit?: number
   ): Promise<WorkoutSession[]> {
-    return [];
+    // Buscar sessões através dos workouts do personal trainer
+    const sessions = await db
+      .select({
+        id: workoutSessions.id,
+        workoutId: workoutSessions.workoutId,
+        studentId: workoutSessions.studentId,
+        startTime: workoutSessions.startTime,
+        completedAt: workoutSessions.completedAt,
+        duration: workoutSessions.duration,
+        notes: workoutSessions.notes,
+      })
+      .from(workoutSessions)
+      .innerJoin(workouts, eq(workoutSessions.workoutId, workouts.id))
+      .where(eq(workouts.personalTrainerId, personalTrainerId))
+      .orderBy(desc(workoutSessions.completedAt))
+      .limit(limit || 10);
+    return sessions as WorkoutSession[];
   }
   async getSessionPerformances(
     sessionId: string
   ): Promise<ExercisePerformance[]> {
-    return [];
+    const performances = await db
+      .select()
+      .from(exercisePerformances)
+      .where(eq(exercisePerformances.sessionId, sessionId));
+    return performances;
   }
   async createExercisePerformance(
     performance: InsertExercisePerformance

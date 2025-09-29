@@ -174,6 +174,7 @@ export const exercisePerformances = pgTable("exercise_performances", {
   id: varchar("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull(),
   workoutSessionId: varchar("workout_session_id")
     .notNull()
     .references(() => workoutSessions.id, { onDelete: "cascade" }),

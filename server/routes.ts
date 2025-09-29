@@ -675,18 +675,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/workout-sessions", isAuthenticated, async (req, res) => {
     try {
-      const { performances, ...sessionData } = req.body;
+      const { performances, exercisePerformances, ...sessionData } = req.body;
       const validatedSessionData =
         insertWorkoutSessionSchema.parse(sessionData);
 
       const session = await storage.createWorkoutSession(validatedSessionData);
 
-      // Criar performances se fornecidas
-      if (performances && performances.length > 0) {
-        for (const performance of performances) {
+      // Criar performances se fornecidas (aceita tanto performances quanto exercisePerformances)
+      const performancesToCreate = performances || exercisePerformances || [];
+      if (performancesToCreate.length > 0) {
+        for (const performance of performancesToCreate) {
           const validatedPerformance = insertExercisePerformanceSchema.parse({
             ...performance,
-            sessionId: session.id,
+            workoutSessionId: session.id,
           });
           await storage.createExercisePerformance(validatedPerformance);
         }
