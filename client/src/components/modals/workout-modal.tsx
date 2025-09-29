@@ -120,8 +120,11 @@ export default function WorkoutModal({
         isActive: workout.isActive,
       });
 
-      // Load exercises if we have workout data
-      if (workoutData?.exercises) {
+      // Always clear exercises first when switching to a different workout
+      setExercises([]);
+
+      // Load exercises only if we have workout data AND it matches the current workout
+      if (workoutData?.exercises && workoutData.id === workout.id) {
         setExercises(workoutData.exercises);
       }
     } else if (isOpen) {
@@ -136,6 +139,14 @@ export default function WorkoutModal({
       setExercises([]);
     }
   }, [workout, workoutData, isOpen, form]);
+
+  // Additional effect to handle workout changes specifically
+  useEffect(() => {
+    if (workout?.id) {
+      // Clear exercises immediately when workout ID changes
+      setExercises([]);
+    }
+  }, [workout?.id]);
 
   const createWorkoutMutation = useMutation({
     mutationFn: async (data: any) => {

@@ -1,7 +1,15 @@
 import OpenAI from "openai";
 
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let openai: OpenAI | null = null;
+
+if (process.env.OPENAI_API_KEY) {
+  openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+} else {
+  console.warn(
+    "OpenAI API key not provided. Posture analysis features will be disabled."
+  );
+}
 
 export interface PostureAnalysisResult {
   analysis: string;
@@ -21,6 +29,12 @@ export async function analyzePostureImages(
   }>,
   observations?: Array<{ joint: string; observation: string; severity: string }>
 ): Promise<PostureAnalysisResult> {
+  if (!openai) {
+    throw new Error(
+      "OpenAI API key not configured. Please set OPENAI_API_KEY environment variable to use posture analysis features."
+    );
+  }
+
   try {
     const imageContents = images.map((img) => ({
       type: "image_url" as const,
@@ -98,6 +112,12 @@ Seja específico e técnico, mas mantenha a linguagem acessível para personal t
 export async function generateCorrectedPostureVisualization(
   originalAnalysis: PostureAnalysisResult
 ): Promise<{ imageUrl: string }> {
+  if (!openai) {
+    throw new Error(
+      "OpenAI API key not configured. Please set OPENAI_API_KEY environment variable to use posture visualization features."
+    );
+  }
+
   try {
     const deviationsDescription = originalAnalysis.deviations
       .map((dev) => `${dev.joint}: ${dev.correction}`)
