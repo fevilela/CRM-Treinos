@@ -5,8 +5,9 @@ dotenv.config();
 
 export const config = {
   // Configurações do servidor
+  // Usa porta 3000 por padrão (local), mas permite override via env (ex: 5000 no Replit)
   port: parseInt(process.env.PORT || "3000"),
-  host: process.env.HOST || "localhost",
+  host: process.env.HOST || "0.0.0.0",
 
   // Trust proxy (1 para Replit que usa proxy/load balancer)
   trustProxy: process.env.TRUST_PROXY
@@ -16,14 +17,18 @@ export const config = {
     : 1,
 
   // URL base da aplicação
-  baseUrl: process.env.APP_BASE_URL || `http://0.0.0.0:3000`,
+  baseUrl:
+    process.env.APP_BASE_URL ||
+    `http://${process.env.REPL_ID ? "0.0.0.0" : "localhost"}:${
+      process.env.PORT || "3000"
+    }`,
 
-  // CORS - usa domínio específico do Replit (frontend na porta 3000)
+  // CORS - usa domínio específico do Replit ou localhost
   allowedOrigin:
     process.env.ALLOWED_ORIGIN ||
     (process.env.REPLIT_DEV_DOMAIN
       ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-      : "http://localhost:3000"),
+      : `http://localhost:${process.env.PORT || "3000"}`),
 
   // Google Calendar
   google: {
@@ -32,7 +37,10 @@ export const config = {
     redirectUri:
       process.env.GOOGLE_REDIRECT_URI ||
       `${
-        process.env.APP_BASE_URL || "http://0.0.0.0:3000"
+        process.env.APP_BASE_URL ||
+        `http://${process.env.REPL_ID ? "0.0.0.0" : "localhost"}:${
+          process.env.PORT || "3000"
+        }`
       }/api/auth/google/callback`,
   },
 

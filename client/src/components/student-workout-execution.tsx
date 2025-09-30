@@ -326,17 +326,31 @@ export function StudentWorkoutExecution({
 
         if (allSetsCompleted) {
           exercise.completed = true;
-          toast({
-            title: "Exercício concluído!",
-            description: `${
-              exercises.find((e) => e.id === exerciseId)?.name
-            } finalizado com sucesso!`,
-          });
         }
       }
       return updated;
     });
   };
+
+  // useEffect para mostrar toast quando exercício é completado
+  useEffect(() => {
+    Object.entries(exerciseProgress).forEach(([exerciseId, progress]) => {
+      if (progress.completed && progress.allSetsCompleted) {
+        const exercise = exercises.find((e) => e.id === exerciseId);
+        if (exercise) {
+          // Só mostra toast uma vez por exercício
+          const toastShown = sessionStorage.getItem(`toast-${exerciseId}`);
+          if (!toastShown) {
+            toast({
+              title: "Exercício concluído!",
+              description: `${exercise.name} finalizado com sucesso!`,
+            });
+            sessionStorage.setItem(`toast-${exerciseId}`, "true");
+          }
+        }
+      }
+    });
+  }, [exerciseProgress, exercises, toast]);
 
   const handleStartRest = (
     duration: number,

@@ -680,23 +680,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         insertWorkoutSessionSchema.parse(sessionData);
 
       const session = await storage.createWorkoutSession(validatedSessionData);
+      console.log("[WORKOUT SESSION] Sessão criada:", session.id);
 
       // Criar performances se fornecidas (aceita tanto performances quanto exercisePerformances)
       const performancesToCreate = performances || exercisePerformances || [];
       if (performancesToCreate.length > 0) {
+        // Gerar um sessionId único para este conjunto de performances
+        const sessionId = crypto.randomUUID();
+
         for (const performance of performancesToCreate) {
           const validatedPerformance = insertExercisePerformanceSchema.parse({
             ...performance,
+            sessionId, // Adiciona o sessionId gerado
             workoutSessionId: session.id,
           });
           await storage.createExercisePerformance(validatedPerformance);
         }
+        console.log(
+          "[WORKOUT SESSION] Performances criadas:",
+          performancesToCreate.length
+        );
       }
 
       res.json(session);
     } catch (error) {
-      console.error("Error creating workout session:", error);
-      res.status(500).json({ message: "Failed to create workout session" });
+      console.error("[WORKOUT SESSION] Erro completo:", error);
+      if (error instanceof Error) {
+        console.error("[WORKOUT SESSION] Stack:", error.stack);
+      }
+      res.status(500).json({
+        message: "Failed to create workout session",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   });
 
