@@ -72,16 +72,16 @@ function WorkoutMainTimer({
 
     if (isActive) {
       interval = setInterval(() => {
-        setSeconds((prev) => {
-          const newSeconds = prev + 1;
-          onTimeUpdate(newSeconds);
-          return newSeconds;
-        });
+        setSeconds((prev) => prev + 1);
       }, 1000);
     }
 
     return () => clearInterval(interval);
-  }, [isActive, onTimeUpdate]);
+  }, [isActive]);
+
+  useEffect(() => {
+    onTimeUpdate(seconds);
+  }, [seconds, onTimeUpdate]);
 
   const formatTime = (totalSeconds: number) => {
     const hours = Math.floor(totalSeconds / 3600);
@@ -747,7 +747,7 @@ export function StudentWorkoutExecution({
                               Repetições
                             </label>
                             <Input
-                              type="number"
+                              type="text"
                               value={set.reps}
                               onChange={(e) =>
                                 handleUpdateSetData(
