@@ -433,19 +433,23 @@ export function StudentWorkoutExecution({
       duration: Math.floor(workoutDuration / 60), // em minutos
       exercisePerformances: Object.values(exerciseProgress)
         .filter((progress) => progress.completed)
-        .map((progress) => ({
-          exerciseId: progress.exerciseId,
-          actualSets: progress.sets.filter((set) => set.completed).length,
-          actualReps: progress.sets
-            .filter((set) => set.completed)
-            .map((set) => set.reps)
-            .join(","),
-          actualWeight: progress.sets
-            .filter((set) => set.completed)
-            .map((set) => parseFloat(set.weight) || 0)
-            .reduce((max, weight) => Math.max(max, weight), 0),
-          completed: true,
-        })),
+        .map((progress) => {
+          const completedSets = progress.sets.filter((set) => set.completed);
+          const maxWeight =
+            completedSets.length > 0
+              ? completedSets
+                  .map((set) => parseFloat(set.weight) || 0)
+                  .reduce((max, weight) => Math.max(max, weight), 0)
+              : 0;
+
+          return {
+            exerciseId: progress.exerciseId,
+            actualSets: completedSets.length,
+            actualReps: completedSets.map((set) => set.reps).join(","),
+            actualWeight: maxWeight.toString(),
+            completed: true,
+          };
+        }),
     };
 
     saveWorkoutSessionMutation.mutate(sessionData);
