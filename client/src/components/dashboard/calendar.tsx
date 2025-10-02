@@ -33,6 +33,7 @@ import {
   Plus,
   Settings,
   RefreshCw,
+  CheckCircle2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -69,6 +70,8 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
     null
   );
   const [isLoading, setIsLoading] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
 
@@ -322,11 +325,36 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
             loading: false,
           },
         });
+
+        // Auto-sincronizar se houver calendários conectados e auto-sync estiver habilitado
+        if (
+          autoSyncEnabled &&
+          (data.connections.google.connected ||
+            data.connections.outlook.connected)
+        ) {
+          handleSyncCalendars(true); // true = silencioso (sem toast)
+        }
       }
     } catch (error) {
       console.error("Erro ao verificar status dos calendários:", error);
     }
   };
+
+  // Auto-sincronização periódica (a cada 5 minutos)
+  useEffect(() => {
+    if (!autoSyncEnabled) return;
+
+    const syncInterval = setInterval(() => {
+      if (
+        calendarConnections.google.connected ||
+        calendarConnections.outlook.connected
+      ) {
+        handleSyncCalendars(true); // Sincronização silenciosa
+      }
+    }, 5 * 60 * 1000); // 5 minutos
+
+    return () => clearInterval(syncInterval);
+  }, [autoSyncEnabled, calendarConnections]);
 
   // Conectar com Google Calendar
   const handleConnectGoogle = async () => {
@@ -368,6 +396,8 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
                   title: "Sucesso",
                   description: "Google Calendar conectado com sucesso",
                 });
+                // Auto-sincronizar após conectar
+                handleSyncCalendars(false);
               }
             }
           } catch (error) {
@@ -440,6 +470,8 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
                   title: "Sucesso",
                   description: "Outlook Calendar conectado com sucesso",
                 });
+                // Auto-sincronizar após conectar
+                handleSyncCalendars(false);
               }
             }
           } catch (error) {
@@ -473,7 +505,7 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
   };
 
   // Sincronizar calendários externos
-  const handleSyncCalendars = async () => {
+  const handleSyncCalendars = async (silent: boolean = false) => {
     setIsLoading(true);
     try {
       const response = await fetch("/api/calendar/sync", {
@@ -518,29 +550,34 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
         // Mesclar eventos externos com eventos locais
         const localEvents = events.filter((e) => e.source === "manual");
         setEvents([...localEvents, ...syncedEvents]);
+        setLastSyncTime(new Date());
 
-        let message = "Calendários sincronizados com sucesso!";
-        if (data.results.google) {
-          message += ` Google: ${data.results.google.count} eventos.`;
-        }
-        if (data.results.outlook) {
-          message += ` Outlook: ${data.results.outlook.count} eventos.`;
-        }
+        if (!silent) {
+          let message = "Calendários sincronizados com sucesso!";
+          if (data.results.google) {
+            message += ` Google: ${data.results.google.count} eventos.`;
+          }
+          if (data.results.outlook) {
+            message += ` Outlook: ${data.results.outlook.count} eventos.`;
+          }
 
-        toast({
-          title: "Sucesso",
-          description: message,
-        });
+          toast({
+            title: "Sucesso",
+            description: message,
+          });
+        }
       } else {
         throw new Error("Falha na sincronização");
       }
     } catch (error) {
       console.error("Erro ao sincronizar calendários:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao sincronizar calendários externos",
-        variant: "destructive",
-      });
+      if (!silent) {
+        toast({
+          title: "Erro",
+          description: "Falha ao sincronizar calendários externos",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -559,12 +596,24 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
           <CardTitle className="flex items-center gap-2">
             <CalendarIcon className="h-5 w-5" />
             Agenda
+            {lastSyncTime && (
+              <span className="text-xs text-muted-foreground font-normal ml-2">
+                Última sinc: {moment(lastSyncTime).format("HH:mm")}
+              </span>
+            )}
           </CardTitle>
           <div className="flex items-center gap-2">
+            {(calendarConnections.google.connected ||
+              calendarConnections.outlook.connected) && (
+              <Badge variant="secondary" className="text-xs">
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Auto-sync ativo
+              </Badge>
+            )}
             <Button
               variant="outline"
               size="sm"
-              onClick={handleSyncCalendars}
+              onClick={() => handleSyncCalendars(false)}
               disabled={isLoading}
             >
               <RefreshCw
@@ -590,6 +639,10 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
                     <h4 className="font-medium mb-2">
                       Conectar Calendários Externos
                     </h4>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Os calendários conectados serão sincronizados
+                      automaticamente a cada 5 minutos
+                    </p>
                     <div className="space-y-2">
                       <Button
                         variant="outline"
@@ -706,189 +759,155 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
                 {selectedEvent ? "Detalhes do Evento" : "Novo Evento"}
               </DialogTitle>
             </DialogHeader>
-
             {selectedEvent ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
-                  <h4 className="font-medium">{selectedEvent.title}</h4>
-                  <p className="text-sm text-gray-600">
-                    {moment(selectedEvent.start).format("DD/MM/YYYY HH:mm")} -
-                    {moment(selectedEvent.end).format("HH:mm")}
+                  <Label className="text-sm font-medium">Título</Label>
+                  <p className="text-sm">{selectedEvent.title}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Período</Label>
+                  <p className="text-sm">
+                    {moment(selectedEvent.start).format("DD/MM/YYYY HH:mm")} -{" "}
+                    {moment(selectedEvent.end).format("DD/MM/YYYY HH:mm")}
                   </p>
                 </div>
                 {selectedEvent.description && (
                   <div>
-                    <Label>Descrição</Label>
+                    <Label className="text-sm font-medium">Descrição</Label>
                     <p className="text-sm">{selectedEvent.description}</p>
                   </div>
                 )}
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary">
-                    {
-                      eventTypes.find((t) => t.value === selectedEvent.type)
-                        ?.label
-                    }
-                  </Badge>
-                  {selectedEvent.source &&
-                    selectedEvent.source !== "manual" && (
-                      <Badge variant="outline">
-                        {selectedEvent.source === "google"
-                          ? "Google"
-                          : "Outlook"}
-                      </Badge>
-                    )}
-                </div>
                 {selectedEvent.studentName && (
                   <div>
-                    <Label>Aluno</Label>
+                    <Label className="text-sm font-medium">Aluno</Label>
                     <p className="text-sm">{selectedEvent.studentName}</p>
+                  </div>
+                )}
+                <div>
+                  <Label className="text-sm font-medium">Tipo</Label>
+                  <Badge variant="secondary" className="text-xs">
+                    {selectedEvent.type === "training" && "Treino"}
+                    {selectedEvent.type === "consultation" && "Consulta"}
+                    {selectedEvent.type === "personal" && "Pessoal"}
+                    {selectedEvent.type === "synced" && "Sincronizado"}
+                  </Badge>
+                </div>
+                {selectedEvent.source && selectedEvent.source !== "manual" && (
+                  <div>
+                    <Label className="text-sm font-medium">Fonte</Label>
+                    <Badge variant="outline" className="text-xs">
+                      {selectedEvent.source === "google" && "Google Calendar"}
+                      {selectedEvent.source === "outlook" && "Outlook Calendar"}
+                    </Badge>
                   </div>
                 )}
               </div>
             ) : (
               <div className="space-y-4">
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="title">Título *</Label>
                   <Input
                     id="title"
+                    placeholder="Ex: Treino de Peito"
                     value={newEvent.title}
                     onChange={(e) =>
-                      setNewEvent((prev) => ({
-                        ...prev,
-                        title: e.target.value,
-                      }))
+                      setNewEvent({ ...newEvent, title: e.target.value })
                     }
-                    placeholder="Título do evento"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="start">Início *</Label>
                     <Input
                       id="start"
                       type="datetime-local"
                       value={newEvent.start}
                       onChange={(e) =>
-                        setNewEvent((prev) => ({
-                          ...prev,
-                          start: e.target.value,
-                        }))
+                        setNewEvent({ ...newEvent, start: e.target.value })
                       }
                     />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="end">Fim *</Label>
                     <Input
                       id="end"
                       type="datetime-local"
                       value={newEvent.end}
                       onChange={(e) =>
-                        setNewEvent((prev) => ({
-                          ...prev,
-                          end: e.target.value,
-                        }))
+                        setNewEvent({ ...newEvent, end: e.target.value })
                       }
                     />
                   </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="type">Tipo</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="type">Tipo *</Label>
                   <Select
                     value={newEvent.type}
-                    onValueChange={(value: CalendarEvent["type"]) =>
-                      setNewEvent((prev) => ({ ...prev, type: value }))
+                    onValueChange={(value: any) =>
+                      setNewEvent({ ...newEvent, type: value })
                     }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {eventTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="training">Treino</SelectItem>
+                      <SelectItem value="consultation">Consulta</SelectItem>
+                      <SelectItem value="personal">Pessoal</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                {/* Campo de seleção de aluno - obrigatório para treinos e consultas */}
                 {(newEvent.type === "training" ||
                   newEvent.type === "consultation") && (
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="student">Aluno *</Label>
                     <Select
                       value={newEvent.studentId}
                       onValueChange={(value) => {
-                        const selectedStudent = students.find(
+                        const student = students.find(
                           (s: any) => s.id === value
                         );
-                        setNewEvent((prev) => ({
-                          ...prev,
+                        setNewEvent({
+                          ...newEvent,
                           studentId: value,
-                          studentName: selectedStudent?.name || "",
-                        }));
+                          studentName: student?.name || "",
+                        });
                       }}
                     >
-                      <SelectTrigger
-                        className={!newEvent.studentId ? "border-red-300" : ""}
-                      >
-                        <SelectValue
-                          placeholder={
-                            loadingStudents
-                              ? "Carregando..."
-                              : "Selecione um aluno *"
-                          }
-                        />
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um aluno" />
                       </SelectTrigger>
                       <SelectContent>
                         {students.map((student: any) => (
                           <SelectItem key={student.id} value={student.id}>
-                            {student.name} - {student.email}
+                            {student.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    {(newEvent.type === "training" ||
-                      newEvent.type === "consultation") &&
-                      !newEvent.studentId && (
-                        <p className="text-sm text-red-600 mt-1">
-                          Aluno é obrigatório para{" "}
-                          {newEvent.type === "training"
-                            ? "treinos"
-                            : "consultas"}
-                        </p>
-                      )}
                   </div>
                 )}
 
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="description">Descrição</Label>
                   <Textarea
                     id="description"
+                    placeholder="Descrição do evento..."
                     value={newEvent.description}
                     onChange={(e) =>
-                      setNewEvent((prev) => ({
-                        ...prev,
-                        description: e.target.value,
-                      }))
+                      setNewEvent({ ...newEvent, description: e.target.value })
                     }
-                    placeholder="Descrição opcional"
-                    rows={3}
                   />
                 </div>
 
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowEventModal(false)}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button onClick={handleCreateEvent}>Criar Evento</Button>
-                </div>
+                <Button onClick={handleCreateEvent} className="w-full">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Evento
+                </Button>
               </div>
             )}
           </DialogContent>

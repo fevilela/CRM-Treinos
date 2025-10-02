@@ -22,6 +22,7 @@ import NotFound from "@/pages/not-found";
 import AreaSelection from "@/pages/area-selection";
 import Sidebar from "@/components/layout/sidebar";
 import { StudentLayout } from "@/components/layout/student-layout";
+import { SidebarProvider, useSidebar } from "@/contexts/SidebarContext";
 import type { Student } from "@shared/schema";
 
 // Definir tipo para o usuário baseado no schema
@@ -58,6 +59,8 @@ function Router() {
 
   // Layout wrapper para rotas do professor
   const TeacherLayout = ({ children }: { children: React.ReactNode }) => {
+    const { isCollapsed } = useSidebar();
+
     if (isLoading) {
       return (
         <div className="min-h-screen flex items-center justify-center">
@@ -73,7 +76,11 @@ function Router() {
     return (
       <div className="flex">
         <Sidebar />
-        <main className="flex-1 p-6 bg-background min-h-screen ml-64">
+        <main
+          className={`flex-1 p-6 bg-background min-h-screen transition-all duration-300 ${
+            isCollapsed ? "ml-20" : "ml-64"
+          }`}
+        >
           {children}
         </main>
       </div>
@@ -194,10 +201,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <SidebarProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </SidebarProvider>
     </QueryClientProvider>
   );
 }
