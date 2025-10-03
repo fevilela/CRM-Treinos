@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Upload, X, Camera, Loader2 } from "lucide-react";
+import { Camera, X, Save } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -120,7 +120,7 @@ export function PostureAssessment({
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [observations, setObservations] = useState<JointObservation[]>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [selectedJoint, setSelectedJoint] = useState("");
   const [selectedObservation, setSelectedObservation] = useState("");
   const [customObservation, setCustomObservation] = useState("");
@@ -128,33 +128,19 @@ export function PostureAssessment({
     "normal" | "mild" | "moderate" | "severe"
   >("mild");
 
-  // Load initial data when in edit mode
   useEffect(() => {
     if (mode === "edit" && initialData) {
       setTitle(initialData.title || "");
       setNotes(initialData.notes || "");
 
-      // Load observations
       if (initialData.observations) {
         setObservations(
           initialData.observations.map((obs) => ({
             joint: obs.joint,
             observation: obs.observation,
             severity: obs.severity,
-            isCustom: false, // For existing observations, we'll consider them custom
+            isCustom: false,
           }))
-        );
-      }
-
-      // For photos in edit mode, we would need to fetch them from URLs
-      // This is a simplified version - in a real app, you might want to
-      // convert URLs back to File objects or handle differently
-      if (initialData.photos) {
-        // Note: This doesn't load actual photos for editing since we'd need
-        // to fetch URLs and convert to File objects. For now, we'll just
-        // show that photos exist but they'd need to be re-uploaded to edit.
-        console.log(
-          "Edit mode: Photos exist but need to be re-uploaded for editing"
         );
       }
     }
@@ -209,7 +195,6 @@ export function PostureAssessment({
       return [...filtered, newObservation];
     });
 
-    // Reset form
     setSelectedJoint("");
     setSelectedObservation("");
     setCustomObservation("");
@@ -224,20 +209,19 @@ export function PostureAssessment({
     return photos.find((p) => p.type === type);
   };
 
-  const canAnalyze = photos.length === 4 && title.trim();
+  const canSave = photos.length > 0 && title.trim();
 
-  const handleAnalyze = async () => {
-    if (!canAnalyze) return;
+  const handleSave = async () => {
+    if (!canSave) return;
 
-    setIsAnalyzing(true);
+    setIsSaving(true);
     try {
-      // Convert images to base64
       const imagePromises = photos.map(async (photo) => {
         return new Promise<{ type: string; base64: string }>((resolve) => {
           const reader = new FileReader();
           reader.onload = () => {
             const result = reader.result as string;
-            const base64 = result.split(",")[1]; // Remove data:image/jpeg;base64, prefix
+            const base64 = result.split(",")[1];
             resolve({ type: photo.type, base64 });
           };
           reader.readAsDataURL(photo.file);
@@ -262,10 +246,10 @@ export function PostureAssessment({
 
       await onSave(assessmentData);
     } catch (error) {
-      console.error("Erro ao analisar postura:", error);
-      alert("Erro ao analisar postura. Tente novamente.");
+      console.error("Erro ao salvar avaliação:", error);
+      alert("Erro ao salvar avaliação. Tente novamente.");
     } finally {
-      setIsAnalyzing(false);
+      setIsSaving(false);
     }
   };
 
@@ -273,7 +257,9 @@ export function PostureAssessment({
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Nova Avaliação Postural</CardTitle>
+          <CardTitle>
+            {mode === "edit" ? "Editar" : "Nova"} Avaliação Postural
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
@@ -299,16 +285,17 @@ export function PostureAssessment({
         </CardContent>
       </Card>
 
-      {/* Upload de Fotos */}
       <Card>
         <CardHeader>
-          <CardTitle>Fotos Posturais</CardTitle>
+          <CardTitle>Fotos Posturais com Grade de Avaliação</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Faça upload de 4 fotos: frente, costas, lado esquerdo e lado direito
+            Faça upload das fotos (frente, costas, lado esquerdo e/ou lado
+            direito). Uma grade quadriculada será aplicada para facilitar a
+            análise postural.
           </p>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {PHOTO_TYPES.map((photoType) => {
               const photo = getPhotoByType(photoType.key);
               return (
@@ -320,15 +307,38 @@ export function PostureAssessment({
                   <div className="relative">
                     {photo ? (
                       <div className="relative group">
-                        <img
-                          src={photo.preview}
-                          alt={photoType.label}
-                          className="w-full h-32 object-cover rounded-lg border-2 border-dashed border-green-300"
-                          style={{
-                            backgroundImage: `url("data:image/svg+xml,%3csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3e%3cdefs%3e%3cpattern id='grid' width='10' height='10' patternUnits='userSpaceOnUse'%3e%3cpath d='M 10 0 L 0 0 0 10' fill='none' stroke='%23ddd' stroke-width='1'/%3e%3c/pattern%3e%3c/defs%3e%3crect width='100%25' height='100%25' fill='url(%23grid)' /%3e%3c/svg%3e")`,
-                            backgroundBlendMode: "overlay",
-                          }}
-                        />
+                        <div className="relative overflow-hidden rounded-lg border-2 border-gray-300">
+                          <img
+                            src={photo.preview}
+                            alt={photoType.label}
+                            className="w-full h-96 object-contain bg-gray-50"
+                          />
+                          <svg
+                            className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                            style={{ opacity: 0.4 }}
+                          >
+                            <defs>
+                              <pattern
+                                id={`grid-${photoType.key}`}
+                                width="20"
+                                height="20"
+                                patternUnits="userSpaceOnUse"
+                              >
+                                <path
+                                  d="M 20 0 L 0 0 0 20"
+                                  fill="none"
+                                  stroke="#666"
+                                  strokeWidth="0.5"
+                                />
+                              </pattern>
+                            </defs>
+                            <rect
+                              width="100%"
+                              height="100%"
+                              fill={`url(#grid-${photoType.key})`}
+                            />
+                          </svg>
+                        </div>
                         <Button
                           size="sm"
                           variant="destructive"
@@ -340,10 +350,10 @@ export function PostureAssessment({
                       </div>
                     ) : (
                       <label className="cursor-pointer">
-                        <div className="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-blue-500 transition-colors">
-                          <Camera className="w-8 h-8 text-gray-400 mb-2" />
+                        <div className="w-full h-96 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-blue-500 transition-colors bg-gray-50">
+                          <Camera className="w-12 h-12 text-gray-400 mb-2" />
                           <span className="text-sm text-gray-500">
-                            Clique para enviar
+                            Clique para enviar foto
                           </span>
                         </div>
                         <input
@@ -362,7 +372,6 @@ export function PostureAssessment({
         </CardContent>
       </Card>
 
-      {/* Observações por Articulação */}
       <Card>
         <CardHeader>
           <CardTitle>Observações por Articulação</CardTitle>
@@ -450,7 +459,6 @@ export function PostureAssessment({
             Adicionar Observação
           </Button>
 
-          {/* Lista de observações adicionadas */}
           {observations.length > 0 && (
             <div className="space-y-2">
               <Label>Observações Adicionadas</Label>
@@ -501,35 +509,30 @@ export function PostureAssessment({
         </CardContent>
       </Card>
 
-      {/* Botão de Análise */}
       <Card>
         <CardContent className="pt-6">
           <Button
-            onClick={handleAnalyze}
-            disabled={!canAnalyze || isAnalyzing}
+            onClick={handleSave}
+            disabled={!canSave || isSaving}
             size="lg"
             className="w-full"
           >
-            {isAnalyzing ? (
+            {isSaving ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {mode === "edit"
-                  ? "Atualizando análise..."
-                  : "Analisando com IA..."}
+                <Save className="w-4 h-4 mr-2 animate-pulse" />
+                Salvando...
               </>
             ) : (
               <>
-                <Upload className="w-4 h-4 mr-2" />
-                {mode === "edit"
-                  ? "Atualizar Análise"
-                  : "Analisar Postura com IA"}
+                <Save className="w-4 h-4 mr-2" />
+                {mode === "edit" ? "Atualizar Avaliação" : "Salvar Avaliação"}
               </>
             )}
           </Button>
-          {!canAnalyze && (
+          {!canSave && (
             <p className="text-sm text-muted-foreground text-center mt-2">
-              {photos.length < 4
-                ? `Adicione ${4 - photos.length} foto(s) restante(s)`
+              {photos.length === 0
+                ? "Adicione pelo menos uma foto"
                 : "Adicione um título para continuar"}
             </p>
           )}
