@@ -23,13 +23,13 @@ const menuItems: MenuItem[] = [
     icon: "fas fa-clipboard-list",
   },
   {
-    name: "Avaliação Física",
+    name: "Avaliações",
     icon: "fas fa-clipboard-check",
     submenu: [
       {
-        name: "Avaliação Postural",
-        path: "/teacher-area/posture-assessments",
-        icon: "fas fa-body",
+        name: "Progresso",
+        path: "/teacher-area/assessments",
+        icon: "fas fa-chart-line",
       },
       {
         name: "Avaliação Antropométrica",
@@ -37,11 +37,16 @@ const menuItems: MenuItem[] = [
         icon: "fas fa-ruler",
       },
       {
-        name: "Gráficos (Progresso)",
-        path: "/teacher-area/progress",
-        icon: "fas fa-chart-line",
+        name: "Avaliação Postural",
+        path: "/teacher-area/posture-assessments",
+        icon: "fas fa-body",
       },
     ],
+  },
+  {
+    name: "Anamnese",
+    path: "/teacher-area/anamneses",
+    icon: "fas fa-file-medical",
   },
   {
     name: "Evolução Corporal",

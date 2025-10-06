@@ -149,6 +149,12 @@ export default function Progress() {
     enabled: isAuthenticated && selectedStudent !== "all",
   });
 
+  // Get weekly workout progress for selected student
+  const { data: weeklyProgress } = useQuery({
+    queryKey: [`/api/progress/weekly/${selectedStudent}`],
+    enabled: isAuthenticated && selectedStudent !== "all",
+  });
+
   // Transform assessment history into chart data format
   const bodyMeasurements =
     assessmentHistory && Array.isArray(assessmentHistory)
@@ -169,6 +175,23 @@ export default function Progress() {
           calves: parseFloat(item.calfCirc) || 0,
         }))
       : mockBodyMeasurements;
+
+  // Transform weekly workout progress into chart data format
+  const groupedWorkoutProgress =
+    weeklyProgress && Array.isArray(weeklyProgress)
+      ? weeklyProgress.reduce((acc: any, item: any) => {
+          if (!acc[item.exerciseName]) {
+            acc[item.exerciseName] = [];
+          }
+          acc[item.exerciseName].push({
+            date: new Date(item.week).toISOString().split("T")[0],
+            weight: parseFloat(item.avgWeight) || 0,
+            reps: Math.round(parseFloat(item.avgReps)) || 0,
+            sets: Math.round(parseFloat(item.totalSets)) || 0,
+          });
+          return acc;
+        }, {})
+      : {};
 
   const getTrend = (current: number, previous: number) => {
     if (current > previous)
@@ -509,208 +532,146 @@ export default function Progress() {
 
           {/* Aba Desempenho */}
           <TabsContent value="performance" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {/* Supino */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center justify-between">
-                    Supino (1RM)
-                    <Badge variant="outline">kg</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-2xl font-bold">
-                      {mockPerformance[mockPerformance.length - 1]?.benchPress}
-                      kg
-                    </span>
-                    {(() => {
-                      const current =
-                        mockPerformance[mockPerformance.length - 1]?.benchPress;
-                      const previous =
-                        mockPerformance[mockPerformance.length - 2]?.benchPress;
-                      const trend = getTrend(current, previous);
-                      const TrendIcon = trend.icon;
-                      return (
-                        <div className={`flex items-center ${trend.color}`}>
-                          <TrendIcon className="h-4 w-4 mr-1" />
-                          <span className="text-sm">
-                            +{Math.abs(current - previous)}kg
-                          </span>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                  <LineChart
-                    data={mockPerformance}
-                    dataKey="benchPress"
-                    title="Evolução do Supino"
-                    unit="kg"
-                    color="#8B5CF6"
-                  />
-                </CardContent>
-              </Card>
+            {selectedStudent === "all" ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500">
+                  Selecione um aluno para visualizar o progresso semanal de
+                  treinos
+                </p>
+              </div>
+            ) : Object.keys(groupedWorkoutProgress).length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500">
+                  Nenhum dado de treino disponível ainda
+                </p>
+                <p className="text-sm text-gray-400 mt-2">
+                  Os gráficos aparecerão quando o aluno completar treinos
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {Object.entries(groupedWorkoutProgress).map(
+                  ([exerciseName, data]: [string, any]) => {
+                    const exerciseData = data as Array<{
+                      date: string;
+                      weight: number;
+                      reps: number;
+                      sets: number;
+                    }>;
+                    const colors = [
+                      "#8B5CF6",
+                      "#10B981",
+                      "#EF4444",
+                      "#F59E0B",
+                      "#06B6D4",
+                      "#3B82F6",
+                    ];
+                    const colorIndex =
+                      Object.keys(groupedWorkoutProgress).indexOf(
+                        exerciseName
+                      ) % colors.length;
+                    const color = colors[colorIndex];
 
-              {/* Agachamento */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center justify-between">
-                    Agachamento (1RM)
-                    <Badge variant="outline">kg</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-2xl font-bold">
-                      {mockPerformance[mockPerformance.length - 1]?.squat}kg
-                    </span>
-                    {(() => {
-                      const current =
-                        mockPerformance[mockPerformance.length - 1]?.squat;
-                      const previous =
-                        mockPerformance[mockPerformance.length - 2]?.squat;
-                      const trend = getTrend(current, previous);
-                      const TrendIcon = trend.icon;
-                      return (
-                        <div className={`flex items-center ${trend.color}`}>
-                          <TrendIcon className="h-4 w-4 mr-1" />
-                          <span className="text-sm">
-                            +{Math.abs(current - previous)}kg
-                          </span>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                  <LineChart
-                    data={mockPerformance}
-                    dataKey="squat"
-                    title="Evolução do Agachamento"
-                    unit="kg"
-                    color="#10B981"
-                  />
-                </CardContent>
-              </Card>
+                    return (
+                      <Card key={exerciseName}>
+                        <CardHeader>
+                          <CardTitle className="text-lg">
+                            {exerciseName}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {/* Carga (Peso) Chart */}
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-gray-700">
+                                Carga Média Semanal
+                              </span>
+                              <Badge variant="outline">kg</Badge>
+                            </div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xl font-bold">
+                                {exerciseData[
+                                  exerciseData.length - 1
+                                ]?.weight.toFixed(1)}
+                                kg
+                              </span>
+                              {(() => {
+                                if (exerciseData.length < 2) return null;
+                                const current =
+                                  exerciseData[exerciseData.length - 1]?.weight;
+                                const previous =
+                                  exerciseData[exerciseData.length - 2]?.weight;
+                                const trend = getTrend(current, previous);
+                                const TrendIcon = trend.icon;
+                                return (
+                                  <div
+                                    className={`flex items-center ${trend.color}`}
+                                  >
+                                    <TrendIcon className="h-4 w-4 mr-1" />
+                                    <span className="text-sm">
+                                      {Math.abs(current - previous).toFixed(1)}
+                                      kg
+                                    </span>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                            <LineChart
+                              data={exerciseData}
+                              dataKey="weight"
+                              title="Evolução Semanal - Carga"
+                              unit="kg"
+                              color={color}
+                            />
+                          </div>
 
-              {/* Levantamento Terra */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center justify-between">
-                    Levantamento Terra (1RM)
-                    <Badge variant="outline">kg</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-2xl font-bold">
-                      {mockPerformance[mockPerformance.length - 1]?.deadlift}kg
-                    </span>
-                    {(() => {
-                      const current =
-                        mockPerformance[mockPerformance.length - 1]?.deadlift;
-                      const previous =
-                        mockPerformance[mockPerformance.length - 2]?.deadlift;
-                      const trend = getTrend(current, previous);
-                      const TrendIcon = trend.icon;
-                      return (
-                        <div className={`flex items-center ${trend.color}`}>
-                          <TrendIcon className="h-4 w-4 mr-1" />
-                          <span className="text-sm">
-                            +{Math.abs(current - previous)}kg
-                          </span>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                  <LineChart
-                    data={mockPerformance}
-                    dataKey="deadlift"
-                    title="Evolução do Levantamento Terra"
-                    unit="kg"
-                    color="#EF4444"
-                  />
-                </CardContent>
-              </Card>
-
-              {/* Barra Fixa */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center justify-between">
-                    Barra Fixa
-                    <Badge variant="outline">reps</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-2xl font-bold">
-                      {mockPerformance[mockPerformance.length - 1]?.pullUps}
-                    </span>
-                    {(() => {
-                      const current =
-                        mockPerformance[mockPerformance.length - 1]?.pullUps;
-                      const previous =
-                        mockPerformance[mockPerformance.length - 2]?.pullUps;
-                      const trend = getTrend(current, previous);
-                      const TrendIcon = trend.icon;
-                      return (
-                        <div className={`flex items-center ${trend.color}`}>
-                          <TrendIcon className="h-4 w-4 mr-1" />
-                          <span className="text-sm">
-                            +{Math.abs(current - previous)}
-                          </span>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                  <LineChart
-                    data={mockPerformance}
-                    dataKey="pullUps"
-                    title="Evolução da Barra Fixa"
-                    unit=" reps"
-                    color="#F59E0B"
-                  />
-                </CardContent>
-              </Card>
-
-              {/* Flexões */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center justify-between">
-                    Flexões
-                    <Badge variant="outline">reps</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-2xl font-bold">
-                      {mockPerformance[mockPerformance.length - 1]?.pushUps}
-                    </span>
-                    {(() => {
-                      const current =
-                        mockPerformance[mockPerformance.length - 1]?.pushUps;
-                      const previous =
-                        mockPerformance[mockPerformance.length - 2]?.pushUps;
-                      const trend = getTrend(current, previous);
-                      const TrendIcon = trend.icon;
-                      return (
-                        <div className={`flex items-center ${trend.color}`}>
-                          <TrendIcon className="h-4 w-4 mr-1" />
-                          <span className="text-sm">
-                            +{Math.abs(current - previous)}
-                          </span>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                  <LineChart
-                    data={mockPerformance}
-                    dataKey="pushUps"
-                    title="Evolução das Flexões"
-                    unit=" reps"
-                    color="#06B6D4"
-                  />
-                </CardContent>
-              </Card>
-            </div>
+                          {/* Repetições Chart */}
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-gray-700">
+                                Repetições Médias Semanais
+                              </span>
+                              <Badge variant="outline">reps</Badge>
+                            </div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xl font-bold">
+                                {exerciseData[exerciseData.length - 1]?.reps}
+                              </span>
+                              {(() => {
+                                if (exerciseData.length < 2) return null;
+                                const current =
+                                  exerciseData[exerciseData.length - 1]?.reps;
+                                const previous =
+                                  exerciseData[exerciseData.length - 2]?.reps;
+                                const trend = getTrend(current, previous);
+                                const TrendIcon = trend.icon;
+                                return (
+                                  <div
+                                    className={`flex items-center ${trend.color}`}
+                                  >
+                                    <TrendIcon className="h-4 w-4 mr-1" />
+                                    <span className="text-sm">
+                                      {Math.abs(current - previous)}
+                                    </span>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                            <LineChart
+                              data={exerciseData}
+                              dataKey="reps"
+                              title="Evolução Semanal - Repetições"
+                              unit=" reps"
+                              color={color}
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  }
+                )}
+              </div>
+            )}
           </TabsContent>
 
           {/* Aba Saúde */}

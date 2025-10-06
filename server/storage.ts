@@ -18,6 +18,7 @@ import {
   posturePhotos,
   postureObservations,
   postureOptions,
+  anamneses,
   type InsertUser,
   type UpsertUser,
   type User,
@@ -56,6 +57,8 @@ import {
   type InsertPostureObservation,
   type PostureOption,
   type InsertPostureOption,
+  type Anamnese,
+  type InsertAnamnese,
 } from "@shared/schema";
 import { eq, desc, asc, and, or, gte, lte, sql, ne } from "drizzle-orm";
 import { promises as fs } from "fs";
@@ -785,6 +788,31 @@ export class DatabaseStorage implements IStorage {
       .values(performance)
       .returning();
     return newPerformance;
+  }
+
+  async getWeeklyWorkoutProgress(studentId: string): Promise<any[]> {
+    const result = await db
+      .select({
+        week: sql<string>`DATE_TRUNC('week', ${workoutSessions.completedAt})`,
+        exerciseName: exercises.name,
+        avgWeight: sql<number>`AVG(CAST(${exercisePerformances.actualWeight} AS DECIMAL))`,
+        avgReps: sql<number>`AVG(CAST(${exercisePerformances.actualReps} AS INTEGER))`,
+        totalSets: sql<number>`SUM(${exercisePerformances.actualSets})`,
+      })
+      .from(exercisePerformances)
+      .innerJoin(
+        workoutSessions,
+        eq(exercisePerformances.workoutSessionId, workoutSessions.id)
+      )
+      .innerJoin(exercises, eq(exercisePerformances.exerciseId, exercises.id))
+      .where(eq(workoutSessions.studentId, studentId))
+      .groupBy(
+        sql`DATE_TRUNC('week', ${workoutSessions.completedAt})`,
+        exercises.name
+      )
+      .orderBy(sql`DATE_TRUNC('week', ${workoutSessions.completedAt})`);
+
+    return result;
   }
 
   // Workout history operations
@@ -2199,6 +2227,60 @@ export class DatabaseStorage implements IStorage {
       .from(postureOptions)
       .where(eq(postureOptions.isActive, true))
       .orderBy(asc(postureOptions.joint), asc(postureOptions.optionText));
+  }
+
+  // ===== Anamnese Methods =====
+  async getAnamneses(personalTrainerId: string) {
+    return await db
+      .select({
+        id: anamneses.id,
+        studentId: anamneses.studentId,
+        studentName: students.name,
+        assessmentDate: anamneses.assessmentDate,
+        primaryGoal: anamneses.primaryGoal,
+        createdAt: anamneses.createdAt,
+      })
+      .from(anamneses)
+      .leftJoin(students, eq(anamneses.studentId, students.id))
+      .where(eq(anamneses.personalTrainerId, personalTrainerId))
+      .orderBy(desc(anamneses.createdAt));
+  }
+
+  async getAnamneseById(id: string) {
+    const result = await db
+      .select()
+      .from(anamneses)
+      .where(eq(anamneses.id, id))
+      .limit(1);
+    return result[0] || null;
+  }
+
+  async getAnamneseByStudentId(studentId: string) {
+    const result = await db
+      .select()
+      .from(anamneses)
+      .where(eq(anamneses.studentId, studentId))
+      .orderBy(desc(anamneses.createdAt))
+      .limit(1);
+    return result[0] || null;
+  }
+
+  async createAnamnese(data: InsertAnamnese) {
+    const [anamnese] = await db.insert(anamneses).values(data).returning();
+    return anamnese;
+  }
+
+  async updateAnamnese(id: string, data: Partial<InsertAnamnese>) {
+    const [anamnese] = await db
+      .update(anamneses)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(anamneses.id, id))
+      .returning();
+    return anamnese;
+  }
+
+  async deleteAnamnese(id: string) {
+    await db.delete(anamneses).where(eq(anamneses.id, id));
   }
 }
 

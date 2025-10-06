@@ -315,7 +315,7 @@ export function PostureAssessment({
                           />
                           <svg
                             className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                            style={{ opacity: 0.4 }}
+                            style={{ opacity: 3 }}
                           >
                             <defs>
                               <pattern

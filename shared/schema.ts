@@ -70,6 +70,32 @@ export const weekdayEnum = pgEnum("weekday", [
   "sunday",
 ]);
 
+// Enums para Anamnese
+export const activityLevelEnum = pgEnum("activity_level", [
+  "low",
+  "medium",
+  "high",
+]);
+export const goalEnum = pgEnum("goal", [
+  "weight_loss",
+  "hypertrophy",
+  "conditioning",
+  "health",
+  "other",
+]);
+export const frequencyEnum = pgEnum("frequency", [
+  "never",
+  "rarely",
+  "sometimes",
+  "often",
+  "daily",
+]);
+export const stressLevelEnum = pgEnum("stress_level", [
+  "low",
+  "moderate",
+  "high",
+]);
+
 // Students table
 export const students = pgTable("students", {
   id: varchar("id")
@@ -1241,6 +1267,71 @@ export const postureOptions = pgTable("posture_options", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Tabela de Anamnese
+export const anamneses = pgTable("anamneses", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  studentId: varchar("student_id")
+    .notNull()
+    .references(() => students.id, { onDelete: "cascade" }),
+  personalTrainerId: varchar("personal_trainer_id")
+    .notNull()
+    .references(() => users.id),
+
+  // 1. Identificação (preenchido automaticamente se vier do cadastro)
+  assessmentDate: timestamp("assessment_date").defaultNow(),
+
+  // 2. Objetivo Principal
+  primaryGoal: goalEnum("primary_goal"),
+  otherGoal: text("other_goal"),
+  goalTimeframe: varchar("goal_timeframe"),
+  hasTrainedBefore: boolean("has_trained_before"),
+  timeInactive: varchar("time_inactive"),
+
+  // 3. Histórico de Atividade Física
+  previousActivities: text("previous_activities"),
+  trainingFrequency: frequencyEnum("training_frequency"),
+  hadProfessionalGuidance: boolean("had_professional_guidance"),
+  currentFitnessLevel: activityLevelEnum("current_fitness_level"),
+  doesWarmupStretching: boolean("does_warmup_stretching"),
+
+  // 4. Histórico de Saúde
+  hasDiagnosedDiseases: boolean("has_diagnosed_diseases"),
+  diagnosedDiseases: text("diagnosed_diseases"),
+  takesContinuousMedication: boolean("takes_continuous_medication"),
+  medications: text("medications"),
+  hadSurgery: boolean("had_surgery"),
+  surgeryDetails: text("surgery_details"),
+  hasHypertensionHistory: boolean("has_hypertension_history"),
+  hasDiabetesHistory: boolean("has_diabetes_history"),
+  hasHeartProblemsHistory: boolean("has_heart_problems_history"),
+  painOrLimitation: text("pain_or_limitation"),
+  hadDizzinessFainting: boolean("had_dizziness_fainting"),
+
+  // 5. Histórico Familiar
+  familyHeartDisease: boolean("family_heart_disease"),
+  familyHypertension: boolean("family_hypertension"),
+  familyDiabetes: boolean("family_diabetes"),
+  geneticConditions: text("genetic_conditions"),
+
+  // 6. Hábitos de Vida
+  dailyNutrition: text("daily_nutrition"),
+  waterIntakeLiters: decimal("water_intake_liters", { precision: 3, scale: 1 }),
+  consumesAlcohol: boolean("consumes_alcohol"),
+  alcoholFrequency: frequencyEnum("alcohol_frequency"),
+  smokes: boolean("smokes"),
+  smokingDuration: varchar("smoking_duration"),
+  sleepHoursPerNight: decimal("sleep_hours_per_night", {
+    precision: 3,
+    scale: 1,
+  }),
+  stressLevel: stressLevelEnum("stress_level"),
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations para avaliação postural
 export const postureAssessmentsRelations = relations(
   postureAssessments,
@@ -1316,3 +1407,26 @@ export type InsertPostureObservation = z.infer<
 >;
 export type PostureOption = typeof postureOptions.$inferSelect;
 export type InsertPostureOption = z.infer<typeof insertPostureOptionSchema>;
+
+// Relations para Anamnese
+export const anamnesesRelations = relations(anamneses, ({ one }) => ({
+  student: one(students, {
+    fields: [anamneses.studentId],
+    references: [students.id],
+  }),
+  personalTrainer: one(users, {
+    fields: [anamneses.personalTrainerId],
+    references: [users.id],
+  }),
+}));
+
+// Insert schemas para Anamnese
+export const insertAnamneseSchema = createInsertSchema(anamneses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Types para Anamnese
+export type Anamnese = typeof anamneses.$inferSelect;
+export type InsertAnamnese = z.infer<typeof insertAnamneseSchema>;

@@ -775,6 +775,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Weekly workout performance progress
+  app.get(
+    "/api/progress/weekly/:studentId",
+    isAuthenticated,
+    async (req, res) => {
+      try {
+        const { studentId } = req.params;
+        const performances = await storage.getWeeklyWorkoutProgress(studentId);
+        res.json(performances);
+      } catch (error) {
+        console.error("Error fetching weekly workout progress:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch weekly workout progress" });
+      }
+    }
+  );
+
   // Exercise template routes
   app.get("/api/exercise-templates", isAuthenticated, async (req, res) => {
     try {
@@ -3508,6 +3526,162 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         message: "Failed to process webhook",
       });
+    }
+  });
+
+  // ===== Anamnese Routes =====
+  // Get all anamneses (teacher only)
+  app.get("/api/anamneses", isTeacher, async (req: any, res) => {
+    try {
+      const personalTrainerId = req.user?.id;
+      const anamneses = await storage.getAnamneses(personalTrainerId);
+      res.json(anamneses);
+    } catch (error: any) {
+      console.error("Error fetching anamneses:", error);
+      res.status(500).json({ message: "Erro ao buscar anamneses" });
+    }
+  });
+
+  // Get anamnese by student ID
+  app.get(
+    "/api/anamneses/student/:studentId",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { studentId } = req.params;
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
+
+        const anamnese = await storage.getAnamneseByStudentId(studentId);
+
+        if (!anamnese) {
+          return res.status(404).json({ message: "Anamnese não encontrada" });
+        }
+
+        // Check if user has permission to view this anamnese
+        if (userRole === "teacher" && anamnese.personalTrainerId !== userId) {
+          return res
+            .status(403)
+            .json({ message: "Sem permissão para acessar esta anamnese" });
+        }
+        if (userRole === "student") {
+          // For students, get the student record to compare
+          const student = await storage.getStudentByEmail(req.user.email);
+          if (!student || anamnese.studentId !== student.id) {
+            return res
+              .status(403)
+              .json({ message: "Sem permissão para acessar esta anamnese" });
+          }
+        }
+
+        res.json(anamnese);
+      } catch (error: any) {
+        console.error("Error fetching anamnese:", error);
+        res.status(500).json({ message: "Erro ao buscar anamnese" });
+      }
+    }
+  );
+
+  // Get anamnese by ID
+  app.get("/api/anamneses/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user?.id;
+      const userRole = req.user?.role;
+
+      const anamnese = await storage.getAnamneseById(id);
+
+      if (!anamnese) {
+        return res.status(404).json({ message: "Anamnese não encontrada" });
+      }
+
+      // Check if user has permission to view this anamnese
+      if (userRole === "teacher" && anamnese.personalTrainerId !== userId) {
+        return res
+          .status(403)
+          .json({ message: "Sem permissão para acessar esta anamnese" });
+      }
+      if (userRole === "student") {
+        // For students, get the student record to compare
+        const student = await storage.getStudentByEmail(req.user.email);
+        if (!student || anamnese.studentId !== student.id) {
+          return res
+            .status(403)
+            .json({ message: "Sem permissão para acessar esta anamnese" });
+        }
+      }
+
+      res.json(anamnese);
+    } catch (error: any) {
+      console.error("Error fetching anamnese:", error);
+      res.status(500).json({ message: "Erro ao buscar anamnese" });
+    }
+  });
+
+  // Create new anamnese
+  app.post("/api/anamneses", isTeacher, async (req: any, res) => {
+    try {
+      const personalTrainerId = req.user?.id;
+      const anamneseData = {
+        ...req.body,
+        personalTrainerId,
+      };
+
+      const newAnamnese = await storage.createAnamnese(anamneseData);
+      res.status(201).json(newAnamnese);
+    } catch (error: any) {
+      console.error("Error creating anamnese:", error);
+      res.status(500).json({ message: "Erro ao criar anamnese" });
+    }
+  });
+
+  // Update anamnese
+  app.put("/api/anamneses/:id", isTeacher, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const personalTrainerId = req.user?.id;
+
+      // Check if anamnese exists and belongs to this trainer
+      const existingAnamnese = await storage.getAnamneseById(id);
+      if (!existingAnamnese) {
+        return res.status(404).json({ message: "Anamnese não encontrada" });
+      }
+      if (existingAnamnese.personalTrainerId !== personalTrainerId) {
+        return res
+          .status(403)
+          .json({ message: "Sem permissão para atualizar esta anamnese" });
+      }
+
+      const updatedAnamnese = await storage.updateAnamnese(id, req.body);
+      res.json(updatedAnamnese);
+    } catch (error: any) {
+      console.error("Error updating anamnese:", error);
+      res.status(500).json({ message: "Erro ao atualizar anamnese" });
+    }
+  });
+
+  // Delete anamnese
+  app.delete("/api/anamneses/:id", isTeacher, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const personalTrainerId = req.user?.id;
+
+      // Check if anamnese exists and belongs to this trainer
+      const existingAnamnese = await storage.getAnamneseById(id);
+      if (!existingAnamnese) {
+        return res.status(404).json({ message: "Anamnese não encontrada" });
+      }
+      if (existingAnamnese.personalTrainerId !== personalTrainerId) {
+        return res
+          .status(403)
+          .json({ message: "Sem permissão para excluir esta anamnese" });
+      }
+
+      await storage.deleteAnamnese(id);
+      res.json({ message: "Anamnese excluída com sucesso" });
+    } catch (error: any) {
+      console.error("Error deleting anamnese:", error);
+      res.status(500).json({ message: "Erro ao excluir anamnese" });
     }
   });
 

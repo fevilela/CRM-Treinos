@@ -13,6 +13,7 @@ import PhysicalAssessments from "@/pages/physical-assessments";
 import { PostureAssessments } from "@/pages/posture-assessments";
 import Progress from "@/pages/progress";
 import Finances from "@/pages/finances";
+import Anamneses from "@/pages/anamneses";
 import TeacherProfile from "@/pages/teacher-profile";
 import StudentProfile from "@/pages/student-profile";
 import { StudentDashboard } from "@/pages/student-dashboard";
@@ -135,10 +136,24 @@ function Router() {
           </TeacherLayout>
         )}
       </Route>
+      <Route path="/teacher-area/assessments">
+        {() => (
+          <TeacherLayout>
+            <Progress />
+          </TeacherLayout>
+        )}
+      </Route>
       <Route path="/teacher-area/finances">
         {() => (
           <TeacherLayout>
             <Finances />
+          </TeacherLayout>
+        )}
+      </Route>
+      <Route path="/teacher-area/anamneses">
+        {() => (
+          <TeacherLayout>
+            <Anamneses />
           </TeacherLayout>
         )}
       </Route>

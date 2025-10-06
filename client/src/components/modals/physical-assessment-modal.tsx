@@ -750,23 +750,10 @@ function PhysicalAssessmentModal({
             />
 
             <Tabs defaultValue="identification" className="w-full">
-              <TabsList
-                className={`grid w-full ${
-                  assessment ? "grid-cols-10" : "grid-cols-9"
-                }`}
-              >
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="identification">Identificação</TabsTrigger>
-                <TabsTrigger value="health">Saúde</TabsTrigger>
-                <TabsTrigger value="physical">Física</TabsTrigger>
-                <TabsTrigger value="goals">Objetivos</TabsTrigger>
-                <TabsTrigger value="lifestyle">Hábitos</TabsTrigger>
                 <TabsTrigger value="anthropometric">Antropométrica</TabsTrigger>
-                <TabsTrigger value="performance">Desempenho</TabsTrigger>
-                <TabsTrigger value="clinical">Clínica</TabsTrigger>
                 <TabsTrigger value="notes">Observações</TabsTrigger>
-                {assessment && (
-                  <TabsTrigger value="history">📊 Histórico</TabsTrigger>
-                )}
               </TabsList>
 
               <TabsContent value="identification" className="space-y-4">
