@@ -114,6 +114,7 @@ export const students = pgTable("students", {
   phone: varchar("phone"),
   dateOfBirth: timestamp("date_of_birth"),
   gender: genderEnum("gender").notNull(),
+  profession: varchar("profession"),
   weight: decimal("weight", { precision: 5, scale: 2 }),
   height: decimal("height", { precision: 5, scale: 2 }),
   goal: text("goal"),
@@ -1327,6 +1328,12 @@ export const anamneses = pgTable("anamneses", {
     scale: 1,
   }),
   stressLevel: stressLevelEnum("stress_level"),
+
+  // 7. Rotina e Disponibilidade
+  weeklyTrainingFrequency: integer("weekly_training_frequency"), // Quantas vezes por semana
+  availableDaysAndTimes: text("available_days_and_times"), // Dias e horários disponíveis
+  preferredTrainingLocation: varchar("preferred_training_location"), // academia, casa, ar_livre
+  availableEquipment: text("available_equipment"), // Equipamentos disponíveis
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
