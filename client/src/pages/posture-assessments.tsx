@@ -2,7 +2,15 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Eye, Trash2, Calendar, User, Edit } from "lucide-react";
+import {
+  Plus,
+  Eye,
+  Trash2,
+  Calendar,
+  User,
+  Edit,
+  Download,
+} from "lucide-react";
 import { PostureAssessment } from "@/components/posture-assessment";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -35,6 +43,19 @@ interface PostureAssessmentData {
   aiAnalysis?: string;
   aiRecommendations?: string;
   createdAt: string;
+}
+
+interface PosturePhoto {
+  id: string;
+  photoType: "front" | "back" | "side_left" | "side_right";
+  photoUrl: string;
+}
+
+interface PostureObservation {
+  id: string;
+  joint: string;
+  observation: string;
+  severity: "normal" | "mild" | "moderate" | "severe";
 }
 
 interface Student {
@@ -144,7 +165,105 @@ export function PostureAssessments() {
     deleteAssessmentMutation.mutate(assessmentId);
   };
 
+  // Fetch photos for selected assessment
+  const { data: selectedPhotos = [] } = useQuery<PosturePhoto[]>({
+    queryKey: ["posture-photos", selectedAssessment?.id],
+    queryFn: async () => {
+      if (!selectedAssessment) return [];
+      const response = await fetch(
+        `/api/posture-assessments/${selectedAssessment.id}/photos`,
+        { credentials: "include" }
+      );
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!selectedAssessment,
+  });
+
+  // Fetch observations for selected assessment
+  const { data: selectedObservations = [] } = useQuery<PostureObservation[]>({
+    queryKey: ["posture-observations", selectedAssessment?.id],
+    queryFn: async () => {
+      if (!selectedAssessment) return [];
+      const response = await fetch(
+        `/api/posture-assessments/${selectedAssessment.id}/observations`,
+        { credentials: "include" }
+      );
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!selectedAssessment,
+  });
+
+  // Fetch data for editing
+  const { data: editingPhotos = [] } = useQuery<PosturePhoto[]>({
+    queryKey: ["posture-photos", editingAssessment?.id],
+    queryFn: async () => {
+      if (!editingAssessment) return [];
+      const response = await fetch(
+        `/api/posture-assessments/${editingAssessment.id}/photos`,
+        { credentials: "include" }
+      );
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!editingAssessment,
+  });
+
+  const { data: editingObservations = [] } = useQuery<PostureObservation[]>({
+    queryKey: ["posture-observations", editingAssessment?.id],
+    queryFn: async () => {
+      if (!editingAssessment) return [];
+      const response = await fetch(
+        `/api/posture-assessments/${editingAssessment.id}/observations`,
+        { credentials: "include" }
+      );
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!editingAssessment,
+  });
+
+  const handleDownloadPDF = async (assessmentId: string) => {
+    try {
+      const response = await fetch(
+        `/api/posture-assessments/${assessmentId}/pdf`,
+        {
+          credentials: "include",
+        }
+      );
+      if (!response.ok) throw new Error("Failed to generate PDF");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `avaliacao-postural-${assessmentId}.pdf`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+      alert("Erro ao baixar PDF");
+    }
+  };
+
   const selectedStudent = students.find((s) => s.id === selectedStudentId);
+
+  const JOINT_LABELS: Record<string, string> = {
+    head: "Cabeça",
+    neck: "Pescoço",
+    shoulder_left: "Ombro Esquerdo",
+    shoulder_right: "Ombro Direito",
+    spine_cervical: "Coluna Cervical",
+    spine_thoracic: "Coluna Torácica",
+    spine_lumbar: "Coluna Lombar",
+    hip_left: "Quadril Esquerdo",
+    hip_right: "Quadril Direito",
+    knee_left: "Joelho Esquerdo",
+    knee_right: "Joelho Direito",
+    ankle_left: "Tornozelo Esquerdo",
+    ankle_right: "Tornozelo Direito",
+  };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -328,7 +447,15 @@ export function PostureAssessments() {
                 id: editingAssessment.id,
                 title: editingAssessment.title,
                 notes: editingAssessment.notes,
-                // TODO: Add photos and observations when available in the data
+                photos: editingPhotos.map((p) => ({
+                  type: p.photoType,
+                  url: p.photoUrl,
+                })),
+                observations: editingObservations.map((o) => ({
+                  joint: o.joint,
+                  observation: o.observation,
+                  severity: o.severity,
+                })),
               }}
               mode="edit"
             />
@@ -342,9 +469,19 @@ export function PostureAssessments() {
           open={!!selectedAssessment}
           onOpenChange={() => setSelectedAssessment(null)}
         >
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{selectedAssessment.title}</DialogTitle>
+              <div className="flex items-center justify-between">
+                <DialogTitle>{selectedAssessment.title}</DialogTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDownloadPDF(selectedAssessment.id)}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Baixar PDF
+                </Button>
+              </div>
             </DialogHeader>
             <div className="space-y-6">
               <div>
@@ -368,6 +505,107 @@ export function PostureAssessments() {
                   <p className="text-gray-600 whitespace-pre-wrap">
                     {selectedAssessment.notes}
                   </p>
+                </div>
+              )}
+
+              {/* Fotos Posturais */}
+              {selectedPhotos.length > 0 && (
+                <div>
+                  <h3 className="font-medium mb-4">Fotos Posturais</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {selectedPhotos.map((photo) => (
+                      <div key={photo.id} className="space-y-2">
+                        <div className="relative">
+                          <img
+                            src={photo.photoUrl}
+                            alt={photo.photoType}
+                            className="w-full h-64 object-contain bg-gray-50 rounded-lg border-2 border-gray-300"
+                          />
+                          <svg
+                            className="absolute top-0 left-0 w-full h-full pointer-events-none rounded-lg"
+                            style={{ opacity: 0.5 }}
+                          >
+                            <defs>
+                              <pattern
+                                id={`grid-view-${photo.id}`}
+                                width="20"
+                                height="20"
+                                patternUnits="userSpaceOnUse"
+                              >
+                                <path
+                                  d="M 20 0 L 0 0 0 20"
+                                  fill="none"
+                                  stroke="#000000"
+                                  strokeWidth="2"
+                                />
+                              </pattern>
+                            </defs>
+                            <rect
+                              width="100%"
+                              height="100%"
+                              fill={`url(#grid-view-${photo.id})`}
+                            />
+                          </svg>
+                        </div>
+                        <p className="text-sm text-center font-medium">
+                          {photo.photoType === "front"
+                            ? "Frente"
+                            : photo.photoType === "back"
+                            ? "Costas"
+                            : photo.photoType === "side_left"
+                            ? "Lado Esquerdo"
+                            : "Lado Direito"}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Observações por Articulação */}
+              {selectedObservations.length > 0 && (
+                <div>
+                  <h3 className="font-medium mb-4">
+                    Observações por Articulação
+                  </h3>
+                  <div className="space-y-3">
+                    {selectedObservations.map((obs) => (
+                      <div
+                        key={obs.id}
+                        className="flex items-start justify-between p-4 bg-gray-50 rounded-lg border"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-semibold">
+                              {JOINT_LABELS[obs.joint] || obs.joint}
+                            </h4>
+                            <span
+                              className={`text-xs px-2 py-1 rounded ${
+                                obs.severity === "severe"
+                                  ? "bg-red-100 text-red-800"
+                                  : obs.severity === "moderate"
+                                  ? "bg-orange-100 text-orange-800"
+                                  : obs.severity === "mild"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-green-100 text-green-800"
+                              }`}
+                            >
+                              {obs.severity === "normal"
+                                ? "Normal"
+                                : obs.severity === "mild"
+                                ? "Leve"
+                                : obs.severity === "moderate"
+                                ? "Moderado"
+                                : "Severo"}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-700">
+                            {obs.observation}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 

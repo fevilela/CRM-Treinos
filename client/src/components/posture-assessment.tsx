@@ -128,6 +128,14 @@ export function PostureAssessment({
     "normal" | "mild" | "moderate" | "severe"
   >("mild");
 
+  const [gridOffsets, setGridOffsets] = useState<
+    Record<string, { x: number; y: number }>
+  >({});
+  const [isDragging, setIsDragging] = useState<string | null>(null);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(
+    null
+  );
+
   useEffect(() => {
     if (mode === "edit" && initialData) {
       setTitle(initialData.title || "");
@@ -207,6 +215,33 @@ export function PostureAssessment({
 
   const getPhotoByType = (type: PosturePhoto["type"]) => {
     return photos.find((p) => p.type === type);
+  };
+
+  const handleGridMouseDown = (e: React.MouseEvent, photoType: string) => {
+    setIsDragging(photoType);
+    setDragStart({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleGridMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !dragStart) return;
+
+    const deltaX = e.clientX - dragStart.x;
+    const deltaY = e.clientY - dragStart.y;
+
+    setGridOffsets((prev) => ({
+      ...prev,
+      [isDragging]: {
+        x: (prev[isDragging]?.x || 0) + deltaX,
+        y: (prev[isDragging]?.y || 0) + deltaY,
+      },
+    }));
+
+    setDragStart({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleGridMouseUp = () => {
+    setIsDragging(null);
+    setDragStart(null);
   };
 
   const canSave = photos.length > 0 && title.trim();
@@ -306,7 +341,12 @@ export function PostureAssessment({
                   </Label>
                   <div className="relative">
                     {photo ? (
-                      <div className="relative group">
+                      <div
+                        className="relative group"
+                        onMouseMove={handleGridMouseMove}
+                        onMouseUp={handleGridMouseUp}
+                        onMouseLeave={handleGridMouseUp}
+                      >
                         <div className="relative overflow-hidden rounded-lg border-2 border-gray-300">
                           <img
                             src={photo.preview}
@@ -314,8 +354,17 @@ export function PostureAssessment({
                             className="w-full h-96 object-contain bg-gray-50"
                           />
                           <svg
-                            className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                            style={{ opacity: 3 }}
+                            className="absolute top-0 left-0 w-full h-full"
+                            style={{
+                              opacity: 0.7,
+                              cursor:
+                                isDragging === photoType.key
+                                  ? "grabbing"
+                                  : "grab",
+                            }}
+                            onMouseDown={(e) =>
+                              handleGridMouseDown(e, photoType.key)
+                            }
                           >
                             <defs>
                               <pattern
@@ -323,12 +372,14 @@ export function PostureAssessment({
                                 width="20"
                                 height="20"
                                 patternUnits="userSpaceOnUse"
+                                x={gridOffsets[photoType.key]?.x || 0}
+                                y={gridOffsets[photoType.key]?.y || 0}
                               >
                                 <path
                                   d="M 20 0 L 0 0 0 20"
                                   fill="none"
-                                  stroke="#666"
-                                  strokeWidth="0.5"
+                                  stroke="#000000"
+                                  strokeWidth="2.5"
                                 />
                               </pattern>
                             </defs>

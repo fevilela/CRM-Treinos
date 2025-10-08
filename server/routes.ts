@@ -1,4 +1,5 @@
 import express, { type Express } from "express";
+import PDFDocument from "pdfkit";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { registerCalendarRoutes } from "./calendar-routes";
@@ -1813,6 +1814,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res
           .status(500)
           .json({ message: "Failed to fetch posture observations" });
+      }
+    }
+  );
+
+  // Generate PDF for posture assessment
+  app.get(
+    "/api/posture-assessments/:id/pdf",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const assessmentId = req.params.id;
+
+        // Fetch assessment data
+        const assessment = await storage.getPostureAssessment(assessmentId);
+        if (!assessment) {
+          return res.status(404).json({ message: "Assessment not found" });
+        }
+
+        // Fetch related data
+        const photos = await storage.getPosturePhotos(assessmentId);
+        const observations = await storage.getPostureObservations(assessmentId);
+        const student = await storage.getStudent(assessment.studentId);
+
+        // Create PDF
+        const doc = new PDFDocument({ margin: 50 });
+
+        // Set response headers
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename=avaliacao-postural-${assessmentId}.pdf`
+        );
+
+        // Pipe the PDF to the response
+        doc.pipe(res);
+
+        // Title
+        doc.fontSize(20).text("AVALIAÇÃO POSTURAL", { align: "center" });
+        doc.moveDown();
+
+        // Assessment info
+        doc.fontSize(12);
+        doc.text(`Título: ${assessment.title}`, { continued: false });
+        doc.text(`Aluno: ${student?.name || "N/A"}`, { continued: false });
+        const assessmentDate = assessment.createdAt
+          ? new Date(assessment.createdAt).toLocaleDateString("pt-BR")
+          : "Data não disponível";
+        doc.text(`Data: ${assessmentDate}`, { continued: false });
+        doc.moveDown();
+
+        // Notes
+        if (assessment.notes) {
+          doc.fontSize(14).text("Observações Gerais:");
+          doc.fontSize(11).text(assessment.notes);
+          doc.moveDown();
+        }
+
+        // Observations by joint
+        if (observations.length > 0) {
+          doc.fontSize(14).text("Observações por Articulação:");
+          doc.moveDown(0.5);
+
+          const jointLabels: Record<string, string> = {
+            head: "Cabeça",
+            neck: "Pescoço",
+            shoulder_left: "Ombro Esquerdo",
+            shoulder_right: "Ombro Direito",
+            spine_cervical: "Coluna Cervical",
+            spine_thoracic: "Coluna Torácica",
+            spine_lumbar: "Coluna Lombar",
+            hip_left: "Quadril Esquerdo",
+            hip_right: "Quadril Direito",
+            knee_left: "Joelho Esquerdo",
+            knee_right: "Joelho Direito",
+            ankle_left: "Tornozelo Esquerdo",
+            ankle_right: "Tornozelo Direito",
+          };
+
+          const severityLabels: Record<string, string> = {
+            normal: "Normal",
+            mild: "Leve",
+            moderate: "Moderado",
+            severe: "Severo",
+          };
+
+          observations.forEach((obs, index) => {
+            doc.fontSize(11);
+            doc.text(
+              `${index + 1}. ${jointLabels[obs.joint] || obs.joint} - ${
+                severityLabels[obs.severity] || obs.severity
+              }`
+            );
+            doc.fontSize(10);
+            doc.text(`   ${obs.observation}`);
+            doc.moveDown(0.5);
+          });
+          doc.moveDown();
+        }
+
+        // Photos info
+        if (photos.length > 0) {
+          doc.fontSize(14).text("Fotos Capturadas:");
+          doc.fontSize(11);
+          const photoTypes: Record<string, string> = {
+            front: "Frente",
+            back: "Costas",
+            side_left: "Lado Esquerdo",
+            side_right: "Lado Direito",
+          };
+          photos.forEach((photo) => {
+            doc.text(`• ${photoTypes[photo.photoType] || photo.photoType}`);
+          });
+          doc.moveDown();
+        }
+
+        // AI Analysis
+        if (assessment.aiAnalysis) {
+          doc.fontSize(14).text("Análise da IA:");
+          doc.fontSize(11).text(assessment.aiAnalysis);
+          doc.moveDown();
+        }
+
+        // AI Recommendations
+        if (assessment.aiRecommendations) {
+          doc.fontSize(14).text("Recomendações da IA:");
+          doc.fontSize(11).text(assessment.aiRecommendations);
+          doc.moveDown();
+        }
+
+        // Finalize PDF
+        doc.end();
+      } catch (error) {
+        console.error("Error generating posture assessment PDF:", error);
+        if (!res.headersSent) {
+          res.status(500).json({ message: "Failed to generate PDF" });
+        }
       }
     }
   );

@@ -799,6 +799,13 @@ export const insertStudentSchema = createInsertSchema(students)
   .extend({
     weight: z.number().optional(),
     height: z.number().optional(),
+    dateOfBirth: z
+      .union([z.string(), z.date()])
+      .optional()
+      .transform((val) => {
+        if (!val) return undefined;
+        return val instanceof Date ? val : new Date(val);
+      }),
   });
 
 export const insertWorkoutSchema = createInsertSchema(workouts)
