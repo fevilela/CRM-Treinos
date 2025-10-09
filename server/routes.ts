@@ -1,9 +1,9 @@
 import express, { type Express } from "express";
-import PDFDocument from "pdfkit";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { registerCalendarRoutes } from "./calendar-routes";
 import { setupAuth, isAuthenticated } from "./auth";
+import { createCanvas, loadImage } from "canvas";
 
 import { isTeacher, isStudentOrTeacher } from "./auth";
 import {
@@ -1818,6 +1818,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Helper function to get joint position coordinates on image
+  const getJointPosition = (
+    joint: string,
+    photoType: string
+  ): { x: number; y: number } => {
+    // Position mapping based on photo type and joint
+    const positions: Record<
+      string,
+      Record<string, { x: number; y: number }>
+    > = {
+      front: {
+        head: { x: 0.5, y: 0.15 },
+        neck: { x: 0.5, y: 0.25 },
+        shoulder_left: { x: 0.65, y: 0.3 },
+        shoulder_right: { x: 0.35, y: 0.3 },
+        spine_cervical: { x: 0.5, y: 0.3 },
+        spine_thoracic: { x: 0.5, y: 0.45 },
+        spine_lumbar: { x: 0.5, y: 0.6 },
+        hip_left: { x: 0.55, y: 0.65 },
+        hip_right: { x: 0.45, y: 0.65 },
+        knee_left: { x: 0.55, y: 0.8 },
+        knee_right: { x: 0.45, y: 0.8 },
+        ankle_left: { x: 0.55, y: 0.95 },
+        ankle_right: { x: 0.45, y: 0.95 },
+      },
+      back: {
+        head: { x: 0.5, y: 0.15 },
+        neck: { x: 0.5, y: 0.25 },
+        shoulder_left: { x: 0.35, y: 0.3 },
+        shoulder_right: { x: 0.65, y: 0.3 },
+        spine_cervical: { x: 0.5, y: 0.3 },
+        spine_thoracic: { x: 0.5, y: 0.45 },
+        spine_lumbar: { x: 0.5, y: 0.6 },
+        hip_left: { x: 0.45, y: 0.65 },
+        hip_right: { x: 0.55, y: 0.65 },
+        knee_left: { x: 0.45, y: 0.8 },
+        knee_right: { x: 0.55, y: 0.8 },
+        ankle_left: { x: 0.45, y: 0.95 },
+        ankle_right: { x: 0.55, y: 0.95 },
+      },
+      side_left: {
+        head: { x: 0.6, y: 0.15 },
+        neck: { x: 0.55, y: 0.25 },
+        shoulder_left: { x: 0.5, y: 0.3 },
+        spine_cervical: { x: 0.45, y: 0.3 },
+        spine_thoracic: { x: 0.4, y: 0.45 },
+        spine_lumbar: { x: 0.45, y: 0.6 },
+        hip_left: { x: 0.5, y: 0.65 },
+        knee_left: { x: 0.5, y: 0.8 },
+        ankle_left: { x: 0.5, y: 0.95 },
+      },
+      side_right: {
+        head: { x: 0.4, y: 0.15 },
+        neck: { x: 0.45, y: 0.25 },
+        shoulder_right: { x: 0.5, y: 0.3 },
+        spine_cervical: { x: 0.55, y: 0.3 },
+        spine_thoracic: { x: 0.6, y: 0.45 },
+        spine_lumbar: { x: 0.55, y: 0.6 },
+        hip_right: { x: 0.5, y: 0.65 },
+        knee_right: { x: 0.5, y: 0.8 },
+        ankle_right: { x: 0.5, y: 0.95 },
+      },
+    };
+
+    return positions[photoType]?.[joint] || { x: 0.5, y: 0.5 };
+  };
+
+  // Helper function to annotate image with observations
+  const annotateImage = async (
+    imagePath: string,
+    observations: any[],
+    photoType: string
+  ): Promise<Buffer> => {
+    try {
+      // Load the image
+      const image = await loadImage(imagePath);
+      const canvas = createCanvas(image.width, image.height);
+      const ctx = canvas.getContext("2d");
+
+      // Draw original image
+      ctx.drawImage(image, 0, 0);
+
+      // Configure drawing style
+      ctx.strokeStyle = "#FF0000";
+      ctx.fillStyle = "#FF0000";
+      ctx.lineWidth = 3;
+      ctx.font = "bold 20px Arial";
+
+      // Draw annotations for each observation
+      observations.forEach((obs, index) => {
+        const position = getJointPosition(obs.joint, photoType);
+        const x = position.x * image.width;
+        const y = position.y * image.height;
+
+        // Draw arrow pointing to joint
+        const arrowLength = 80;
+        const arrowAngle = index % 2 === 0 ? -45 : 45; // Alternate arrow directions
+        const radians = (arrowAngle * Math.PI) / 180;
+
+        const startX = x + Math.cos(radians) * arrowLength;
+        const startY = y + Math.sin(radians) * arrowLength;
+
+        // Draw arrow line
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+
+        // Draw arrowhead
+        const headLength = 15;
+        const headAngle = Math.PI / 6;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(
+          x - headLength * Math.cos(radians - headAngle),
+          y - headLength * Math.sin(radians - headAngle)
+        );
+        ctx.moveTo(x, y);
+        ctx.lineTo(
+          x - headLength * Math.cos(radians + headAngle),
+          y - headLength * Math.sin(radians + headAngle)
+        );
+        ctx.stroke();
+
+        // Draw observation number in a circle
+        ctx.beginPath();
+        ctx.arc(startX, startY, 18, 0, 2 * Math.PI);
+        ctx.fill();
+
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillText(`${index + 1}`, startX - 8, startY + 8);
+        ctx.fillStyle = "#FF0000";
+      });
+
+      return canvas.toBuffer("image/png");
+    } catch (error) {
+      console.error("Error annotating image:", error);
+      throw error;
+    }
+  };
+
   // Generate PDF for posture assessment
   app.get(
     "/api/posture-assessments/:id/pdf",
@@ -1825,6 +1966,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         const assessmentId = req.params.id;
+        console.log(
+          `[PDF] Starting PDF generation for assessment: ${assessmentId}`
+        );
 
         // Fetch assessment data
         const assessment = await storage.getPostureAssessment(assessmentId);
@@ -1837,116 +1981,219 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const observations = await storage.getPostureObservations(assessmentId);
         const student = await storage.getStudent(assessment.studentId);
 
-        // Create PDF
-        const doc = new PDFDocument({ margin: 50 });
+        // Create PDF - use dynamic import for pdfkit
+        const PDFDocument = (await import("pdfkit")).default;
+        const doc = new PDFDocument({
+          margin: 40,
+          size: "A4",
+        });
 
         // Set response headers
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader(
           "Content-Disposition",
-          `attachment; filename=avaliacao-postural-${assessmentId}.pdf`
+          `attachment; filename=avaliacao-postural-${
+            student?.name || assessmentId
+          }.pdf`
         );
 
         // Pipe the PDF to the response
         doc.pipe(res);
 
-        // Title
-        doc.fontSize(20).text("AVALIAÇÃO POSTURAL", { align: "center" });
-        doc.moveDown();
+        // Header with background color
+        doc.rect(0, 0, doc.page.width, 80).fill("#2563EB");
+        doc.fillColor("#FFFFFF");
+        doc
+          .fontSize(24)
+          .text("AVALIAÇÃO POSTURAL", 40, 25, { align: "center" });
+        doc.fontSize(12).text(assessment.title, 40, 55, { align: "center" });
 
-        // Assessment info
-        doc.fontSize(12);
-        doc.text(`Título: ${assessment.title}`, { continued: false });
-        doc.text(`Aluno: ${student?.name || "N/A"}`, { continued: false });
+        // Reset position
+        doc.y = 100;
+        doc.fillColor("#000000");
+
+        // Student info box
+        doc
+          .fontSize(14)
+          .fillColor("#1F2937")
+          .text("Informações do Aluno", 40, doc.y);
+        doc.moveDown(0.5);
+        doc.fontSize(11).fillColor("#4B5563");
+        doc.text(`Nome: ${student?.name || "N/A"}`);
         const assessmentDate = assessment.createdAt
           ? new Date(assessment.createdAt).toLocaleDateString("pt-BR")
           : "Data não disponível";
-        doc.text(`Data: ${assessmentDate}`, { continued: false });
-        doc.moveDown();
+        doc.text(`Data da Avaliação: ${assessmentDate}`);
+        doc.moveDown(1.5);
 
-        // Notes
+        // Notes section
         if (assessment.notes) {
-          doc.fontSize(14).text("Observações Gerais:");
-          doc.fontSize(11).text(assessment.notes);
-          doc.moveDown();
+          doc.fontSize(14).fillColor("#1F2937").text("Observações Gerais");
+          doc.moveDown(0.5);
+          doc.fontSize(10).fillColor("#4B5563").text(assessment.notes, {
+            align: "justify",
+          });
+          doc.moveDown(1.5);
         }
 
-        // Observations by joint
-        if (observations.length > 0) {
-          doc.fontSize(14).text("Observações por Articulação:");
+        // Labels
+        const jointLabels: Record<string, string> = {
+          head: "Cabeça",
+          neck: "Pescoço",
+          shoulder_left: "Ombro Esquerdo",
+          shoulder_right: "Ombro Direito",
+          spine_cervical: "Coluna Cervical",
+          spine_thoracic: "Coluna Torácica",
+          spine_lumbar: "Coluna Lombar",
+          hip_left: "Quadril Esquerdo",
+          hip_right: "Quadril Direito",
+          knee_left: "Joelho Esquerdo",
+          knee_right: "Joelho Direito",
+          ankle_left: "Tornozelo Esquerdo",
+          ankle_right: "Tornozelo Direito",
+        };
+
+        const severityLabels: Record<string, string> = {
+          normal: "Normal",
+          mild: "Leve",
+          moderate: "Moderado",
+          severe: "Severo",
+        };
+
+        const photoTypes: Record<string, string> = {
+          front: "Vista Frontal",
+          back: "Vista Posterior",
+          side_left: "Vista Lateral Esquerda",
+          side_right: "Vista Lateral Direita",
+        };
+
+        // Process each photo with annotations
+        for (const photo of photos) {
+          // Filter observations for this photo type
+          const photoObservations = observations.filter((obs) => {
+            const position = getJointPosition(obs.joint, photo.photoType);
+            return position.x !== 0.5 || position.y !== 0.5; // Only if we have position data
+          });
+
+          if (photoObservations.length === 0) continue;
+
+          // Add new page if needed
+          if (doc.y > 550) {
+            doc.addPage();
+          }
+
+          // Photo type header
+          doc
+            .fontSize(16)
+            .fillColor("#2563EB")
+            .text(photoTypes[photo.photoType] || photo.photoType);
           doc.moveDown(0.5);
 
-          const jointLabels: Record<string, string> = {
-            head: "Cabeça",
-            neck: "Pescoço",
-            shoulder_left: "Ombro Esquerdo",
-            shoulder_right: "Ombro Direito",
-            spine_cervical: "Coluna Cervical",
-            spine_thoracic: "Coluna Torácica",
-            spine_lumbar: "Coluna Lombar",
-            hip_left: "Quadril Esquerdo",
-            hip_right: "Quadril Direito",
-            knee_left: "Joelho Esquerdo",
-            knee_right: "Joelho Direito",
-            ankle_left: "Tornozelo Esquerdo",
-            ankle_right: "Tornozelo Direito",
-          };
-
-          const severityLabels: Record<string, string> = {
-            normal: "Normal",
-            mild: "Leve",
-            moderate: "Moderado",
-            severe: "Severo",
-          };
-
-          observations.forEach((obs, index) => {
-            doc.fontSize(11);
-            doc.text(
-              `${index + 1}. ${jointLabels[obs.joint] || obs.joint} - ${
-                severityLabels[obs.severity] || obs.severity
-              }`
+          try {
+            // Annotate image
+            const annotatedImageBuffer = await annotateImage(
+              photo.photoPath,
+              photoObservations,
+              photo.photoType
             );
-            doc.fontSize(10);
-            doc.text(`   ${obs.observation}`);
-            doc.moveDown(0.5);
-          });
-          doc.moveDown();
-        }
 
-        // Photos info
-        if (photos.length > 0) {
-          doc.fontSize(14).text("Fotos Capturadas:");
-          doc.fontSize(11);
-          const photoTypes: Record<string, string> = {
-            front: "Frente",
-            back: "Costas",
-            side_left: "Lado Esquerdo",
-            side_right: "Lado Direito",
-          };
-          photos.forEach((photo) => {
-            doc.text(`• ${photoTypes[photo.photoType] || photo.photoType}`);
-          });
-          doc.moveDown();
+            // Add annotated image to PDF
+            const maxWidth = 500;
+            const maxHeight = 350;
+            doc.image(annotatedImageBuffer, {
+              fit: [maxWidth, maxHeight],
+              align: "center",
+            });
+            doc.moveDown(1);
+
+            // Legend of observations
+            doc.fontSize(12).fillColor("#1F2937").text("Observações:");
+            doc.moveDown(0.3);
+
+            photoObservations.forEach((obs, index) => {
+              const severityColor =
+                obs.severity === "severe"
+                  ? "#DC2626"
+                  : obs.severity === "moderate"
+                  ? "#F59E0B"
+                  : obs.severity === "mild"
+                  ? "#10B981"
+                  : "#6B7280";
+
+              doc.fontSize(10);
+              doc.fillColor(severityColor);
+              doc.text(`${index + 1}. `, { continued: true });
+              doc.fillColor("#1F2937");
+              doc.text(`${jointLabels[obs.joint] || obs.joint} - `, {
+                continued: true,
+              });
+              doc.fillColor(severityColor);
+              doc.text(severityLabels[obs.severity] || obs.severity);
+              doc.fillColor("#4B5563").fontSize(9);
+              doc.text(`   ${obs.observation}`, { indent: 20 });
+              doc.moveDown(0.3);
+            });
+
+            doc.moveDown(1);
+          } catch (error) {
+            console.error(`Error processing photo ${photo.id}:`, error);
+            doc
+              .fontSize(10)
+              .fillColor("#DC2626")
+              .text("Erro ao processar imagem");
+            doc.moveDown(1);
+          }
         }
 
         // AI Analysis
         if (assessment.aiAnalysis) {
-          doc.fontSize(14).text("Análise da IA:");
-          doc.fontSize(11).text(assessment.aiAnalysis);
-          doc.moveDown();
+          if (doc.y > 650) doc.addPage();
+          doc.fontSize(14).fillColor("#2563EB").text("Análise da IA");
+          doc.moveDown(0.5);
+          doc.fontSize(10).fillColor("#4B5563").text(assessment.aiAnalysis, {
+            align: "justify",
+          });
+          doc.moveDown(1);
         }
 
         // AI Recommendations
         if (assessment.aiRecommendations) {
-          doc.fontSize(14).text("Recomendações da IA:");
-          doc.fontSize(11).text(assessment.aiRecommendations);
-          doc.moveDown();
+          if (doc.y > 650) doc.addPage();
+          doc.fontSize(14).fillColor("#2563EB").text("Recomendações");
+          doc.moveDown(0.5);
+          doc
+            .fontSize(10)
+            .fillColor("#4B5563")
+            .text(assessment.aiRecommendations, {
+              align: "justify",
+            });
+          doc.moveDown(1);
+        }
+
+        // Footer
+        const pageCount = doc.bufferedPageRange().count;
+        for (let i = 0; i < pageCount; i++) {
+          doc.switchToPage(i);
+          doc
+            .fontSize(8)
+            .fillColor("#9CA3AF")
+            .text(
+              `CRM Treinos MP - Página ${i + 1} de ${pageCount}`,
+              40,
+              doc.page.height - 30,
+              { align: "center" }
+            );
         }
 
         // Finalize PDF
         doc.end();
+        console.log(`[PDF] PDF generation completed successfully`);
       } catch (error) {
-        console.error("Error generating posture assessment PDF:", error);
+        console.error("❌ Error generating posture assessment PDF:", error);
+        console.error(
+          "❌ Error stack:",
+          error instanceof Error ? error.stack : "No stack"
+        );
         if (!res.headersSent) {
           res.status(500).json({ message: "Failed to generate PDF" });
         }
