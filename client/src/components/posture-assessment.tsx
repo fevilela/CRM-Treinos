@@ -25,6 +25,9 @@ interface JointObservation {
   observation: string;
   severity: "normal" | "mild" | "moderate" | "severe";
   isCustom: boolean;
+  photoType?: string;
+  markerX?: number;
+  markerY?: number;
 }
 
 const PHOTO_TYPES = [
@@ -127,6 +130,11 @@ export function PostureAssessment({
   const [selectedSeverity, setSelectedSeverity] = useState<
     "normal" | "mild" | "moderate" | "severe"
   >("mild");
+  const [markerPosition, setMarkerPosition] = useState<{
+    photoType: string;
+    x: number;
+    y: number;
+  } | null>(null);
 
   const [gridOffsets, setGridOffsets] = useState<
     Record<string, { x: number; y: number }>
@@ -196,6 +204,9 @@ export function PostureAssessment({
       observation,
       severity: selectedSeverity,
       isCustom: !!customObservation,
+      photoType: markerPosition?.photoType,
+      markerX: markerPosition?.x,
+      markerY: markerPosition?.y,
     };
 
     setObservations((prev) => {
@@ -207,6 +218,7 @@ export function PostureAssessment({
     setSelectedObservation("");
     setCustomObservation("");
     setSelectedSeverity("mild");
+    setMarkerPosition(null);
   };
 
   const removeObservation = (joint: string) => {
@@ -244,6 +256,18 @@ export function PostureAssessment({
     setDragStart(null);
   };
 
+  const handlePhotoClick = (
+    e: React.MouseEvent<HTMLImageElement>,
+    photoType: string
+  ) => {
+    const img = e.currentTarget;
+    const rect = img.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+
+    setMarkerPosition({ photoType, x, y });
+  };
+
   const canSave = photos.length > 0 && title.trim();
 
   const handleSave = async () => {
@@ -276,6 +300,9 @@ export function PostureAssessment({
           observation: obs.observation,
           severity: obs.severity,
           isCustom: obs.isCustom,
+          photoType: obs.photoType,
+          markerX: obs.markerX,
+          markerY: obs.markerY,
         })),
       };
 
@@ -351,12 +378,24 @@ export function PostureAssessment({
                           <img
                             src={photo.preview}
                             alt={photoType.label}
-                            className="w-full h-96 object-contain bg-gray-50"
+                            className="w-full h-96 object-contain bg-gray-50 cursor-crosshair"
+                            onClick={(e) => handlePhotoClick(e, photoType.key)}
+                            title="Clique na região do problema para marcar a posição exata"
                           />
+                          {markerPosition?.photoType === photoType.key && (
+                            <div
+                              className="absolute w-4 h-4 bg-red-500 rounded-full border-2 border-white shadow-lg pointer-events-none"
+                              style={{
+                                left: `calc(${markerPosition.x * 100}% - 8px)`,
+                                top: `calc(${markerPosition.y * 100}% - 8px)`,
+                                transform: "translate(0, 0)",
+                              }}
+                            />
+                          )}
                           <svg
                             className="absolute top-0 left-0 w-full h-full"
                             style={{
-                              opacity: 0.7,
+                              opacity: 0.3,
                               cursor:
                                 isDragging === photoType.key
                                   ? "grabbing"
@@ -427,7 +466,21 @@ export function PostureAssessment({
         <CardHeader>
           <CardTitle>Observações por Articulação</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Adicione observações específicas para cada articulação
+            Adicione observações específicas para cada articulação.
+            <strong className="text-primary">
+              {" "}
+              Dica: Clique na foto acima para marcar a posição exata do
+              problema!
+            </strong>
+            {markerPosition && (
+              <span className="block mt-1 text-green-600">
+                ✓ Posição marcada na foto{" "}
+                {
+                  PHOTO_TYPES.find((p) => p.key === markerPosition.photoType)
+                    ?.label
+                }
+              </span>
+            )}
           </p>
         </CardHeader>
         <CardContent className="space-y-4">

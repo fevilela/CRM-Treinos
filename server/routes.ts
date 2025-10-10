@@ -1917,9 +1917,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Draw annotations for each observation
       observations.forEach((obs, index) => {
-        const position = getJointPosition(obs.joint, photoType);
-        const x = position.x * image.width;
-        const y = position.y * image.height;
+        // Use markerX and markerY if available (user-defined position),
+        // otherwise fall back to estimated joint position
+        let x, y;
+        if (obs.markerX != null && obs.markerY != null) {
+          x = obs.markerX * image.width;
+          y = obs.markerY * image.height;
+        } else {
+          const position = getJointPosition(obs.joint, photoType);
+          x = position.x * image.width;
+          y = position.y * image.height;
+        }
 
         const color = severityColors[obs.severity] || "#2563EB";
 

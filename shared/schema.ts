@@ -1260,6 +1260,9 @@ export const postureObservations = pgTable("posture_observations", {
   severity: severityEnum("severity").notNull().default("mild"),
   customObservation: text("custom_observation"), // Observação personalizada do professor
   isCustom: boolean("is_custom").default(false), // Se foi uma observação customizada
+  photoType: posturePhotoTypeEnum("photo_type"), // Tipo de foto onde foi marcado
+  markerX: real("marker_x"), // Posição X do marcador (0 a 1, relativo à largura da imagem)
+  markerY: real("marker_y"), // Posição Y do marcador (0 a 1, relativo à altura da imagem)
   createdAt: timestamp("created_at").defaultNow(),
 });
 
