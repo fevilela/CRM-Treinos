@@ -1829,56 +1829,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
       Record<string, { x: number; y: number }>
     > = {
       front: {
-        head: { x: 0.5, y: 0.15 },
-        neck: { x: 0.5, y: 0.25 },
-        shoulder_left: { x: 0.65, y: 0.3 },
-        shoulder_right: { x: 0.35, y: 0.3 },
-        spine_cervical: { x: 0.5, y: 0.3 },
-        spine_thoracic: { x: 0.5, y: 0.45 },
-        spine_lumbar: { x: 0.5, y: 0.6 },
-        hip_left: { x: 0.55, y: 0.65 },
-        hip_right: { x: 0.45, y: 0.65 },
-        knee_left: { x: 0.55, y: 0.8 },
-        knee_right: { x: 0.45, y: 0.8 },
-        ankle_left: { x: 0.55, y: 0.95 },
-        ankle_right: { x: 0.45, y: 0.95 },
+        head: { x: 0.5, y: 0.08 },
+        neck: { x: 0.5, y: 0.18 },
+        shoulder_left: { x: 0.62, y: 0.25 },
+        shoulder_right: { x: 0.38, y: 0.25 },
+        spine_cervical: { x: 0.5, y: 0.22 },
+        spine_thoracic: { x: 0.5, y: 0.38 },
+        spine_lumbar: { x: 0.5, y: 0.52 },
+        hip_left: { x: 0.56, y: 0.58 },
+        hip_right: { x: 0.44, y: 0.58 },
+        knee_left: { x: 0.54, y: 0.78 },
+        knee_right: { x: 0.46, y: 0.78 },
+        ankle_left: { x: 0.54, y: 0.93 },
+        ankle_right: { x: 0.46, y: 0.93 },
+        elbow_left: { x: 0.68, y: 0.42 },
+        elbow_right: { x: 0.32, y: 0.42 },
+        wrist_left: { x: 0.7, y: 0.58 },
+        wrist_right: { x: 0.3, y: 0.58 },
       },
       back: {
-        head: { x: 0.5, y: 0.15 },
-        neck: { x: 0.5, y: 0.25 },
-        shoulder_left: { x: 0.35, y: 0.3 },
-        shoulder_right: { x: 0.65, y: 0.3 },
-        spine_cervical: { x: 0.5, y: 0.3 },
-        spine_thoracic: { x: 0.5, y: 0.45 },
-        spine_lumbar: { x: 0.5, y: 0.6 },
-        hip_left: { x: 0.45, y: 0.65 },
-        hip_right: { x: 0.55, y: 0.65 },
-        knee_left: { x: 0.45, y: 0.8 },
-        knee_right: { x: 0.55, y: 0.8 },
-        ankle_left: { x: 0.45, y: 0.95 },
-        ankle_right: { x: 0.55, y: 0.95 },
+        head: { x: 0.5, y: 0.08 },
+        neck: { x: 0.5, y: 0.18 },
+        shoulder_left: { x: 0.38, y: 0.25 },
+        shoulder_right: { x: 0.62, y: 0.25 },
+        spine_cervical: { x: 0.5, y: 0.22 },
+        spine_thoracic: { x: 0.5, y: 0.38 },
+        spine_lumbar: { x: 0.5, y: 0.52 },
+        hip_left: { x: 0.44, y: 0.58 },
+        hip_right: { x: 0.56, y: 0.58 },
+        knee_left: { x: 0.46, y: 0.78 },
+        knee_right: { x: 0.54, y: 0.78 },
+        ankle_left: { x: 0.46, y: 0.93 },
+        ankle_right: { x: 0.54, y: 0.93 },
+        elbow_left: { x: 0.32, y: 0.42 },
+        elbow_right: { x: 0.68, y: 0.42 },
       },
       side_left: {
-        head: { x: 0.6, y: 0.15 },
-        neck: { x: 0.55, y: 0.25 },
-        shoulder_left: { x: 0.5, y: 0.3 },
-        spine_cervical: { x: 0.45, y: 0.3 },
-        spine_thoracic: { x: 0.4, y: 0.45 },
-        spine_lumbar: { x: 0.45, y: 0.6 },
-        hip_left: { x: 0.5, y: 0.65 },
-        knee_left: { x: 0.5, y: 0.8 },
-        ankle_left: { x: 0.5, y: 0.95 },
+        head: { x: 0.55, y: 0.08 },
+        neck: { x: 0.52, y: 0.18 },
+        shoulder_left: { x: 0.48, y: 0.25 },
+        spine_cervical: { x: 0.48, y: 0.22 },
+        spine_thoracic: { x: 0.42, y: 0.38 },
+        spine_lumbar: { x: 0.46, y: 0.52 },
+        hip_left: { x: 0.5, y: 0.58 },
+        knee_left: { x: 0.5, y: 0.78 },
+        ankle_left: { x: 0.5, y: 0.93 },
+        elbow_left: { x: 0.38, y: 0.42 },
       },
       side_right: {
-        head: { x: 0.4, y: 0.15 },
-        neck: { x: 0.45, y: 0.25 },
-        shoulder_right: { x: 0.5, y: 0.3 },
-        spine_cervical: { x: 0.55, y: 0.3 },
-        spine_thoracic: { x: 0.6, y: 0.45 },
-        spine_lumbar: { x: 0.55, y: 0.6 },
-        hip_right: { x: 0.5, y: 0.65 },
-        knee_right: { x: 0.5, y: 0.8 },
-        ankle_right: { x: 0.5, y: 0.95 },
+        head: { x: 0.45, y: 0.08 },
+        neck: { x: 0.48, y: 0.18 },
+        shoulder_right: { x: 0.52, y: 0.25 },
+        spine_cervical: { x: 0.52, y: 0.22 },
+        spine_thoracic: { x: 0.58, y: 0.38 },
+        spine_lumbar: { x: 0.54, y: 0.52 },
+        hip_right: { x: 0.5, y: 0.58 },
+        knee_right: { x: 0.5, y: 0.78 },
+        ankle_right: { x: 0.5, y: 0.93 },
+        elbow_right: { x: 0.62, y: 0.42 },
       },
     };
 
@@ -1900,11 +1908,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Draw original image
       ctx.drawImage(image, 0, 0);
 
-      // Configure drawing style
-      ctx.strokeStyle = "#FF0000";
-      ctx.fillStyle = "#FF0000";
-      ctx.lineWidth = 3;
-      ctx.font = "bold 20px Arial";
+      // Color scheme by severity
+      const severityColors: Record<string, string> = {
+        severe: "#DC2626", // Red
+        moderate: "#F59E0B", // Orange
+        mild: "#10B981", // Green
+      };
 
       // Draw annotations for each observation
       observations.forEach((obs, index) => {
@@ -1912,44 +1921,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const x = position.x * image.width;
         const y = position.y * image.height;
 
-        // Draw arrow pointing to joint
-        const arrowLength = 80;
-        const arrowAngle = index % 2 === 0 ? -45 : 45; // Alternate arrow directions
-        const radians = (arrowAngle * Math.PI) / 180;
+        const color = severityColors[obs.severity] || "#2563EB";
 
-        const startX = x + Math.cos(radians) * arrowLength;
-        const startY = y + Math.sin(radians) * arrowLength;
-
-        // Draw arrow line
+        // Draw a small circle at the joint position
         ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(x, y);
-        ctx.stroke();
-
-        // Draw arrowhead
-        const headLength = 15;
-        const headAngle = Math.PI / 6;
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(
-          x - headLength * Math.cos(radians - headAngle),
-          y - headLength * Math.sin(radians - headAngle)
-        );
-        ctx.moveTo(x, y);
-        ctx.lineTo(
-          x - headLength * Math.cos(radians + headAngle),
-          y - headLength * Math.sin(radians + headAngle)
-        );
-        ctx.stroke();
-
-        // Draw observation number in a circle
-        ctx.beginPath();
-        ctx.arc(startX, startY, 18, 0, 2 * Math.PI);
+        ctx.arc(x, y, 8, 0, 2 * Math.PI);
+        ctx.fillStyle = color;
         ctx.fill();
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 2;
+        ctx.stroke();
 
+        // Draw a larger semi-transparent circle for highlight
+        ctx.beginPath();
+        ctx.arc(x, y, 20, 0, 2 * Math.PI);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Draw number badge offset to avoid overlapping
+        const offsetDistance = 35;
+        const angle = (index * 60) % 360; // Distribute around joint
+        const radians = (angle * Math.PI) / 180;
+        const badgeX = x + Math.cos(radians) * offsetDistance;
+        const badgeY = y + Math.sin(radians) * offsetDistance;
+
+        // Draw number in a small circle
+        ctx.beginPath();
+        ctx.arc(badgeX, badgeY, 14, 0, 2 * Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Draw number text
         ctx.fillStyle = "#FFFFFF";
-        ctx.fillText(`${index + 1}`, startX - 8, startY + 8);
-        ctx.fillStyle = "#FF0000";
+        ctx.font = "bold 14px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(`${index + 1}`, badgeX, badgeY);
       });
 
       return canvas.toBuffer("image/png");
@@ -2091,8 +2104,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           try {
             // Annotate image
+            const photoPath = path.join(
+              process.cwd(),
+              photo.photoUrl.replace(/^\//, "")
+            );
             const annotatedImageBuffer = await annotateImage(
-              photo.photoPath,
+              photoPath,
               photoObservations,
               photo.photoType
             );
@@ -2171,14 +2188,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Footer
-        const pageCount = doc.bufferedPageRange().count;
-        for (let i = 0; i < pageCount; i++) {
+        const pageRange = doc.bufferedPageRange();
+        const totalPages = pageRange.start + pageRange.count - 1;
+        for (
+          let i = pageRange.start;
+          i < pageRange.start + pageRange.count;
+          i++
+        ) {
           doc.switchToPage(i);
           doc
             .fontSize(8)
             .fillColor("#9CA3AF")
             .text(
-              `CRM Treinos MP - Página ${i + 1} de ${pageCount}`,
+              `CRM Treinos MP - Página ${i + 1} de ${totalPages}`,
               40,
               doc.page.height - 30,
               { align: "center" }
