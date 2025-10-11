@@ -1,647 +1,598 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Camera, X, Save } from "lucide-react";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Plus,
+  Eye,
+  Trash2,
+  Calendar,
+  User,
+  Edit,
+  Download,
+} from "lucide-react";
+import { PostureAssessment } from "@/components/posture-assessment";
+import { Badge } from "@/components/ui/badge";
+import { AnatomicalDiagram } from "@/components/anatomical-diagram";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
-interface PosturePhoto {
-  file: File;
-  preview: string;
-  type: "front" | "back" | "side_left" | "side_right";
+interface PostureAssessmentData {
+  id: string;
+  title: string;
+  studentId: string;
+  student?: {
+    name: string;
+  };
+  notes?: string;
+  aiAnalysis?: string;
+  aiRecommendations?: string;
+  createdAt: string;
 }
 
-interface JointObservation {
+interface PosturePhoto {
+  id: string;
+  photoType: "front" | "back" | "side_left" | "side_right";
+  photoUrl: string;
+}
+
+interface PostureObservation {
+  id: string;
   joint: string;
   observation: string;
   severity: "normal" | "mild" | "moderate" | "severe";
-  isCustom: boolean;
-  photoType?: string;
-  markerX?: number;
-  markerY?: number;
 }
 
-const PHOTO_TYPES = [
-  { key: "front", label: "Frente", icon: "👤" },
-  { key: "back", label: "Costas", icon: "🔄" },
-  { key: "side_left", label: "Lado Esquerdo", icon: "⬅️" },
-  { key: "side_right", label: "Lado Direito", icon: "➡️" },
-] as const;
-
-const JOINTS = [
-  { key: "head", label: "Cabeça" },
-  { key: "neck", label: "Pescoço" },
-  { key: "shoulder_left", label: "Ombro Esquerdo" },
-  { key: "shoulder_right", label: "Ombro Direito" },
-  { key: "spine_cervical", label: "Coluna Cervical" },
-  { key: "spine_thoracic", label: "Coluna Torácica" },
-  { key: "spine_lumbar", label: "Coluna Lombar" },
-  { key: "hip_left", label: "Quadril Esquerdo" },
-  { key: "hip_right", label: "Quadril Direito" },
-  { key: "knee_left", label: "Joelho Esquerdo" },
-  { key: "knee_right", label: "Joelho Direito" },
-  { key: "ankle_left", label: "Tornozelo Esquerdo" },
-  { key: "ankle_right", label: "Tornozelo Direito" },
-] as const;
-
-const PREDEFINED_OBSERVATIONS = {
-  head: [
-    "Cabeça muito para frente",
-    "Inclinação lateral",
-    "Extensão excessiva",
-  ],
-  neck: ["Hiperlordose cervical", "Retificação cervical", "Inclinação lateral"],
-  shoulder_left: [
-    "Ombro caído",
-    "Ombro elevado",
-    "Projeção anterior",
-    "Rotação interna",
-  ],
-  shoulder_right: [
-    "Ombro caído",
-    "Ombro elevado",
-    "Projeção anterior",
-    "Rotação interna",
-  ],
-  spine_cervical: ["Hiperlordose", "Retificação", "Escoliose"],
-  spine_thoracic: ["Hipercifose", "Retificação", "Escoliose"],
-  spine_lumbar: ["Hiperlordose", "Retificação", "Escoliose"],
-  hip_left: [
-    "Elevação",
-    "Inclinação anterior",
-    "Inclinação posterior",
-    "Rotação",
-  ],
-  hip_right: [
-    "Elevação",
-    "Inclinação anterior",
-    "Inclinação posterior",
-    "Rotação",
-  ],
-  knee_left: ["Valgismo", "Varismo", "Hiperextensão", "Flexão"],
-  knee_right: ["Valgismo", "Varismo", "Hiperextensão", "Flexão"],
-  ankle_left: ["Pronação", "Supinação", "Dorsiflexão limitada"],
-  ankle_right: ["Pronação", "Supinação", "Dorsiflexão limitada"],
-};
-
-interface PostureAssessmentProps {
-  studentId: string;
-  onSave: (assessment: any) => void;
-  initialData?: {
-    id?: string;
-    title?: string;
-    notes?: string;
-    photos?: Array<{
-      type: "front" | "back" | "side_left" | "side_right";
-      url: string;
-    }>;
-    observations?: Array<{
-      joint: string;
-      observation: string;
-      severity: "normal" | "mild" | "moderate" | "severe";
-    }>;
-  };
-  mode?: "create" | "edit";
+interface Student {
+  id: string;
+  name: string;
+  email?: string;
 }
 
-export function PostureAssessment({
-  studentId,
-  onSave,
-  initialData,
-  mode = "create",
-}: PostureAssessmentProps) {
-  const [photos, setPhotos] = useState<PosturePhoto[]>([]);
-  const [title, setTitle] = useState("");
-  const [notes, setNotes] = useState("");
-  const [observations, setObservations] = useState<JointObservation[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
-  const [selectedJoint, setSelectedJoint] = useState("");
-  const [selectedObservation, setSelectedObservation] = useState("");
-  const [customObservation, setCustomObservation] = useState("");
-  const [selectedSeverity, setSelectedSeverity] = useState<
-    "normal" | "mild" | "moderate" | "severe"
-  >("mild");
-  const [markerPosition, setMarkerPosition] = useState<{
-    photoType: string;
-    x: number;
-    y: number;
-  } | null>(null);
+export function PostureAssessments() {
+  const [selectedStudentId, setSelectedStudentId] = useState<string>("");
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingAssessment, setEditingAssessment] =
+    useState<PostureAssessmentData | null>(null);
+  const [selectedAssessment, setSelectedAssessment] =
+    useState<PostureAssessmentData | null>(null);
+  const queryClient = useQueryClient();
 
-  const [gridOffsets, setGridOffsets] = useState<
-    Record<string, { x: number; y: number }>
-  >({});
-  const [isDragging, setIsDragging] = useState<string | null>(null);
-  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(
-    null
-  );
-
-  useEffect(() => {
-    if (mode === "edit" && initialData) {
-      setTitle(initialData.title || "");
-      setNotes(initialData.notes || "");
-
-      if (initialData.observations) {
-        setObservations(
-          initialData.observations.map((obs) => ({
-            joint: obs.joint,
-            observation: obs.observation,
-            severity: obs.severity,
-            isCustom: false,
-          }))
-        );
-      }
-    }
-  }, [mode, initialData]);
-
-  const handleFileUpload = useCallback(
-    (
-      event: React.ChangeEvent<HTMLInputElement>,
-      photoType: PosturePhoto["type"]
-    ) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
-
-      if (!file.type.startsWith("image/")) {
-        alert("Por favor, selecione apenas arquivos de imagem.");
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const preview = e.target?.result as string;
-
-        setPhotos((prev) => {
-          const filtered = prev.filter((p) => p.type !== photoType);
-          return [...filtered, { file, preview, type: photoType }];
-        });
-      };
-      reader.readAsDataURL(file);
-    },
-    []
-  );
-
-  const removePhoto = useCallback((type: PosturePhoto["type"]) => {
-    setPhotos((prev) => prev.filter((p) => p.type !== type));
-  }, []);
-
-  const addObservation = () => {
-    if (!selectedJoint) return;
-
-    const observation = customObservation || selectedObservation;
-    if (!observation) return;
-
-    const newObservation: JointObservation = {
-      joint: selectedJoint,
-      observation,
-      severity: selectedSeverity,
-      isCustom: !!customObservation,
-      photoType: markerPosition?.photoType,
-      markerX: markerPosition?.x,
-      markerY: markerPosition?.y,
-    };
-
-    setObservations((prev) => {
-      const filtered = prev.filter((obs) => obs.joint !== selectedJoint);
-      return [...filtered, newObservation];
-    });
-
-    setSelectedJoint("");
-    setSelectedObservation("");
-    setCustomObservation("");
-    setSelectedSeverity("mild");
-    setMarkerPosition(null);
-  };
-
-  const removeObservation = (joint: string) => {
-    setObservations((prev) => prev.filter((obs) => obs.joint !== joint));
-  };
-
-  const getPhotoByType = (type: PosturePhoto["type"]) => {
-    return photos.find((p) => p.type === type);
-  };
-
-  const handleGridMouseDown = (e: React.MouseEvent, photoType: string) => {
-    setIsDragging(photoType);
-    setDragStart({ x: e.clientX, y: e.clientY });
-  };
-
-  const handleGridMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || !dragStart) return;
-
-    const deltaX = e.clientX - dragStart.x;
-    const deltaY = e.clientY - dragStart.y;
-
-    setGridOffsets((prev) => ({
-      ...prev,
-      [isDragging]: {
-        x: (prev[isDragging]?.x || 0) + deltaX,
-        y: (prev[isDragging]?.y || 0) + deltaY,
-      },
-    }));
-
-    setDragStart({ x: e.clientX, y: e.clientY });
-  };
-
-  const handleGridMouseUp = () => {
-    setIsDragging(null);
-    setDragStart(null);
-  };
-
-  const handlePhotoClick = (
-    e: React.MouseEvent<HTMLImageElement>,
-    photoType: string
-  ) => {
-    const img = e.currentTarget;
-    const rect = img.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-
-    setMarkerPosition({ photoType, x, y });
-  };
-
-  const canSave = photos.length > 0 && title.trim();
-
-  const handleSave = async () => {
-    if (!canSave) return;
-
-    setIsSaving(true);
-    try {
-      const imagePromises = photos.map(async (photo) => {
-        return new Promise<{ type: string; base64: string }>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const result = reader.result as string;
-            const base64 = result.split(",")[1];
-            resolve({ type: photo.type, base64 });
-          };
-          reader.readAsDataURL(photo.file);
-        });
+  // Fetch students
+  const { data: students = [] } = useQuery<Student[]>({
+    queryKey: ["students"],
+    queryFn: async () => {
+      const response = await fetch("/api/students", {
+        credentials: "include",
       });
+      if (!response.ok) throw new Error("Failed to fetch students");
+      return response.json();
+    },
+  });
 
-      const images = await Promise.all(imagePromises);
+  // Fetch posture assessments for selected student
+  const { data: assessments = [], isLoading } = useQuery<
+    PostureAssessmentData[]
+  >({
+    queryKey: ["posture-assessments", selectedStudentId],
+    queryFn: async () => {
+      if (!selectedStudentId) return [];
+      const response = await fetch(
+        `/api/students/${selectedStudentId}/posture-assessments`,
+        {
+          credentials: "include",
+        }
+      );
+      if (!response.ok) throw new Error("Failed to fetch posture assessments");
+      return response.json();
+    },
+    enabled: !!selectedStudentId,
+  });
 
-      const assessmentData = {
-        ...(mode === "edit" && initialData?.id && { id: initialData.id }),
-        studentId,
-        title,
-        notes,
-        images,
-        observations: observations.map((obs) => ({
-          joint: obs.joint,
-          observation: obs.observation,
-          severity: obs.severity,
-          isCustom: obs.isCustom,
-          photoType: obs.photoType,
-          markerX: obs.markerX,
-          markerY: obs.markerY,
-        })),
-      };
+  // Create/Update assessment mutation
+  const saveAssessmentMutation = useMutation({
+    mutationFn: async (assessmentData: any) => {
+      const isEdit = assessmentData.id;
+      const url = isEdit
+        ? `/api/posture-assessments/${assessmentData.id}`
+        : "/api/posture-assessments";
+      const method = isEdit ? "PUT" : "POST";
 
-      await onSave(assessmentData);
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(assessmentData),
+      });
+      if (!response.ok)
+        throw new Error(`Failed to ${isEdit ? "update" : "create"} assessment`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["posture-assessments"] });
+      setIsCreateDialogOpen(false);
+      setIsEditDialogOpen(false);
+      setEditingAssessment(null);
+    },
+  });
+
+  // Delete assessment mutation
+  const deleteAssessmentMutation = useMutation({
+    mutationFn: async (assessmentId: string) => {
+      const response = await fetch(`/api/posture-assessments/${assessmentId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to delete assessment");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["posture-assessments"] });
+    },
+  });
+
+  const handleCreateAssessment = (assessmentData: any) => {
+    saveAssessmentMutation.mutate(assessmentData);
+  };
+
+  const handleEditAssessment = (assessment: PostureAssessmentData) => {
+    setEditingAssessment(assessment);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateAssessment = (assessmentData: any) => {
+    saveAssessmentMutation.mutate(assessmentData);
+  };
+
+  const handleDeleteAssessment = (assessmentId: string) => {
+    deleteAssessmentMutation.mutate(assessmentId);
+  };
+
+  // Fetch photos for selected assessment
+  const { data: selectedPhotos = [] } = useQuery<PosturePhoto[]>({
+    queryKey: ["posture-photos", selectedAssessment?.id],
+    queryFn: async () => {
+      if (!selectedAssessment) return [];
+      const response = await fetch(
+        `/api/posture-assessments/${selectedAssessment.id}/photos`,
+        { credentials: "include" }
+      );
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!selectedAssessment,
+  });
+
+  // Fetch observations for selected assessment
+  const { data: selectedObservations = [] } = useQuery<PostureObservation[]>({
+    queryKey: ["posture-observations", selectedAssessment?.id],
+    queryFn: async () => {
+      if (!selectedAssessment) return [];
+      const response = await fetch(
+        `/api/posture-assessments/${selectedAssessment.id}/observations`,
+        { credentials: "include" }
+      );
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!selectedAssessment,
+  });
+
+  // Fetch data for editing
+  const { data: editingPhotos = [] } = useQuery<PosturePhoto[]>({
+    queryKey: ["posture-photos", editingAssessment?.id],
+    queryFn: async () => {
+      if (!editingAssessment) return [];
+      const response = await fetch(
+        `/api/posture-assessments/${editingAssessment.id}/photos`,
+        { credentials: "include" }
+      );
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!editingAssessment,
+  });
+
+  const { data: editingObservations = [] } = useQuery<PostureObservation[]>({
+    queryKey: ["posture-observations", editingAssessment?.id],
+    queryFn: async () => {
+      if (!editingAssessment) return [];
+      const response = await fetch(
+        `/api/posture-assessments/${editingAssessment.id}/observations`,
+        { credentials: "include" }
+      );
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!editingAssessment,
+  });
+
+  const handleDownloadPDF = async (assessmentId: string) => {
+    try {
+      const response = await fetch(
+        `/api/posture-assessments/${assessmentId}/pdf`,
+        {
+          credentials: "include",
+        }
+      );
+      if (!response.ok) throw new Error("Failed to generate PDF");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `avaliacao-postural-${assessmentId}.pdf`;
+      link.click();
+      window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Erro ao salvar avaliação:", error);
-      alert("Erro ao salvar avaliação. Tente novamente.");
-    } finally {
-      setIsSaving(false);
+      console.error("Error downloading PDF:", error);
+      alert("Erro ao baixar PDF");
     }
+  };
+
+  const selectedStudent = students.find((s) => s.id === selectedStudentId);
+
+  const JOINT_LABELS: Record<string, string> = {
+    head: "Cabeça",
+    neck: "Pescoço",
+    shoulder_left: "Ombro Esquerdo",
+    shoulder_right: "Ombro Direito",
+    spine_cervical: "Coluna Cervical",
+    spine_thoracic: "Coluna Torácica",
+    spine_lumbar: "Coluna Lombar",
+    hip_left: "Quadril Esquerdo",
+    hip_right: "Quadril Direito",
+    knee_left: "Joelho Esquerdo",
+    knee_right: "Joelho Direito",
+    ankle_left: "Tornozelo Esquerdo",
+    ankle_right: "Tornozelo Direito",
   };
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Avaliações Posturais</h1>
+        {selectedStudentId && (
+          <Dialog
+            open={isCreateDialogOpen}
+            onOpenChange={setIsCreateDialogOpen}
+          >
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Nova Avaliação
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  Nova Avaliação Postural - {selectedStudent?.name}
+                </DialogTitle>
+              </DialogHeader>
+              <PostureAssessment
+                studentId={selectedStudentId}
+                onSave={handleCreateAssessment}
+              />
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
+
+      {/* Student Selection */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            {mode === "edit" ? "Editar" : "Nova"} Avaliação Postural
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="title">Título da Avaliação</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex: Avaliação Inicial - Janeiro 2025"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="notes">Observações Gerais</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Observações gerais sobre o aluno..."
-              rows={3}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Fotos Posturais com Grade de Avaliação</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Faça upload das fotos (frente, costas, lado esquerdo e/ou lado
-            direito). Uma grade quadriculada será aplicada para facilitar a
-            análise postural.
-          </p>
+          <CardTitle>Selecionar Aluno</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {PHOTO_TYPES.map((photoType) => {
-              const photo = getPhotoByType(photoType.key);
-              return (
-                <div key={photoType.key} className="space-y-2">
-                  <Label className="text-sm font-medium flex items-center gap-2">
-                    <span className="text-lg">{photoType.icon}</span>
-                    {photoType.label}
-                  </Label>
-                  <div className="relative">
-                    {photo ? (
-                      <div
-                        className="relative group"
-                        onMouseMove={handleGridMouseMove}
-                        onMouseUp={handleGridMouseUp}
-                        onMouseLeave={handleGridMouseUp}
-                      >
-                        <div className="relative overflow-hidden rounded-lg border-2 border-gray-300">
-                          <img
-                            src={photo.preview}
-                            alt={photoType.label}
-                            className="w-full h-96 object-contain bg-gray-50 cursor-crosshair"
-                            onClick={(e) => handlePhotoClick(e, photoType.key)}
-                            title="Clique na região do problema para marcar a posição exata"
-                          />
-                          {markerPosition?.photoType === photoType.key && (
-                            <div
-                              className="absolute w-4 h-4 bg-red-500 rounded-full border-2 border-white shadow-lg pointer-events-none"
-                              style={{
-                                left: `calc(${markerPosition.x * 100}% - 8px)`,
-                                top: `calc(${markerPosition.y * 100}% - 8px)`,
-                                transform: "translate(0, 0)",
-                              }}
-                            />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {students.map((student) => (
+              <Card
+                key={student.id}
+                className={`cursor-pointer transition-all ${
+                  selectedStudentId === student.id
+                    ? "ring-2 ring-blue-500 bg-blue-50"
+                    : "hover:shadow-md"
+                }`}
+                onClick={() => setSelectedStudentId(student.id)}
+              >
+                <CardContent className="pt-4">
+                  <div className="flex items-center space-x-3">
+                    <User className="w-8 h-8 text-gray-500" />
+                    <div>
+                      <h3 className="font-medium">{student.name}</h3>
+                      {student.email && (
+                        <p className="text-sm text-gray-500">{student.email}</p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Assessments List */}
+      {selectedStudentId && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Avaliações de {selectedStudent?.name}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="text-center py-8">Carregando avaliações...</div>
+            ) : assessments.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                Nenhuma avaliação postural encontrada para este aluno.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {assessments.map((assessment) => (
+                  <Card key={assessment.id} className="border">
+                    <CardContent className="pt-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-2">
+                          <h3 className="font-medium text-lg">
+                            {assessment.title}
+                          </h3>
+                          <div className="flex items-center gap-4 text-sm text-gray-600">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              {new Date(
+                                assessment.createdAt
+                              ).toLocaleDateString("pt-BR")}
+                            </div>
+                          </div>
+                          {assessment.notes && (
+                            <p className="text-sm text-gray-600 mt-2">
+                              {assessment.notes}
+                            </p>
                           )}
-                          <svg
-                            className="absolute top-0 left-0 w-full h-full"
-                            style={{
-                              opacity: 0.3,
-                              cursor:
-                                isDragging === photoType.key
-                                  ? "grabbing"
-                                  : "grab",
-                            }}
-                            onMouseDown={(e) =>
-                              handleGridMouseDown(e, photoType.key)
-                            }
+                          {assessment.aiAnalysis && (
+                            <Badge variant="secondary" className="mt-2">
+                              Análise IA Disponível
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedAssessment(assessment)}
                           >
-                            <defs>
-                              <pattern
-                                id={`grid-${photoType.key}`}
-                                width="20"
-                                height="20"
-                                patternUnits="userSpaceOnUse"
-                                x={gridOffsets[photoType.key]?.x || 0}
-                                y={gridOffsets[photoType.key]?.y || 0}
-                              >
-                                <path
-                                  d="M 20 0 L 0 0 0 20"
-                                  fill="none"
-                                  stroke="#000000"
-                                  strokeWidth="2.5"
-                                />
-                              </pattern>
-                            </defs>
-                            <rect
-                              width="100%"
-                              height="100%"
-                              fill={`url(#grid-${photoType.key})`}
-                            />
-                          </svg>
+                            <Eye className="w-4 h-4 mr-1" />
+                            Ver
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditAssessment(assessment)}
+                          >
+                            <Edit className="w-4 h-4 mr-1" />
+                            Editar
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Excluir Avaliação
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja excluir esta avaliação
+                                  postural? Esta ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-red-500 hover:bg-red-600"
+                                  onClick={() =>
+                                    handleDeleteAssessment(assessment.id)
+                                  }
+                                >
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => removePhoto(photoType.key)}
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
                       </div>
-                    ) : (
-                      <label className="cursor-pointer">
-                        <div className="w-full h-96 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-blue-500 transition-colors bg-gray-50">
-                          <Camera className="w-12 h-12 text-gray-400 mb-2" />
-                          <span className="text-sm text-gray-500">
-                            Clique para enviar foto
-                          </span>
-                        </div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => handleFileUpload(e, photoType.key)}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Edit Assessment Dialog */}
+      {editingAssessment && (
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                Editar Avaliação - {editingAssessment.title}
+              </DialogTitle>
+            </DialogHeader>
+            <PostureAssessment
+              studentId={editingAssessment.studentId}
+              onSave={handleUpdateAssessment}
+              initialData={{
+                id: editingAssessment.id,
+                title: editingAssessment.title,
+                notes: editingAssessment.notes,
+                photos: editingPhotos.map((p) => ({
+                  type: p.photoType,
+                  url: p.photoUrl,
+                })),
+                observations: editingObservations.map((o) => ({
+                  joint: o.joint,
+                  observation: o.observation,
+                  severity: o.severity,
+                })),
+              }}
+              mode="edit"
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Assessment Details Dialog */}
+      {selectedAssessment && (
+        <Dialog
+          open={!!selectedAssessment}
+          onOpenChange={() => setSelectedAssessment(null)}
+        >
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <div className="flex items-center justify-between">
+                <DialogTitle>{selectedAssessment.title}</DialogTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDownloadPDF(selectedAssessment.id)}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Baixar PDF
+                </Button>
+              </div>
+            </DialogHeader>
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-medium mb-2">Data da Avaliação</h3>
+                <p className="text-gray-600">
+                  {new Date(selectedAssessment.createdAt).toLocaleDateString(
+                    "pt-BR",
+                    {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    }
+                  )}
+                </p>
+              </div>
+
+              {selectedAssessment.notes && (
+                <div>
+                  <h3 className="font-medium mb-2">Observações Gerais</h3>
+                  <p className="text-gray-600 whitespace-pre-wrap">
+                    {selectedAssessment.notes}
+                  </p>
+                </div>
+              )}
+
+              {/* Diagramas Anatômicos com Observações */}
+              {selectedObservations.length > 0 && (
+                <div>
+                  <h3 className="font-medium mb-4">
+                    Análise Postural - Diagramas Anatômicos
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {(
+                      ["front", "back", "side_left", "side_right"] as const
+                    ).map((photoType) => {
+                      const relevantObs = selectedObservations.filter(
+                        (obs: any) =>
+                          !obs.photoType ||
+                          obs.photoType === photoType ||
+                          (photoType.startsWith("side") &&
+                            obs.photoType?.startsWith("side"))
+                      );
+
+                      if (relevantObs.length === 0) return null;
+
+                      return (
+                        <AnatomicalDiagram
+                          key={photoType}
+                          observations={relevantObs}
+                          photoType={photoType}
                         />
-                      </label>
-                    )}
+                      );
+                    })}
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+              )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Observações por Articulação</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Adicione observações específicas para cada articulação.
-            <strong className="text-primary">
-              {" "}
-              Dica: Clique na foto acima para marcar a posição exata do
-              problema!
-            </strong>
-            {markerPosition && (
-              <span className="block mt-1 text-green-600">
-                ✓ Posição marcada na foto{" "}
-                {
-                  PHOTO_TYPES.find((p) => p.key === markerPosition.photoType)
-                    ?.label
-                }
-              </span>
-            )}
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label>Articulação</Label>
-              <Select value={selectedJoint} onValueChange={setSelectedJoint}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {JOINTS.map((joint) => (
-                    <SelectItem key={joint.key} value={joint.key}>
-                      {joint.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {selectedJoint && (
-              <div className="space-y-2">
-                <Label>Observação Pré-definida</Label>
-                <Select
-                  value={selectedObservation}
-                  onValueChange={setSelectedObservation}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Escolha uma opção..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PREDEFINED_OBSERVATIONS[
-                      selectedJoint as keyof typeof PREDEFINED_OBSERVATIONS
-                    ]?.map((obs) => (
-                      <SelectItem key={obs} value={obs}>
-                        {obs}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label>Observação Personalizada</Label>
-              <Input
-                value={customObservation}
-                onChange={(e) => setCustomObservation(e.target.value)}
-                placeholder="Ou digite uma observação personalizada..."
-                disabled={!selectedJoint}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Severidade</Label>
-              <Select
-                value={selectedSeverity}
-                onValueChange={(value: any) => setSelectedSeverity(value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="normal">Normal</SelectItem>
-                  <SelectItem value="mild">Leve</SelectItem>
-                  <SelectItem value="moderate">Moderado</SelectItem>
-                  <SelectItem value="severe">Severo</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <Button
-            onClick={addObservation}
-            disabled={
-              !selectedJoint || (!selectedObservation && !customObservation)
-            }
-            className="w-full"
-          >
-            Adicionar Observação
-          </Button>
-
-          {observations.length > 0 && (
-            <div className="space-y-2">
-              <Label>Observações Adicionadas</Label>
-              <div className="space-y-2">
-                {observations.map((obs) => {
-                  const joint = JOINTS.find((j) => j.key === obs.joint);
-                  return (
-                    <div
-                      key={obs.joint}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                    >
-                      <div className="flex-1">
-                        <div className="font-medium">{joint?.label}</div>
-                        <div className="text-sm text-gray-600">
-                          {obs.observation}
-                        </div>
-                        <Badge
-                          variant={
-                            obs.severity === "severe"
-                              ? "destructive"
-                              : obs.severity === "moderate"
-                              ? "default"
-                              : "secondary"
-                          }
-                        >
-                          {obs.severity === "normal"
-                            ? "Normal"
-                            : obs.severity === "mild"
-                            ? "Leve"
-                            : obs.severity === "moderate"
-                            ? "Moderado"
-                            : "Severo"}
-                        </Badge>
+              {/* Fotos Originais (apenas para referência) */}
+              {selectedPhotos.length > 0 && (
+                <div>
+                  <h3 className="font-medium mb-4">Fotos Originais</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {selectedPhotos.map((photo) => (
+                      <div key={photo.id} className="space-y-2">
+                        <img
+                          src={photo.photoUrl}
+                          alt={photo.photoType}
+                          className="w-full h-48 object-cover bg-gray-50 rounded-lg border-2 border-gray-300"
+                        />
+                        <p className="text-sm text-center font-medium">
+                          {photo.photoType === "front"
+                            ? "Frente"
+                            : photo.photoType === "back"
+                            ? "Costas"
+                            : photo.photoType === "side_left"
+                            ? "Lado Esquerdo"
+                            : "Lado Direito"}
+                        </p>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => removeObservation(obs.joint)}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-      <Card>
-        <CardContent className="pt-6">
-          <Button
-            onClick={handleSave}
-            disabled={!canSave || isSaving}
-            size="lg"
-            className="w-full"
-          >
-            {isSaving ? (
-              <>
-                <Save className="w-4 h-4 mr-2 animate-pulse" />
-                Salvando...
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4 mr-2" />
-                {mode === "edit" ? "Atualizar Avaliação" : "Salvar Avaliação"}
-              </>
-            )}
-          </Button>
-          {!canSave && (
-            <p className="text-sm text-muted-foreground text-center mt-2">
-              {photos.length === 0
-                ? "Adicione pelo menos uma foto"
-                : "Adicione um título para continuar"}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+              {selectedAssessment.aiAnalysis && (
+                <div>
+                  <h3 className="font-medium mb-2">Análise da IA</h3>
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <p className="text-gray-700 whitespace-pre-wrap">
+                      {selectedAssessment.aiAnalysis}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {selectedAssessment.aiRecommendations && (
+                <div>
+                  <h3 className="font-medium mb-2">Recomendações da IA</h3>
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <p className="text-gray-700 whitespace-pre-wrap">
+                      {selectedAssessment.aiRecommendations}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
