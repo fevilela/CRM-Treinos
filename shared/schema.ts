@@ -1210,6 +1210,25 @@ export const severityEnum = pgEnum("severity", [
   "severe", // severo
 ]);
 
+// Enum para tipos de medição postural
+export const measurementTypeEnum = pgEnum("measurement_type", [
+  "head_vertical_alignment", // Alinhamento vertical da cabeça
+  "head_horizontal_level", // Nivelamento horizontal da cabeça
+  "shoulders_horizontal_level", // Nivelamento horizontal dos ombros
+  "trunk_vertical_alignment", // Alinhamento vertical do tronco
+  "pelvis_horizontal_level", // Nivelamento horizontal da pelve
+  "femur_horizontal_level", // Nivelamento horizontal do fêmur
+  "tibia_horizontal_level", // Nivelamento horizontal da tíbia
+  "knees_valgus_varus_symmetry", // Simetria do alinhamento valgo/varo dos joelhos
+]);
+
+// Enum para status da medição (baseado na imagem do usuário)
+export const measurementStatusEnum = pgEnum("measurement_status", [
+  "acceptable", // vendável (verde) - desvio aceitável
+  "moderate", // moderado (amarelo) - atenção necessária
+  "severe", // elevado (vermelho) - intervenção necessária
+]);
+
 // Tabela de avaliações posturais
 export const postureAssessments = pgTable("posture_assessments", {
   id: varchar("id")
@@ -1275,6 +1294,24 @@ export const postureOptions = pgTable("posture_options", {
   optionText: varchar("option_text").notNull(), // Ex: "Ombro caído", "Cabeça muito para frente"
   description: text("description"), // Descrição mais detalhada
   isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Tabela de medições posturais automáticas
+export const postureMeasurements = pgTable("posture_measurements", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  assessmentId: varchar("assessment_id")
+    .notNull()
+    .references(() => postureAssessments.id, { onDelete: "cascade" }),
+  measurementType: measurementTypeEnum("measurement_type").notNull(),
+  value: real("value").notNull(), // Valor em graus
+  status: measurementStatusEnum("status").notNull(), // acceptable, moderate, severe
+  photoType: posturePhotoTypeEnum("photo_type"), // Vista usada para a medição
+  leftValue: real("left_value"), // Para medições assimétricas (ex: joelhos)
+  rightValue: real("right_value"), // Para medições assimétricas (ex: joelhos)
+  notes: text("notes"), // Observações sobre a medição
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -1363,6 +1400,7 @@ export const postureAssessmentsRelations = relations(
     }),
     photos: many(posturePhotos),
     observations: many(postureObservations),
+    measurements: many(postureMeasurements),
   })
 );
 
@@ -1378,6 +1416,16 @@ export const postureObservationsRelations = relations(
   ({ one }) => ({
     assessment: one(postureAssessments, {
       fields: [postureObservations.assessmentId],
+      references: [postureAssessments.id],
+    }),
+  })
+);
+
+export const postureMeasurementsRelations = relations(
+  postureMeasurements,
+  ({ one }) => ({
+    assessment: one(postureAssessments, {
+      fields: [postureMeasurements.assessmentId],
       references: [postureAssessments.id],
     }),
   })
@@ -1411,6 +1459,13 @@ export const insertPostureOptionSchema = createInsertSchema(
   createdAt: true,
 });
 
+export const insertPostureMeasurementSchema = createInsertSchema(
+  postureMeasurements
+).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types para avaliação postural
 export type PostureAssessment = typeof postureAssessments.$inferSelect;
 export type InsertPostureAssessment = z.infer<
@@ -1424,6 +1479,10 @@ export type InsertPostureObservation = z.infer<
 >;
 export type PostureOption = typeof postureOptions.$inferSelect;
 export type InsertPostureOption = z.infer<typeof insertPostureOptionSchema>;
+export type PostureMeasurement = typeof postureMeasurements.$inferSelect;
+export type InsertPostureMeasurement = z.infer<
+  typeof insertPostureMeasurementSchema
+>;
 
 // Relations para Anamnese
 export const anamnesesRelations = relations(anamneses, ({ one }) => ({

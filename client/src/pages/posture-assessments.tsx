@@ -11,8 +11,8 @@ import {
   Edit,
   Download,
 } from "lucide-react";
-import { PostureAssessment } from "@/components/posture-assessment";
 import { Badge } from "@/components/ui/badge";
+import { PostureAssessmentForm } from "@/components/posture-assessment-form";
 import {
   Dialog,
   DialogContent,
@@ -606,6 +606,19 @@ export function PostureAssessments() {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Medições Automáticas */}
+              {selectedPhotos.length > 0 && (
+                <div>
+                  <h3 className="font-medium mb-4">
+                    Medições Posturais Automáticas
+                  </h3>
+                  <PostureAssessmentForm
+                    assessmentId={selectedAssessment.id}
+                    photos={selectedPhotos}
+                  />
                 </div>
               )}
 

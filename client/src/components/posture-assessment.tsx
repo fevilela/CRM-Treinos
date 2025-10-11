@@ -11,7 +11,6 @@ import {
   Edit,
   Download,
 } from "lucide-react";
-import { PostureAssessment } from "@/components/posture-assessment";
 import { Badge } from "@/components/ui/badge";
 import { AnatomicalDiagram } from "@/components/anatomical-diagram";
 import {

@@ -25,6 +25,7 @@ import {
   insertPostureAssessmentSchema,
   insertPosturePhotoSchema,
   insertPostureObservationSchema,
+  insertPostureMeasurementSchema,
   type Student,
   type CalendarEvent,
   type InsertCalendarEvent,
@@ -1814,6 +1815,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res
           .status(500)
           .json({ message: "Failed to fetch posture observations" });
+      }
+    }
+  );
+
+  // Get measurements for posture assessment
+  app.get(
+    "/api/posture-assessments/:id/measurements",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const assessmentId = req.params.id;
+        const measurements = await storage.getPostureMeasurements(assessmentId);
+        res.json(measurements);
+      } catch (error) {
+        console.error("Error fetching posture measurements:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch posture measurements" });
+      }
+    }
+  );
+
+  // Create posture measurement
+  app.post(
+    "/api/posture-assessments/:id/measurements",
+    isTeacher,
+    async (req: any, res) => {
+      try {
+        const assessmentId = req.params.id;
+
+        // Verify assessment exists
+        const assessment = await storage.getPostureAssessment(assessmentId);
+        if (!assessment) {
+          return res.status(404).json({ message: "Assessment not found" });
+        }
+
+        // Validate measurement data
+        const validatedData = insertPostureMeasurementSchema.parse({
+          ...req.body,
+          assessmentId,
+        });
+
+        const measurement = await storage.createPostureMeasurement(
+          validatedData
+        );
+        res.status(201).json(measurement);
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            message: "Invalid measurement data",
+            errors: error.errors,
+          });
+        }
+        console.error("Error creating posture measurement:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to create posture measurement" });
+      }
+    }
+  );
+
+  // Delete posture measurement
+  app.delete(
+    "/api/posture-measurements/:id",
+    isTeacher,
+    async (req: any, res) => {
+      try {
+        const measurementId = req.params.id;
+        await storage.deletePostureMeasurement(measurementId);
+        res.status(204).send();
+      } catch (error) {
+        console.error("Error deleting posture measurement:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to delete posture measurement" });
+      }
+    }
+  );
+
+  // Batch save/update measurements for an assessment
+  app.post(
+    "/api/posture-assessments/:id/measurements/batch",
+    isTeacher,
+    async (req: any, res) => {
+      try {
+        const assessmentId = req.params.id;
+
+        // Verify assessment exists
+        const assessment = await storage.getPostureAssessment(assessmentId);
+        if (!assessment) {
+          return res.status(404).json({ message: "Assessment not found" });
+        }
+
+        // Add assessmentId to each measurement before validation
+        const measurements = req.body.measurements || [];
+        const measurementsWithAssessmentId = measurements.map((m: any) => ({
+          ...m,
+          assessmentId,
+        }));
+
+        // Validate batch measurements with assessmentId included
+        const batchSchema = z.object({
+          measurements: z.array(insertPostureMeasurementSchema),
+        });
+
+        const validatedData = batchSchema.parse({
+          measurements: measurementsWithAssessmentId,
+        });
+
+        // Delete existing measurements for this assessment
+        await storage.deleteAllPostureMeasurements(assessmentId);
+
+        // Create new measurements with validated data
+        const createdMeasurements = [];
+
+        for (const measurement of validatedData.measurements) {
+          const created = await storage.createPostureMeasurement(measurement);
+          createdMeasurements.push(created);
+        }
+
+        res.status(201).json(createdMeasurements);
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            message: "Invalid measurements data",
+            errors: error.errors,
+          });
+        }
+        console.error("Error batch saving measurements:", error);
+        res.status(500).json({ message: "Failed to save measurements" });
       }
     }
   );

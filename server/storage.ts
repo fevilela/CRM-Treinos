@@ -18,6 +18,7 @@ import {
   posturePhotos,
   postureObservations,
   postureOptions,
+  postureMeasurements,
   anamneses,
   type InsertUser,
   type UpsertUser,
@@ -57,6 +58,8 @@ import {
   type InsertPostureObservation,
   type PostureOption,
   type InsertPostureOption,
+  type PostureMeasurement,
+  type InsertPostureMeasurement,
   type Anamnese,
   type InsertAnamnese,
 } from "@shared/schema";
@@ -2227,6 +2230,44 @@ export class DatabaseStorage implements IStorage {
       .from(postureOptions)
       .where(eq(postureOptions.isActive, true))
       .orderBy(asc(postureOptions.joint), asc(postureOptions.optionText));
+  }
+
+  async createPostureMeasurement(data: InsertPostureMeasurement) {
+    const [measurement] = await db
+      .insert(postureMeasurements)
+      .values(data)
+      .returning();
+    return measurement;
+  }
+
+  async getPostureMeasurements(assessmentId: string) {
+    return await db
+      .select()
+      .from(postureMeasurements)
+      .where(eq(postureMeasurements.assessmentId, assessmentId))
+      .orderBy(asc(postureMeasurements.measurementType));
+  }
+
+  async updatePostureMeasurement(
+    id: string,
+    data: Partial<InsertPostureMeasurement>
+  ) {
+    const [measurement] = await db
+      .update(postureMeasurements)
+      .set(data)
+      .where(eq(postureMeasurements.id, id))
+      .returning();
+    return measurement;
+  }
+
+  async deletePostureMeasurement(id: string) {
+    await db.delete(postureMeasurements).where(eq(postureMeasurements.id, id));
+  }
+
+  async deleteAllPostureMeasurements(assessmentId: string) {
+    await db
+      .delete(postureMeasurements)
+      .where(eq(postureMeasurements.assessmentId, assessmentId));
   }
 
   // ===== Anamnese Methods =====
