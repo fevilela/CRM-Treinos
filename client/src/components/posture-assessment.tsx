@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { AnatomicalDiagram } from "@/components/anatomical-diagram";
+import { PostureAssessmentForm } from "@/components/posture-assessment-form";
 import {
   Dialog,
   DialogContent,
@@ -286,7 +287,7 @@ export function PostureAssessments() {
                   Nova Avaliação Postural - {selectedStudent?.name}
                 </DialogTitle>
               </DialogHeader>
-              <PostureAssessment
+              <PostureAssessmentForm
                 studentId={selectedStudentId}
                 onSave={handleCreateAssessment}
               />
@@ -440,7 +441,7 @@ export function PostureAssessments() {
                 Editar Avaliação - {editingAssessment.title}
               </DialogTitle>
             </DialogHeader>
-            <PostureAssessment
+            <PostureAssessmentForm
               studentId={editingAssessment.studentId}
               onSave={handleUpdateAssessment}
               initialData={{

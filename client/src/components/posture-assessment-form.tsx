@@ -21,8 +21,18 @@ interface PosturePhoto {
 }
 
 interface PostureAssessmentFormProps {
-  assessmentId: string;
-  photos: PosturePhoto[];
+  assessmentId?: string;
+  photos?: PosturePhoto[];
+  studentId?: string;
+  onSave?: (assessmentData: any) => void;
+  initialData?: {
+    id?: string;
+    title?: string;
+    notes?: string;
+    photos?: { type: string; url: string }[];
+    observations?: { joint: string; observation: string; severity: string }[];
+  };
+  mode?: string;
 }
 
 // Labels de pontos anatômicos por tipo de foto
@@ -78,7 +88,11 @@ const anatomicalPointsByPhotoType: Record<string, string[]> = {
 
 export function PostureAssessmentForm({
   assessmentId,
-  photos,
+  photos = [],
+  studentId,
+  onSave,
+  initialData,
+  mode,
 }: PostureAssessmentFormProps) {
   const [pointsByPhoto, setPointsByPhoto] = useState<Record<string, Point[]>>(
     {}
