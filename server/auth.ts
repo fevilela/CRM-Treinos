@@ -65,11 +65,26 @@ passport.serializeUser((user: any, done) => {
   const source = user.personalTrainerId !== undefined ? "students" : "users";
   const serializedData = { id: user.id, role: user.role, source };
 
+  if (process.env.NODE_ENV === "development") {
+    console.log("[AUTH DEBUG] serializeUser:", {
+      user: {
+        id: user.id,
+        role: user.role,
+        personalTrainerId: user.personalTrainerId,
+      },
+      serializedData,
+    });
+  }
+
   done(null, serializedData);
 });
 
 passport.deserializeUser(async (serializedData: any, done) => {
   try {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[AUTH DEBUG] deserializeUser input:", serializedData);
+    }
+
     // Handle both old string format (id only) and new object format {id, role, source}
     let userId: string;
     let userRole: string;
@@ -92,6 +107,9 @@ passport.deserializeUser(async (serializedData: any, done) => {
       const student = await storage.getStudent(userId);
 
       if (!student) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[AUTH DEBUG] Student not found by ID:", userId);
+        }
         return done(null, false);
       }
 
@@ -105,12 +123,29 @@ passport.deserializeUser(async (serializedData: any, done) => {
         personalTrainerId: student.personalTrainerId,
       };
 
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AUTH DEBUG] deserializeUser success (student):", {
+          id: studentUser.id,
+          role: studentUser.role,
+        });
+      }
+
       done(null, studentUser);
     } else {
       // For teachers and self-registered students, fetch from users table
       const user = await storage.getUser(userId);
       if (!user) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[AUTH DEBUG] User not found:", userId);
+        }
         return done(null, false);
+      }
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AUTH DEBUG] deserializeUser success (user):", {
+          id: user.id,
+          role: user.role,
+        });
       }
 
       done(null, user);
@@ -196,6 +231,22 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = (req: any, res, next) => {
+  // Debug logging for development
+  if (process.env.NODE_ENV === "development") {
+    console.log("[AUTH DEBUG] isAuthenticated check:", {
+      sessionID: req.sessionID,
+      hasSession: Boolean(req.session),
+      hasUser: Boolean(req.user),
+      isAuth: req.isAuthenticated(),
+      userRole: req.user?.role,
+      cookies: req.headers.cookie ? "present" : "missing",
+      cookieDetails: req.headers.cookie?.substring(0, 100), // First 100 chars
+      sessionData: req.session ? Object.keys(req.session) : "no session",
+      url: req.url,
+      method: req.method,
+    });
+  }
+
   if (req.isAuthenticated()) {
     return next();
   }
