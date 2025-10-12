@@ -57,227 +57,191 @@ interface PostureObservation {
   joint: string;
   observation: string;
   severity: "normal" | "mild" | "moderate" | "severe";
-  isCustom: boolean;
 }
 
-const PHOTO_TYPES = [
-  { key: "front", label: "Frente", icon: "👤" },
-  { key: "back", label: "Costas", icon: "🔄" },
-  { key: "side_left", label: "Lado Esquerdo", icon: "⬅️" },
-  { key: "side_right", label: "Lado Direito", icon: "➡️" },
-] as const;
-
-const JOINTS = [
-  { key: "head", label: "Cabeça" },
-  { key: "neck", label: "Pescoço" },
-  { key: "shoulder_left", label: "Ombro Esquerdo" },
-  { key: "shoulder_right", label: "Ombro Direito" },
-  { key: "spine_cervical", label: "Coluna Cervical" },
-  { key: "spine_thoracic", label: "Coluna Torácica" },
-  { key: "spine_lumbar", label: "Coluna Lombar" },
-  { key: "hip_left", label: "Quadril Esquerdo" },
-  { key: "hip_right", label: "Quadril Direito" },
-  { key: "knee_left", label: "Joelho Esquerdo" },
-  { key: "knee_right", label: "Joelho Direito" },
-  { key: "ankle_left", label: "Tornozelo Esquerdo" },
-  { key: "ankle_right", label: "Tornozelo Direito" },
-] as const;
-
-const PREDEFINED_OBSERVATIONS = {
-  head: [
-    "Cabeça muito para frente",
-    "Inclinação lateral",
-    "Extensão excessiva",
-  ],
-  neck: ["Hiperlordose cervical", "Retificação cervical", "Inclinação lateral"],
-  shoulder_left: [
-    "Ombro caído",
-    "Ombro elevado",
-    "Projeção anterior",
-    "Rotação interna",
-  ],
-  shoulder_right: [
-    "Ombro caído",
-    "Ombro elevado",
-    "Projeção anterior",
-    "Rotação interna",
-  ],
-  spine_cervical: ["Hiperlordose", "Retificação", "Escoliose"],
-  spine_thoracic: ["Hipercifose", "Retificação", "Escoliose"],
-  spine_lumbar: ["Hiperlordose", "Retificação", "Escoliose"],
-  hip_left: [
-    "Elevação",
-    "Inclinação anterior",
-    "Inclinação posterior",
-    "Rotação",
-  ],
-  hip_right: [
-    "Elevação",
-    "Inclinação anterior",
-    "Inclinação posterior",
-    "Rotação",
-  ],
-  knee_left: ["Valgismo", "Varismo", "Hiperextensão", "Flexão"],
-  knee_right: ["Valgismo", "Varismo", "Hiperextensão", "Flexão"],
-  ankle_left: ["Pronação", "Supinação", "Dorsiflexão limitada"],
-  ankle_right: ["Pronação", "Supinação", "Dorsiflexão limitada"],
-};
-
-interface PostureAssessmentProps {
-  studentId: string;
-  onSave: (assessment: any) => void;
-  initialData?: {
-    id?: string;
-    title?: string;
-    notes?: string;
-    photos?: Array<{
-      type: "front" | "back" | "side_left" | "side_right";
-      url: string;
-    }>;
-    observations?: Array<{
-      joint: string;
-      observation: string;
-      severity: "normal" | "mild" | "moderate" | "severe";
-    }>;
-  };
-  mode?: "create" | "edit";
+interface Student {
+  id: string;
+  name: string;
+  email?: string;
 }
 
-export function PostureAssessment({
-  studentId,
-  onSave,
-  initialData,
-  mode = "create",
-}: PostureAssessmentProps) {
-  const [photos, setPhotos] = useState<PosturePhoto[]>([]);
-  const [title, setTitle] = useState("");
-  const [notes, setNotes] = useState("");
-  const [observations, setObservations] = useState<JointObservation[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
-  const [selectedJoint, setSelectedJoint] = useState("");
-  const [selectedObservation, setSelectedObservation] = useState("");
-  const [customObservation, setCustomObservation] = useState("");
-  const [selectedSeverity, setSelectedSeverity] = useState<
-    "normal" | "mild" | "moderate" | "severe"
-  >("mild");
+export function PostureAssessments() {
+  const [selectedStudentId, setSelectedStudentId] = useState<string>("");
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingAssessment, setEditingAssessment] =
+    useState<PostureAssessmentData | null>(null);
+  const [selectedAssessment, setSelectedAssessment] =
+    useState<PostureAssessmentData | null>(null);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (mode === "edit" && initialData) {
-      setTitle(initialData.title || "");
-      setNotes(initialData.notes || "");
-
-      if (initialData.observations) {
-        setObservations(
-          initialData.observations.map((obs) => ({
-            joint: obs.joint,
-            observation: obs.observation,
-            severity: obs.severity,
-            isCustom: false,
-          }))
-        );
-      }
-    }
-  }, [mode, initialData]);
-
-  const handleFileUpload = useCallback(
-    (
-      event: React.ChangeEvent<HTMLInputElement>,
-      photoType: PosturePhoto["type"]
-    ) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
-
-      if (!file.type.startsWith("image/")) {
-        alert("Por favor, selecione apenas arquivos de imagem.");
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const preview = e.target?.result as string;
-
-        setPhotos((prev) => {
-          const filtered = prev.filter((p) => p.type !== photoType);
-          return [...filtered, { file, preview, type: photoType }];
-        });
-      };
-      reader.readAsDataURL(file);
-    },
-    []
-  );
-
-  const removePhoto = useCallback((type: PosturePhoto["type"]) => {
-    setPhotos((prev) => prev.filter((p) => p.type !== type));
-  }, []);
-
-  const addObservation = () => {
-    if (!selectedJoint) return;
-
-    const observation = customObservation || selectedObservation;
-    if (!observation) return;
-
-    const newObservation: JointObservation = {
-      joint: selectedJoint,
-      observation,
-      severity: selectedSeverity,
-      isCustom: !!customObservation,
-    };
-
-    setObservations((prev) => {
-      const filtered = prev.filter((obs) => obs.joint !== selectedJoint);
-      return [...filtered, newObservation];
-    });
-
-    setSelectedJoint("");
-    setSelectedObservation("");
-    setCustomObservation("");
-    setSelectedSeverity("mild");
-  };
-
-  const removeObservation = (joint: string) => {
-    setObservations((prev) => prev.filter((obs) => obs.joint !== joint));
-  };
-
-  const getPhotoByType = (type: PosturePhoto["type"]) => {
-    return photos.find((p) => p.type === type);
-  };
-
-  const canSave = photos.length > 0 && title.trim();
-
-  const handleSave = async () => {
-    if (!canSave) return;
-
-    setIsSaving(true);
-    try {
-      const imagePromises = photos.map(async (photo) => {
-        return new Promise<{ type: string; base64: string }>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const result = reader.result as string;
-            const base64 = result.split(",")[1];
-            resolve({ type: photo.type, base64 });
-          };
-          reader.readAsDataURL(photo.file);
-        });
+  // Fetch students
+  const { data: students = [] } = useQuery<Student[]>({
+    queryKey: ["students"],
+    queryFn: async () => {
+      const response = await fetch("/api/students", {
+        credentials: "include",
       });
+      if (!response.ok) throw new Error("Failed to fetch students");
+      return response.json();
+    },
+  });
 
-      const images = await Promise.all(imagePromises);
+  // Fetch posture assessments for selected student
+  const { data: assessments = [], isLoading } = useQuery<
+    PostureAssessmentData[]
+  >({
+    queryKey: ["posture-assessments", selectedStudentId],
+    queryFn: async () => {
+      if (!selectedStudentId) return [];
+      const response = await fetch(
+        `/api/students/${selectedStudentId}/posture-assessments`,
+        {
+          credentials: "include",
+        }
+      );
+      if (!response.ok) throw new Error("Failed to fetch posture assessments");
+      return response.json();
+    },
+    enabled: !!selectedStudentId,
+  });
 
-      const assessmentData = {
-        ...(mode === "edit" && initialData?.id && { id: initialData.id }),
-        studentId,
-        title,
-        notes,
-        images,
-        observations: observations.map((obs) => ({
-          joint: obs.joint,
-          observation: obs.observation,
-          severity: obs.severity,
-          isCustom: obs.isCustom,
-        })),
-      };
+  // Create/Update assessment mutation
+  const saveAssessmentMutation = useMutation({
+    mutationFn: async (assessmentData: any) => {
+      const isEdit = assessmentData.id;
+      const url = isEdit
+        ? `/api/posture-assessments/${assessmentData.id}`
+        : "/api/posture-assessments";
+      const method = isEdit ? "PUT" : "POST";
 
-      await onSave(assessmentData);
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(assessmentData),
+      });
+      if (!response.ok)
+        throw new Error(`Failed to ${isEdit ? "update" : "create"} assessment`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["posture-assessments"] });
+      setIsCreateDialogOpen(false);
+      setIsEditDialogOpen(false);
+      setEditingAssessment(null);
+    },
+  });
+
+  // Delete assessment mutation
+  const deleteAssessmentMutation = useMutation({
+    mutationFn: async (assessmentId: string) => {
+      const response = await fetch(`/api/posture-assessments/${assessmentId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to delete assessment");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["posture-assessments"] });
+    },
+  });
+
+  const handleCreateAssessment = (assessmentData: any) => {
+    saveAssessmentMutation.mutate(assessmentData);
+  };
+
+  const handleEditAssessment = (assessment: PostureAssessmentData) => {
+    setEditingAssessment(assessment);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateAssessment = (assessmentData: any) => {
+    saveAssessmentMutation.mutate(assessmentData);
+  };
+
+  const handleDeleteAssessment = (assessmentId: string) => {
+    deleteAssessmentMutation.mutate(assessmentId);
+  };
+
+  // Fetch photos for selected assessment
+  const { data: selectedPhotos = [] } = useQuery<PosturePhoto[]>({
+    queryKey: ["posture-photos", selectedAssessment?.id],
+    queryFn: async () => {
+      if (!selectedAssessment) return [];
+      const response = await fetch(
+        `/api/posture-assessments/${selectedAssessment.id}/photos`,
+        { credentials: "include" }
+      );
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!selectedAssessment,
+  });
+
+  // Fetch observations for selected assessment
+  const { data: selectedObservations = [] } = useQuery<PostureObservation[]>({
+    queryKey: ["posture-observations", selectedAssessment?.id],
+    queryFn: async () => {
+      if (!selectedAssessment) return [];
+      const response = await fetch(
+        `/api/posture-assessments/${selectedAssessment.id}/observations`,
+        { credentials: "include" }
+      );
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!selectedAssessment,
+  });
+
+  // Fetch data for editing
+  const { data: editingPhotos = [] } = useQuery<PosturePhoto[]>({
+    queryKey: ["posture-photos", editingAssessment?.id],
+    queryFn: async () => {
+      if (!editingAssessment) return [];
+      const response = await fetch(
+        `/api/posture-assessments/${editingAssessment.id}/photos`,
+        { credentials: "include" }
+      );
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!editingAssessment,
+  });
+
+  const { data: editingObservations = [] } = useQuery<PostureObservation[]>({
+    queryKey: ["posture-observations", editingAssessment?.id],
+    queryFn: async () => {
+      if (!editingAssessment) return [];
+      const response = await fetch(
+        `/api/posture-assessments/${editingAssessment.id}/observations`,
+        { credentials: "include" }
+      );
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!editingAssessment,
+  });
+
+  const handleDownloadPDF = async (assessmentId: string) => {
+    try {
+      const response = await fetch(
+        `/api/posture-assessments/${assessmentId}/pdf`,
+        {
+          credentials: "include",
+        }
+      );
+      if (!response.ok) throw new Error("Failed to generate PDF");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `avaliacao-postural-${assessmentId}.pdf`;
+      link.click();
+      window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error downloading PDF:", error);
       alert("Erro ao baixar PDF");
@@ -338,79 +302,30 @@ export function PostureAssessment({
           <CardTitle>Selecionar Aluno</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {PHOTO_TYPES.map((photoType) => {
-              const photo = getPhotoByType(photoType.key);
-              return (
-                <div key={photoType.key} className="space-y-2">
-                  <Label className="text-sm font-medium flex items-center gap-2">
-                    <span className="text-lg">{photoType.icon}</span>
-                    {photoType.label}
-                  </Label>
-                  <div className="relative">
-                    {photo ? (
-                      <div className="relative group">
-                        <div className="relative overflow-hidden rounded-lg border-2 border-gray-300">
-                          <img
-                            src={photo.preview}
-                            alt={photoType.label}
-                            className="w-full h-96 object-contain bg-gray-50"
-                          />
-                          <svg
-                            className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                            style={{ opacity: 3 }}
-                          >
-                            <defs>
-                              <pattern
-                                id={`grid-${photoType.key}`}
-                                width="20"
-                                height="20"
-                                patternUnits="userSpaceOnUse"
-                              >
-                                <path
-                                  d="M 20 0 L 0 0 0 20"
-                                  fill="none"
-                                  stroke="#666"
-                                  strokeWidth="0.5"
-                                />
-                              </pattern>
-                            </defs>
-                            <rect
-                              width="100%"
-                              height="100%"
-                              fill={`url(#grid-${photoType.key})`}
-                            />
-                          </svg>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => removePhoto(photoType.key)}
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <label className="cursor-pointer">
-                        <div className="w-full h-96 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-blue-500 transition-colors bg-gray-50">
-                          <Camera className="w-12 h-12 text-gray-400 mb-2" />
-                          <span className="text-sm text-gray-500">
-                            Clique para enviar foto
-                          </span>
-                        </div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => handleFileUpload(e, photoType.key)}
-                        />
-                      </label>
-                    )}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {students.map((student) => (
+              <Card
+                key={student.id}
+                className={`cursor-pointer transition-all ${
+                  selectedStudentId === student.id
+                    ? "ring-2 ring-blue-500 bg-blue-50"
+                    : "hover:shadow-md"
+                }`}
+                onClick={() => setSelectedStudentId(student.id)}
+              >
+                <CardContent className="pt-4">
+                  <div className="flex items-center space-x-3">
+                    <User className="w-8 h-8 text-gray-500" />
+                    <div>
+                      <h3 className="font-medium">{student.name}</h3>
+                      {student.email && (
+                        <p className="text-sm text-gray-500">{student.email}</p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </CardContent>
       </Card>

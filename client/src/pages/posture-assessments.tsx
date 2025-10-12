@@ -2,8 +2,15 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Eye, Trash2, Calendar, User, Edit } from "lucide-react";
-import { PostureAssessment } from "@/components/posture-assessment";
+import {
+  Plus,
+  Eye,
+  Trash2,
+  Calendar,
+  User,
+  Edit,
+  Download,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { PostureAssessmentForm } from "@/components/posture-assessment-form";
 import {
@@ -369,6 +376,120 @@ export function PostureAssessments() {
                   <p className="text-gray-600 whitespace-pre-wrap">
                     {selectedAssessment.notes}
                   </p>
+                </div>
+              )}
+
+              {/* Fotos Posturais */}
+              {selectedPhotos.length > 0 && (
+                <div>
+                  <h3 className="font-medium mb-4">Fotos Posturais</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {selectedPhotos.map((photo) => (
+                      <div key={photo.id} className="space-y-2">
+                        <div className="relative">
+                          <img
+                            src={photo.photoUrl}
+                            alt={photo.photoType}
+                            className="w-full h-64 object-contain bg-gray-50 rounded-lg border-2 border-gray-300"
+                          />
+                          <svg
+                            className="absolute top-0 left-0 w-full h-full pointer-events-none rounded-lg"
+                            style={{ opacity: 0.5 }}
+                          >
+                            <defs>
+                              <pattern
+                                id={`grid-view-${photo.id}`}
+                                width="20"
+                                height="20"
+                                patternUnits="userSpaceOnUse"
+                              >
+                                <path
+                                  d="M 20 0 L 0 0 0 20"
+                                  fill="none"
+                                  stroke="#000000"
+                                  strokeWidth="2"
+                                />
+                              </pattern>
+                            </defs>
+                            <rect
+                              width="100%"
+                              height="100%"
+                              fill={`url(#grid-view-${photo.id})`}
+                            />
+                          </svg>
+                        </div>
+                        <p className="text-sm text-center font-medium">
+                          {photo.photoType === "front"
+                            ? "Frente"
+                            : photo.photoType === "back"
+                            ? "Costas"
+                            : photo.photoType === "side_left"
+                            ? "Lado Esquerdo"
+                            : "Lado Direito"}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Observações por Articulação */}
+              {selectedObservations.length > 0 && (
+                <div>
+                  <h3 className="font-medium mb-4">
+                    Observações por Articulação
+                  </h3>
+                  <div className="space-y-3">
+                    {selectedObservations.map((obs) => (
+                      <div
+                        key={obs.id}
+                        className="flex items-start justify-between p-4 bg-gray-50 rounded-lg border"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-semibold">
+                              {JOINT_LABELS[obs.joint] || obs.joint}
+                            </h4>
+                            <span
+                              className={`text-xs px-2 py-1 rounded ${
+                                obs.severity === "severe"
+                                  ? "bg-red-100 text-red-800"
+                                  : obs.severity === "moderate"
+                                  ? "bg-orange-100 text-orange-800"
+                                  : obs.severity === "mild"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-green-100 text-green-800"
+                              }`}
+                            >
+                              {obs.severity === "normal"
+                                ? "Normal"
+                                : obs.severity === "mild"
+                                ? "Leve"
+                                : obs.severity === "moderate"
+                                ? "Moderado"
+                                : "Severo"}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-700">
+                            {obs.observation}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Medições Automáticas */}
+              {selectedPhotos.length > 0 && (
+                <div>
+                  <h3 className="font-medium mb-4">
+                    Medições Posturais Automáticas
+                  </h3>
+                  <PostureAssessmentForm
+                    assessmentId={selectedAssessment.id}
+                    photos={selectedPhotos}
+                  />
                 </div>
               )}
 

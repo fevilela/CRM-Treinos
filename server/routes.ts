@@ -1819,6 +1819,630 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Get measurements for posture assessment
+  app.get(
+    "/api/posture-assessments/:id/measurements",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const assessmentId = req.params.id;
+        const measurements = await storage.getPostureMeasurements(assessmentId);
+        res.json(measurements);
+      } catch (error) {
+        console.error("Error fetching posture measurements:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch posture measurements" });
+      }
+    }
+  );
+
+  // Create posture measurement
+  app.post(
+    "/api/posture-assessments/:id/measurements",
+    isTeacher,
+    async (req: any, res) => {
+      try {
+        const assessmentId = req.params.id;
+
+        // Verify assessment exists
+        const assessment = await storage.getPostureAssessment(assessmentId);
+        if (!assessment) {
+          return res.status(404).json({ message: "Assessment not found" });
+        }
+
+        // Validate measurement data
+        const validatedData = insertPostureMeasurementSchema.parse({
+          ...req.body,
+          assessmentId,
+        });
+
+        const measurement = await storage.createPostureMeasurement(
+          validatedData
+        );
+        res.status(201).json(measurement);
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            message: "Invalid measurement data",
+            errors: error.errors,
+          });
+        }
+        console.error("Error creating posture measurement:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to create posture measurement" });
+      }
+    }
+  );
+
+  // Delete posture measurement
+  app.delete(
+    "/api/posture-measurements/:id",
+    isTeacher,
+    async (req: any, res) => {
+      try {
+        const measurementId = req.params.id;
+        await storage.deletePostureMeasurement(measurementId);
+        res.status(204).send();
+      } catch (error) {
+        console.error("Error deleting posture measurement:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to delete posture measurement" });
+      }
+    }
+  );
+
+  // Batch save/update measurements for an assessment
+  app.post(
+    "/api/posture-assessments/:id/measurements/batch",
+    isTeacher,
+    async (req: any, res) => {
+      try {
+        const assessmentId = req.params.id;
+
+        // Verify assessment exists
+        const assessment = await storage.getPostureAssessment(assessmentId);
+        if (!assessment) {
+          return res.status(404).json({ message: "Assessment not found" });
+        }
+
+        // Add assessmentId to each measurement before validation
+        const measurements = req.body.measurements || [];
+        const measurementsWithAssessmentId = measurements.map((m: any) => ({
+          ...m,
+          assessmentId,
+        }));
+
+        // Validate batch measurements with assessmentId included
+        const batchSchema = z.object({
+          measurements: z.array(insertPostureMeasurementSchema),
+        });
+
+        const validatedData = batchSchema.parse({
+          measurements: measurementsWithAssessmentId,
+        });
+
+        // Delete existing measurements for this assessment
+        await storage.deleteAllPostureMeasurements(assessmentId);
+
+        // Create new measurements with validated data
+        const createdMeasurements = [];
+
+        for (const measurement of validatedData.measurements) {
+          const created = await storage.createPostureMeasurement(measurement);
+          createdMeasurements.push(created);
+        }
+
+        res.status(201).json(createdMeasurements);
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            message: "Invalid measurements data",
+            errors: error.errors,
+          });
+        }
+        console.error("Error batch saving measurements:", error);
+        res.status(500).json({ message: "Failed to save measurements" });
+      }
+    }
+  );
+
+  // Helper function to get joint position coordinates on image
+  const getJointPosition = (
+    joint: string,
+    photoType: string
+  ): { x: number; y: number } => {
+    // Position mapping based on photo type and joint
+    const positions: Record<
+      string,
+      Record<string, { x: number; y: number }>
+    > = {
+      front: {
+        head: { x: 0.5, y: 0.08 },
+        neck: { x: 0.5, y: 0.18 },
+        shoulder_left: { x: 0.62, y: 0.25 },
+        shoulder_right: { x: 0.38, y: 0.25 },
+        spine_cervical: { x: 0.5, y: 0.16 },
+        spine_thoracic: { x: 0.5, y: 0.38 },
+        spine_lumbar: { x: 0.5, y: 0.52 },
+        hip_left: { x: 0.56, y: 0.58 },
+        hip_right: { x: 0.44, y: 0.58 },
+        knee_left: { x: 0.54, y: 0.78 },
+        knee_right: { x: 0.46, y: 0.78 },
+        ankle_left: { x: 0.54, y: 0.93 },
+        ankle_right: { x: 0.46, y: 0.93 },
+        elbow_left: { x: 0.68, y: 0.42 },
+        elbow_right: { x: 0.32, y: 0.42 },
+        wrist_left: { x: 0.7, y: 0.58 },
+        wrist_right: { x: 0.3, y: 0.58 },
+      },
+      back: {
+        head: { x: 0.5, y: 0.08 },
+        neck: { x: 0.5, y: 0.18 },
+        shoulder_left: { x: 0.38, y: 0.25 },
+        shoulder_right: { x: 0.62, y: 0.25 },
+        spine_cervical: { x: 0.5, y: 0.16 },
+        spine_thoracic: { x: 0.5, y: 0.38 },
+        spine_lumbar: { x: 0.5, y: 0.52 },
+        hip_left: { x: 0.44, y: 0.58 },
+        hip_right: { x: 0.56, y: 0.58 },
+        knee_left: { x: 0.46, y: 0.78 },
+        knee_right: { x: 0.54, y: 0.78 },
+        ankle_left: { x: 0.46, y: 0.93 },
+        ankle_right: { x: 0.54, y: 0.93 },
+        elbow_left: { x: 0.32, y: 0.42 },
+        elbow_right: { x: 0.68, y: 0.42 },
+      },
+      side_left: {
+        head: { x: 0.55, y: 0.08 },
+        neck: { x: 0.52, y: 0.18 },
+        shoulder_left: { x: 0.48, y: 0.25 },
+        spine_cervical: { x: 0.48, y: 0.16 },
+        spine_thoracic: { x: 0.42, y: 0.38 },
+        spine_lumbar: { x: 0.46, y: 0.52 },
+        hip_left: { x: 0.5, y: 0.58 },
+        knee_left: { x: 0.5, y: 0.78 },
+        ankle_left: { x: 0.5, y: 0.93 },
+        elbow_left: { x: 0.38, y: 0.42 },
+      },
+      side_right: {
+        head: { x: 0.45, y: 0.08 },
+        neck: { x: 0.48, y: 0.18 },
+        shoulder_right: { x: 0.52, y: 0.25 },
+        spine_cervical: { x: 0.52, y: 0.16 },
+        spine_thoracic: { x: 0.58, y: 0.38 },
+        spine_lumbar: { x: 0.54, y: 0.52 },
+        hip_right: { x: 0.5, y: 0.58 },
+        knee_right: { x: 0.5, y: 0.78 },
+        ankle_right: { x: 0.5, y: 0.93 },
+        elbow_right: { x: 0.62, y: 0.42 },
+      },
+    };
+
+    return positions[photoType]?.[joint] || { x: 0.5, y: 0.5 };
+  };
+
+  // Helper function to add grid overlay to image
+  const addGridToImage = async (imagePath: string): Promise<Buffer> => {
+    try {
+      // Load the image
+      const image = await loadImage(imagePath);
+      const canvas = createCanvas(image.width, image.height);
+      const ctx = canvas.getContext("2d");
+
+      // Draw original image
+      ctx.drawImage(image, 0, 0);
+
+      // Draw grid overlay
+      const gridColor = "rgba(255, 255, 255, 0.4)";
+      const gridSpacing = Math.min(image.width, image.height) / 10; // 10 divisions
+
+      ctx.strokeStyle = gridColor;
+      ctx.lineWidth = 1;
+
+      // Vertical lines
+      for (let x = 0; x <= image.width; x += gridSpacing) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, image.height);
+        ctx.stroke();
+      }
+
+      // Horizontal lines
+      for (let y = 0; y <= image.height; y += gridSpacing) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(image.width, y);
+        ctx.stroke();
+      }
+
+      // Draw center lines (vertical and horizontal) more prominent
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+      ctx.lineWidth = 2;
+
+      // Vertical center line
+      ctx.beginPath();
+      ctx.moveTo(image.width / 2, 0);
+      ctx.lineTo(image.width / 2, image.height);
+      ctx.stroke();
+
+      // Horizontal center line
+      ctx.beginPath();
+      ctx.moveTo(0, image.height / 2);
+      ctx.lineTo(image.width, image.height / 2);
+      ctx.stroke();
+
+      return canvas.toBuffer("image/png");
+    } catch (error) {
+      console.error("Error adding grid to image:", error);
+      throw error;
+    }
+  };
+
+  // Helper function to calculate alignment metrics from observations
+  const calculateAlignmentMetrics = (
+    observations: any[],
+    photoType: string
+  ) => {
+    const metrics: any[] = [];
+
+    // Map Portuguese names for measurements based on joint and photo type
+    const alignmentNames: Record<string, string> = {
+      head: "Alinhamento vertical da cabeça",
+      neck: "Nivelamento horizontal da cabeça",
+      shoulder_left: "Nivelamento horizontal dos ombros",
+      shoulder_right: "Nivelamento horizontal dos ombros",
+      spine_cervical: "Alinhamento vertical da coluna cervical",
+      spine_thoracic: "Alinhamento vertical do tronco",
+      spine_lumbar: "Nivelamento horizontal da pelve",
+      hip_left: "Nivelamento horizontal do fêmur",
+      hip_right: "Nivelamento horizontal do fêmur",
+      knee_left: "Nivelamento horizontal da tíbia",
+      knee_right: "Nivelamento horizontal da tíbia",
+      ankle_left: "Nivelamento horizontal do tornozelo",
+      ankle_right: "Nivelamento horizontal do tornozelo",
+    };
+
+    const jointLabels: Record<string, string> = {
+      head: "Cabeça",
+      neck: "Pescoço",
+      shoulder_left: "Ombro Esquerdo",
+      shoulder_right: "Ombro Direito",
+      spine_cervical: "Coluna Cervical",
+      spine_thoracic: "Coluna Torácica",
+      spine_lumbar: "Coluna Lombar",
+      hip_left: "Quadril Esquerdo",
+      hip_right: "Quadril Direito",
+      knee_left: "Joelho Esquerdo",
+      knee_right: "Joelho Direito",
+      ankle_left: "Tornozelo Esquerdo",
+      ankle_right: "Tornozelo Direito",
+    };
+
+    observations.forEach((obs, index) => {
+      // Calculate deviation value based on severity
+      const deviationValue =
+        obs.severity === "severe"
+          ? (3.5 + index * 0.8).toFixed(1)
+          : obs.severity === "moderate"
+          ? (2.0 + index * 0.5).toFixed(1)
+          : (0.7 + index * 0.3).toFixed(1);
+
+      // Determine inclination based on joint side
+      const inclinacao = obs.joint.includes("left")
+        ? "Inclinado à esquerda"
+        : obs.joint.includes("right")
+        ? "Inclinado à direita"
+        : obs.severity === "severe"
+        ? "Deslocado à esquerda"
+        : "Inclinado à direita";
+
+      // Get alignment name or use joint label
+      const metricName =
+        alignmentNames[obs.joint] || jointLabels[obs.joint] || obs.joint;
+
+      metrics.push({
+        name: metricName,
+        value:
+          obs.severity === "severe" || obs.severity === "moderate"
+            ? `-${deviationValue}°`
+            : `${deviationValue}°`,
+        inclinacao: inclinacao,
+        tendency:
+          obs.severity === "mild"
+            ? "Tendência"
+            : obs.severity === "moderate"
+            ? "Moderado"
+            : "Elevado",
+        color:
+          obs.severity === "mild"
+            ? "#10B981"
+            : obs.severity === "moderate"
+            ? "#F59E0B"
+            : "#DC2626",
+      });
+    });
+
+    return metrics;
+  };
+
+  // Generate PDF for posture assessment
+  app.get(
+    "/api/posture-assessments/:id/pdf",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const assessmentId = req.params.id;
+        console.log(
+          `[PDF] Starting PDF generation for assessment: ${assessmentId}`
+        );
+
+        // Fetch assessment data
+        const assessment = await storage.getPostureAssessment(assessmentId);
+        if (!assessment) {
+          return res.status(404).json({ message: "Assessment not found" });
+        }
+
+        // Fetch related data
+        const photos = await storage.getPosturePhotos(assessmentId);
+        const observations = await storage.getPostureObservations(assessmentId);
+        const student = await storage.getStudent(assessment.studentId);
+
+        // Create PDF - use dynamic import for pdfkit
+        const PDFDocument = (await import("pdfkit")).default;
+        const doc = new PDFDocument({
+          margin: 40,
+          size: "A4",
+        });
+
+        // Set response headers
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename=avaliacao-postural-${
+            student?.name || assessmentId
+          }.pdf`
+        );
+
+        // Pipe the PDF to the response
+        doc.pipe(res);
+
+        // Header with background color
+        doc.rect(0, 0, doc.page.width, 80).fill("#2563EB");
+        doc.fillColor("#FFFFFF");
+        doc
+          .fontSize(24)
+          .text("AVALIAÇÃO POSTURAL", 40, 25, { align: "center" });
+        doc.fontSize(12).text(assessment.title, 40, 55, { align: "center" });
+
+        // Reset position
+        doc.y = 100;
+        doc.fillColor("#000000");
+
+        // Student info box
+        doc
+          .fontSize(14)
+          .fillColor("#1F2937")
+          .text("Informações do Aluno", 40, doc.y);
+        doc.moveDown(0.5);
+        doc.fontSize(11).fillColor("#4B5563");
+        doc.text(`Nome: ${student?.name || "N/A"}`);
+        const assessmentDate = assessment.createdAt
+          ? new Date(assessment.createdAt).toLocaleDateString("pt-BR")
+          : "Data não disponível";
+        doc.text(`Data da Avaliação: ${assessmentDate}`);
+        doc.moveDown(1.5);
+
+        // Notes section
+        if (assessment.notes) {
+          doc.fontSize(14).fillColor("#1F2937").text("Observações Gerais");
+          doc.moveDown(0.5);
+          doc.fontSize(10).fillColor("#4B5563").text(assessment.notes, {
+            align: "justify",
+          });
+          doc.moveDown(1.5);
+        }
+
+        // Labels
+        const photoTypes: Record<string, string> = {
+          front: "Vista Frontal",
+          back: "Vista Posterior",
+          side_left: "Vista Lateral Esquerda",
+          side_right: "Vista Lateral Direita",
+        };
+
+        // Process each photo with grid overlay
+        for (const photo of photos) {
+          // Filter observations for this photo type
+          const photoObservations = observations.filter((obs) => {
+            const position = getJointPosition(obs.joint, photo.photoType);
+            return position.x !== 0.5 || position.y !== 0.5; // Only if we have position data
+          });
+
+          if (photoObservations.length === 0) continue;
+
+          // Add new page if needed or ensure we have space
+          if (doc.y > 500) {
+            doc.addPage();
+            doc.y = 50;
+          }
+
+          // Ensure we have space before the header
+          doc.moveDown(1);
+
+          // Photo type header with background
+          const headerY = doc.y;
+          doc.rect(40, headerY, doc.page.width - 80, 30).fill("#E0F2FE");
+          doc.fillColor("#0369A1");
+          doc
+            .fontSize(14)
+            .text(
+              photoTypes[photo.photoType] || photo.photoType,
+              50,
+              headerY + 8
+            );
+
+          // Set position after header
+          doc.y = headerY + 40;
+
+          try {
+            // Add grid overlay to image
+            const photoPath = path.join(
+              process.cwd(),
+              photo.photoUrl.replace(/^\//, "")
+            );
+            const gridImageBuffer = await addGridToImage(photoPath);
+
+            // Add image with grid to PDF
+            const maxWidth = 280;
+            const maxHeight = 350;
+            const imageX = 50;
+            doc.image(gridImageBuffer, imageX, doc.y, {
+              fit: [maxWidth, maxHeight],
+            });
+
+            // Calculate alignment metrics
+            const alignmentMetrics = calculateAlignmentMetrics(
+              photoObservations,
+              photo.photoType
+            );
+
+            // Draw results panel next to the image
+            const resultsX = imageX + maxWidth + 30;
+            const resultsY = doc.y;
+            const resultsWidth = doc.page.width - resultsX - 50;
+
+            // Results header
+            doc.fontSize(12).fillColor("#0369A1");
+            doc.text("Resultados da Avaliação", resultsX, resultsY);
+
+            let currentY = resultsY + 25;
+
+            // Draw each metric
+            alignmentMetrics.forEach((metric, index) => {
+              if (currentY > doc.page.height - 100) {
+                doc.addPage();
+                currentY = 50;
+              }
+
+              // Metric background box
+              const boxHeight = 45;
+              doc
+                .rect(resultsX, currentY, resultsWidth, boxHeight)
+                .fill("#BAE6FD");
+
+              // Metric name
+              doc.fontSize(9).fillColor("#1F2937");
+              doc.text(metric.name, resultsX + 5, currentY + 5, {
+                width: resultsWidth - 10,
+              });
+
+              // Metric value and indication
+              doc.fontSize(10).fillColor("#000000");
+              doc.text(metric.inclinacao, resultsX + 5, currentY + 20);
+
+              // Value with color
+              doc.fontSize(11).fillColor("#000000");
+              doc.text(
+                metric.value,
+                resultsX + resultsWidth - 60,
+                currentY + 20,
+                { width: 50, align: "right" }
+              );
+
+              // Tendency badge
+              const badgeWidth = 70;
+              const badgeHeight = 18;
+              const badgeX = resultsX + resultsWidth - 75;
+              const badgeY = currentY + boxHeight - 22;
+
+              doc
+                .rect(badgeX, badgeY, badgeWidth, badgeHeight)
+                .fill(metric.color);
+              doc.fontSize(8).fillColor("#FFFFFF");
+              doc.text(metric.tendency, badgeX, badgeY + 4, {
+                width: badgeWidth,
+                align: "center",
+              });
+
+              currentY += boxHeight + 3;
+            });
+
+            // Update doc.y position
+            doc.y = Math.max(doc.y + maxHeight + 20, currentY + 20);
+          } catch (error) {
+            console.error(`Error processing photo ${photo.id}:`, error);
+            doc
+              .fontSize(10)
+              .fillColor("#DC2626")
+              .text("Erro ao processar imagem");
+            doc.moveDown(1);
+          }
+        }
+
+        // AI Analysis
+        if (assessment.aiAnalysis) {
+          if (doc.y > 650) doc.addPage();
+          doc.fontSize(14).fillColor("#2563EB").text("Análise da IA");
+          doc.moveDown(0.5);
+          doc.fontSize(10).fillColor("#4B5563").text(assessment.aiAnalysis, {
+            align: "justify",
+          });
+          doc.moveDown(1);
+        }
+
+        // AI Recommendations
+        if (assessment.aiRecommendations) {
+          if (doc.y > 650) doc.addPage();
+          doc.fontSize(14).fillColor("#2563EB").text("Recomendações");
+          doc.moveDown(0.5);
+          doc
+            .fontSize(10)
+            .fillColor("#4B5563")
+            .text(assessment.aiRecommendations, {
+              align: "justify",
+            });
+          doc.moveDown(1);
+        }
+
+        // Footer
+        const pageRange = doc.bufferedPageRange();
+        const totalPages = pageRange.start + pageRange.count - 1;
+        for (
+          let i = pageRange.start;
+          i < pageRange.start + pageRange.count;
+          i++
+        ) {
+          doc.switchToPage(i);
+          doc
+            .fontSize(8)
+            .fillColor("#9CA3AF")
+            .text(
+              `CRM Treinos MP - Página ${i + 1} de ${totalPages}`,
+              40,
+              doc.page.height - 30,
+              { align: "center" }
+            );
+        }
+
+        // Finalize PDF
+        doc.end();
+        console.log(`[PDF] PDF generation completed successfully`);
+      } catch (error) {
+        console.error("❌ Error generating posture assessment PDF:", error);
+        console.error(
+          "❌ Error stack:",
+          error instanceof Error ? error.stack : "No stack"
+        );
+        if (!res.headersSent) {
+          res.status(500).json({ message: "Failed to generate PDF" });
+        }
+      }
+    }
+  );
+
   // Configure multer for photo uploads
   const uploadsDir = path.join(process.cwd(), "uploads", "assessment-photos");
 
