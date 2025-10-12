@@ -2105,6 +2105,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ankle_right: "Nivelamento horizontal do tornozelo",
     };
 
+    const jointLabels: Record<string, string> = {
+      head: "Cabeça",
+      neck: "Pescoço",
+      shoulder_left: "Ombro Esquerdo",
+      shoulder_right: "Ombro Direito",
+      spine_cervical: "Coluna Cervical",
+      spine_thoracic: "Coluna Torácica",
+      spine_lumbar: "Coluna Lombar",
+      hip_left: "Quadril Esquerdo",
+      hip_right: "Quadril Direito",
+      knee_left: "Joelho Esquerdo",
+      knee_right: "Joelho Direito",
+      ankle_left: "Tornozelo Esquerdo",
+      ankle_right: "Tornozelo Direito",
+    };
+
     observations.forEach((obs, index) => {
       // Calculate deviation value based on severity
       const deviationValue =
@@ -2230,29 +2246,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Labels
-        const jointLabels: Record<string, string> = {
-          head: "Cabeça",
-          neck: "Pescoço",
-          shoulder_left: "Ombro Esquerdo",
-          shoulder_right: "Ombro Direito",
-          spine_cervical: "Coluna Cervical",
-          spine_thoracic: "Coluna Torácica",
-          spine_lumbar: "Coluna Lombar",
-          hip_left: "Quadril Esquerdo",
-          hip_right: "Quadril Direito",
-          knee_left: "Joelho Esquerdo",
-          knee_right: "Joelho Direito",
-          ankle_left: "Tornozelo Esquerdo",
-          ankle_right: "Tornozelo Direito",
-        };
-
-        const severityLabels: Record<string, string> = {
-          normal: "Normal",
-          mild: "Leve",
-          moderate: "Moderado",
-          severe: "Severo",
-        };
-
         const photoTypes: Record<string, string> = {
           front: "Vista Frontal",
           back: "Vista Posterior",
@@ -2270,22 +2263,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           if (photoObservations.length === 0) continue;
 
-          // Add new page if needed
-          if (doc.y > 550) {
+          // Add new page if needed or ensure we have space
+          if (doc.y > 500) {
             doc.addPage();
+            doc.y = 50;
           }
 
+          // Ensure we have space before the header
+          doc.moveDown(1);
+
           // Photo type header with background
-          doc.rect(40, doc.y, doc.page.width - 80, 30).fill("#E0F2FE");
+          const headerY = doc.y;
+          doc.rect(40, headerY, doc.page.width - 80, 30).fill("#E0F2FE");
           doc.fillColor("#0369A1");
           doc
             .fontSize(14)
             .text(
               photoTypes[photo.photoType] || photo.photoType,
               50,
-              doc.y - 25
+              headerY + 8
             );
-          doc.moveDown(1.5);
+
+          // Set position after header
+          doc.y = headerY + 40;
 
           try {
             // Add grid overlay to image
