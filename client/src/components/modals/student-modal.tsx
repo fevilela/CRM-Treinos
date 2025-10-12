@@ -14,16 +14,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -45,7 +35,6 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { z } from "zod";
-import AnamneseModal from "./anamnese-modal";
 
 const studentFormSchema = insertStudentSchema
   .omit({
@@ -74,9 +63,6 @@ export default function StudentModal({
   student,
 }: StudentModalProps) {
   const { toast } = useToast();
-  const [showAnamneseDialog, setShowAnamneseDialog] = useState(false);
-  const [showAnamneseModal, setShowAnamneseModal] = useState(false);
-  const [createdStudent, setCreatedStudent] = useState<Student | null>(null);
 
   const form = useForm<StudentFormData>({
     resolver: zodResolver(studentFormSchema),
@@ -85,8 +71,6 @@ export default function StudentModal({
       email: "",
       phone: "",
       gender: "male",
-      dateOfBirth: undefined,
-      profession: "",
       weight: undefined,
       height: undefined,
       goal: "",
@@ -102,10 +86,6 @@ export default function StudentModal({
         email: student.email || "",
         phone: student.phone || "",
         gender: student.gender,
-        dateOfBirth: student.dateOfBirth
-          ? new Date(student.dateOfBirth)
-          : undefined,
-        profession: student.profession || "",
         weight: typeof student.weight === "number" ? student.weight : undefined,
         height: typeof student.height === "number" ? student.height : undefined,
         goal: student.goal || "",
@@ -118,8 +98,18 @@ export default function StudentModal({
         email: "",
         phone: "",
         gender: "male",
-        dateOfBirth: undefined,
-        profession: "",
+        weight: undefined,
+        height: undefined,
+        goal: "",
+        medicalConditions: "",
+        status: "active",
+      });
+    } else if (isOpen) {
+      form.reset({
+        name: "",
+        email: "",
+        phone: "",
+        gender: "male",
         weight: undefined,
         height: undefined,
         goal: "",
@@ -138,10 +128,10 @@ export default function StudentModal({
       queryClient.invalidateQueries({ queryKey: ["/api/students"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
 
-      toast({ title: "Sucesso", description: "Aluno criado com sucesso!" });
+      const successMessage = "Aluno criado com sucesso!";
 
-      setCreatedStudent(result);
-      setShowAnamneseDialog(true);
+      toast({ title: "Sucesso", description: successMessage });
+      onClose();
     },
     onError: (error) => handleError(error, "criar"),
   });
@@ -342,57 +332,6 @@ export default function StudentModal({
                   </FormItem>
                 )}
               />
-
-              {/* Data de Nascimento */}
-              <FormField
-                control={form.control}
-                name="dateOfBirth"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Data de Nascimento</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="date"
-                        {...field}
-                        value={
-                          field.value
-                            ? new Date(field.value).toISOString().split("T")[0]
-                            : ""
-                        }
-                        onChange={(e) =>
-                          field.onChange(
-                            e.target.value
-                              ? new Date(e.target.value)
-                              : undefined
-                          )
-                        }
-                        data-testid="input-date-of-birth"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Profissão */}
-              <FormField
-                control={form.control}
-                name="profession"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Profissão</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Ex: Engenheiro, Professor..."
-                        {...field}
-                        value={field.value ?? ""}
-                        data-testid="input-profession"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
             {/* Objetivo */}
             <FormField
@@ -473,56 +412,6 @@ export default function StudentModal({
           </form>
         </Form>
       </DialogContent>
-      console.log(studentData);
-      {/* Alert Dialog to ask about anamnese */}
-      <AlertDialog
-        open={showAnamneseDialog}
-        onOpenChange={setShowAnamneseDialog}
-      >
-        <AlertDialogContent data-testid="dialog-anamnese-prompt">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Deseja preencher uma anamnese?</AlertDialogTitle>
-            <AlertDialogDescription>
-              A anamnese é uma avaliação completa que ajuda a criar um treino
-              mais personalizado para o aluno. Você pode preencher agora ou
-              adicionar depois.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                setShowAnamneseDialog(false);
-                setCreatedStudent(null);
-                onClose();
-              }}
-              data-testid="button-anamnese-no"
-            >
-              Não, obrigado
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                setShowAnamneseDialog(false);
-                setShowAnamneseModal(true);
-              }}
-              data-testid="button-anamnese-yes"
-            >
-              Sim, preencher agora
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      {/* Anamnese Modal */}
-      {createdStudent && (
-        <AnamneseModal
-          isOpen={showAnamneseModal}
-          onClose={() => {
-            setShowAnamneseModal(false);
-            setCreatedStudent(null);
-            onClose();
-          }}
-          student={createdStudent}
-        />
-      )}
     </Dialog>
   );
 }
