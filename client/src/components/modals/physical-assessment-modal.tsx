@@ -750,10 +750,16 @@ function PhysicalAssessmentModal({
             />
 
             <Tabs defaultValue="identification" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4 lg:grid-cols-9 gap-1">
                 <TabsTrigger value="identification">Identificação</TabsTrigger>
-                <TabsTrigger value="anthropometric">Antropométrica</TabsTrigger>
-                <TabsTrigger value="notes">Observações</TabsTrigger>
+                <TabsTrigger value="health">Saúde</TabsTrigger>
+                <TabsTrigger value="physical">Atividade</TabsTrigger>
+                <TabsTrigger value="goals">Objetivos</TabsTrigger>
+                <TabsTrigger value="lifestyle">Hábitos</TabsTrigger>
+                <TabsTrigger value="anthropometric">Medidas</TabsTrigger>
+                <TabsTrigger value="clinical">Clínico</TabsTrigger>
+                <TabsTrigger value="performance">Performance</TabsTrigger>
+                <TabsTrigger value="notes">Notas</TabsTrigger>
               </TabsList>
 
               <TabsContent value="identification" className="space-y-4">
