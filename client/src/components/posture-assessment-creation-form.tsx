@@ -4,11 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, Plus, X, Save } from "lucide-react";
 import type { PostureAssessment } from "@shared/schema";
+import { PhotoWithGrid, JointObservation } from "@/components/photo-with-grid";
+
+interface PostureImageData {
+  type: string;
+  base64: string;
+}
 
 interface PostureAssessmentCreationFormProps {
   studentId: string;
@@ -21,6 +28,7 @@ interface PhotoUpload {
   type: PhotoType;
   file: File | null;
   preview: string | null;
+  observations: JointObservation[];
 }
 
 const PHOTO_TYPES: { value: PhotoType; label: string }[] = [
@@ -37,11 +45,22 @@ export function PostureAssessmentCreationForm({
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [photos, setPhotos] = useState<Record<PhotoType, PhotoUpload>>({
-    front: { type: "front", file: null, preview: null },
-    back: { type: "back", file: null, preview: null },
-    side_left: { type: "side_left", file: null, preview: null },
-    side_right: { type: "side_right", file: null, preview: null },
+    front: { type: "front", file: null, preview: null, observations: [] },
+    back: { type: "back", file: null, preview: null, observations: [] },
+    side_left: {
+      type: "side_left",
+      file: null,
+      preview: null,
+      observations: [],
+    },
+    side_right: {
+      type: "side_right",
+      file: null,
+      preview: null,
+      observations: [],
+    },
   });
+  const [activeTab, setActiveTab] = useState<string>("info");
   const { toast } = useToast();
 
   const createAssessmentMutation = useMutation({
@@ -50,39 +69,57 @@ export function PostureAssessmentCreationForm({
       notes: string;
       photoUploads: PhotoUpload[];
     }) => {
-      // First create the assessment
-      const response = await apiRequest("POST", "/api/posture-assessments", {
-        studentId,
-        title: data.title,
-        notes: data.notes,
+      // Prepare observations for all photos
+      const allObservations = data.photoUploads.flatMap((photo) =>
+        photo.observations.map((obs) => ({
+          ...obs,
+          photoType: photo.type,
+        }))
+      );
+
+      // Prepare photos as base64 for initial creation
+      const photoDataPromises = data.photoUploads.map(async (photoUpload) => {
+        if (!photoUpload.file) return null;
+
+        return new Promise<PostureImageData>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64 = (reader.result as string).split(",")[1];
+            resolve({
+              type: photoUpload.type,
+              base64,
+            });
+          };
+          reader.readAsDataURL(photoUpload.file!); // ✅ correção aqui
+        });
       });
+
+      const photoDataResults = await Promise.all(photoDataPromises);
+      const photos = photoDataResults.filter(
+        (p): p is PostureImageData => p !== null
+      );
+
+      // Create the assessment with photos and observations
+      const response = await fetch("/api/posture-assessments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          studentId,
+          title: data.title,
+          notes: data.notes,
+          photos,
+          observations: allObservations,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create assessment");
+      }
 
       const assessment = (await response.json()) as PostureAssessment;
-
-      // Then upload photos one by one
-      const uploadPromises = data.photoUploads.map(async (photoUpload) => {
-        if (!photoUpload.file) return;
-
-        const formData = new FormData();
-        formData.append("photo", photoUpload.file);
-        formData.append("assessmentId", assessment.id);
-        formData.append("photoType", photoUpload.type);
-
-        const response = await fetch("/api/posture-photos", {
-          method: "POST",
-          body: formData,
-          credentials: "include",
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to upload ${photoUpload.type} photo`);
-        }
-
-        return response.json();
-      });
-
-      await Promise.all(uploadPromises);
-
       return assessment;
     },
     onSuccess: (data) => {
@@ -112,6 +149,7 @@ export function PostureAssessmentCreationForm({
             type,
             file,
             preview: reader.result as string,
+            observations: prev[type].observations,
           },
         }));
       };
@@ -119,15 +157,28 @@ export function PostureAssessmentCreationForm({
     } else {
       setPhotos((prev) => ({
         ...prev,
-        [type]: { type, file: null, preview: null },
+        [type]: { type, file: null, preview: null, observations: [] },
       }));
     }
+  };
+
+  const handleObservationsChange = (
+    type: PhotoType,
+    observations: JointObservation[]
+  ) => {
+    setPhotos((prev) => ({
+      ...prev,
+      [type]: {
+        ...prev[type],
+        observations,
+      },
+    }));
   };
 
   const handleRemovePhoto = (type: PhotoType) => {
     setPhotos((prev) => ({
       ...prev,
-      [type]: { type, file: null, preview: null },
+      [type]: { type, file: null, preview: null, observations: [] },
     }));
   };
 
@@ -161,124 +212,218 @@ export function PostureAssessmentCreationForm({
     });
   };
 
+  const totalObservations = Object.values(photos).reduce(
+    (acc, p) => acc + p.observations.length,
+    0
+  );
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Basic Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Informações Básicas</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="title" data-testid="label-title">
-              Título da Avaliação *
-            </Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex: Avaliação Postural Inicial"
-              data-testid="input-title"
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="notes" data-testid="label-notes">
-              Observações Gerais
-            </Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Adicione observações gerais sobre a avaliação..."
-              rows={4}
-              data-testid="textarea-notes"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="info" data-testid="tab-info">
+            Informações
+          </TabsTrigger>
+          {PHOTO_TYPES.map((type) => (
+            <TabsTrigger
+              key={type.value}
+              value={type.value}
+              data-testid={`tab-${type.value}`}
+            >
+              {type.label.split(" ")[1]}
+              {photos[type.value].file && " ✓"}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
-      {/* Photo Upload */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Fotos Posturais *</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            Adicione fotos do aluno nas diferentes posições. Você poderá marcar
-            pontos anatômicos após criar a avaliação.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {PHOTO_TYPES.map((photoType) => {
-              const photo = photos[photoType.value];
-              return (
-                <div
-                  key={photoType.value}
-                  className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-gray-400 transition-colors"
-                >
-                  <div className="text-sm font-medium mb-2">
-                    {photoType.label}
-                  </div>
-                  {photo.preview ? (
-                    <div className="relative">
-                      <img
-                        src={photo.preview}
-                        alt={photoType.label}
-                        className="w-full h-48 object-cover rounded-md"
-                      />
+        {/* Tab de informações básicas */}
+        <TabsContent value="info">
+          <Card>
+            <CardHeader>
+              <CardTitle>Informações da Avaliação</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="title" data-testid="label-title">
+                  Título da Avaliação *
+                </Label>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Ex: Avaliação Postural Inicial - Janeiro 2025"
+                  data-testid="input-title"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="notes" data-testid="label-notes">
+                  Observações Gerais
+                </Label>
+                <Textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Adicione observações gerais sobre a avaliação..."
+                  rows={4}
+                  data-testid="textarea-notes"
+                />
+              </div>
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h4 className="font-medium text-sm mb-2">💡 Como usar:</h4>
+                <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                  <li>Preencha o título e observações gerais aqui</li>
+                  <li>
+                    Vá para as abas de fotos (Frontal, Posterior, Laterais)
+                  </li>
+                  <li>Faça upload de cada foto nas respectivas abas</li>
+                  <li>
+                    Use a grade quadriculada para referência de alinhamento
+                  </li>
+                  <li>
+                    Clique em "Adicionar Observação" para marcar problemas
+                    posturais
+                  </li>
+                  <li>Salve a avaliação quando terminar</li>
+                </ol>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tabs de fotos */}
+        {PHOTO_TYPES.map((photoType) => {
+          const photo = photos[photoType.value];
+
+          return (
+            <TabsContent key={photoType.value} value={photoType.value}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Foto {photoType.label}</span>
+                    {photo.file && (
                       <Button
                         type="button"
+                        variant="outline"
                         size="sm"
-                        variant="destructive"
-                        className="absolute top-2 right-2"
                         onClick={() => handleRemovePhoto(photoType.value)}
                         data-testid={`button-remove-${photoType.value}`}
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-4 w-4 mr-1" />
+                        Remover Foto
                       </Button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-48 bg-gray-50 rounded-md">
-                      <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {!photo.preview ? (
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                      <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <Label
+                        htmlFor={`upload-${photoType.value}`}
+                        className="cursor-pointer"
+                      >
+                        <div className="text-sm text-muted-foreground mb-4">
+                          Clique para fazer upload da foto{" "}
+                          {photoType.label.toLowerCase()}
+                        </div>
+                        <Button type="button" variant="outline" asChild>
+                          <span>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Selecionar Foto
+                          </span>
+                        </Button>
+                      </Label>
                       <Input
+                        id={`upload-${photoType.value}`}
                         type="file"
                         accept="image/*"
-                        onChange={(e) =>
-                          handlePhotoSelect(
-                            photoType.value,
-                            e.target.files?.[0] || null
-                          )
-                        }
                         className="hidden"
-                        id={`photo-${photoType.value}`}
-                        data-testid={`input-photo-${photoType.value}`}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handlePhotoSelect(photoType.value, file);
+                        }}
+                        data-testid={`input-upload-${photoType.value}`}
                       />
-                      <Label
-                        htmlFor={`photo-${photoType.value}`}
-                        className="cursor-pointer text-sm text-blue-600 hover:text-blue-800"
-                      >
-                        Selecionar Foto
-                      </Label>
                     </div>
+                  ) : (
+                    <PhotoWithGrid
+                      imageUrl={photo.preview}
+                      photoType={photoType.value}
+                      observations={photo.observations}
+                      onObservationsChange={(observations) =>
+                        handleObservationsChange(photoType.value, observations)
+                      }
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          );
+        })}
+      </Tabs>
+
+      {/* Resumo */}
+      {Object.values(photos).some((p) => p.file) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Resumo da Avaliação</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <div className="font-medium">Fotos Adicionadas</div>
+                <div className="text-2xl font-bold text-blue-600">
+                  {Object.values(photos).filter((p) => p.file).length}
+                </div>
+              </div>
+              <div>
+                <div className="font-medium">Total de Observações</div>
+                <div className="text-2xl font-bold text-orange-600">
+                  {totalObservations}
+                </div>
+              </div>
+              <div>
+                <div className="font-medium">Problemas Severos</div>
+                <div className="text-2xl font-bold text-red-600">
+                  {Object.values(photos).reduce(
+                    (acc, p) =>
+                      acc +
+                      p.observations.filter((o) => o.severity === "severe")
+                        .length,
+                    0
                   )}
                 </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+              </div>
+              <div>
+                <div className="font-medium">Problemas Moderados</div>
+                <div className="text-2xl font-bold text-yellow-600">
+                  {Object.values(photos).reduce(
+                    (acc, p) =>
+                      acc +
+                      p.observations.filter((o) => o.severity === "moderate")
+                        .length,
+                    0
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Submit Button */}
       <div className="flex justify-end gap-2">
         <Button
           type="submit"
+          size="lg"
           disabled={createAssessmentMutation.isPending}
           data-testid="button-create-assessment"
         >
           <Save className="h-4 w-4 mr-2" />
           {createAssessmentMutation.isPending
             ? "Criando..."
-            : "Criar Avaliação"}
+            : "Salvar Avaliação Postural"}
         </Button>
       </div>
     </form>
