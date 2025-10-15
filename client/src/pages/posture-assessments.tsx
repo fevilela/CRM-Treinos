@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { PostureAssessmentForm } from "@/components/posture-assessment-form";
+import { PostureAssessmentCreationForm } from "@/components/posture-assessment-creation-form";
 import {
   Dialog,
   DialogContent,
@@ -286,7 +287,7 @@ export function PostureAssessments() {
                   Nova Avaliação Postural - {selectedStudent?.name}
                 </DialogTitle>
               </DialogHeader>
-              <PostureAssessmentForm
+              <PostureAssessmentCreationForm
                 studentId={selectedStudentId}
                 onSave={handleCreateAssessment}
               />

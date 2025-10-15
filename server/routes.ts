@@ -2562,6 +2562,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Posture photo upload endpoint
+  const postureUploadsDir = path.join(
+    process.cwd(),
+    "uploads",
+    "posture-photos"
+  );
+  await fs.mkdir(postureUploadsDir, { recursive: true });
+
+  const uploadPosture = multer({
+    storage: multer.diskStorage({
+      destination: postureUploadsDir,
+      filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        const ext = path.extname(file.originalname);
+        cb(null, `posture-${uniqueSuffix}${ext}`);
+      },
+    }),
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      if (!file.mimetype.startsWith("image/")) {
+        return cb(new Error("Apenas arquivos de imagem são permitidos"));
+      }
+      cb(null, true);
+    },
+  });
+
+  app.post(
+    "/api/posture-photos",
+    isAuthenticated,
+    uploadPosture.single("photo"),
+    async (req: any, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "Nenhuma foto enviada" });
+        }
+
+        const photoData = {
+          assessmentId: req.body.assessmentId,
+          photoType: req.body.photoType as
+            | "front"
+            | "back"
+            | "side_left"
+            | "side_right",
+          photoUrl: `/uploads/posture-photos/${req.file.filename}`,
+          fileName: req.file.filename,
+          fileSize: req.file.size,
+          mimeType: req.file.mimetype,
+        };
+
+        const photo = await storage.createPosturePhoto(photoData);
+        res.status(201).json(photo);
+      } catch (error) {
+        console.error("Error uploading posture photo:", error);
+        if (req.file) {
+          await fs.unlink(req.file.path).catch(() => {});
+        }
+        res
+          .status(500)
+          .json({ message: "Falha ao fazer upload da foto postural" });
+      }
+    }
+  );
+
   // Video upload endpoint for exercises
   app.post(
     "/api/exercise-videos",
