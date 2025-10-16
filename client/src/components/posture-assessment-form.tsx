@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -105,6 +105,7 @@ export function PostureAssessmentForm({
   );
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   // Fetch existing measurements
   const { data: savedMeasurements = [] } = useQuery<PostureMeasurement[]>({
@@ -200,6 +201,16 @@ export function PostureAssessmentForm({
       ? calculatedMeasurements
       : savedMeasurements;
 
+  // Scroll to results when measurements are calculated
+  useEffect(() => {
+    if (calculatedMeasurements.length > 0) {
+      resultsRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }, [calculatedMeasurements]);
+
   return (
     <div className="space-y-6">
       {/* Header com botões de ação */}
@@ -280,20 +291,22 @@ export function PostureAssessmentForm({
 
       {/* Resultados das medições */}
       {displayMeasurements.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Eye className="h-5 w-5" />
-              <CardTitle>
-                Resultados das Medições
-                {calculatedMeasurements.length === 0 && " (Salvos)"}
-              </CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <PostureMeasurements measurements={displayMeasurements as any} />
-          </CardContent>
-        </Card>
+        <div ref={resultsRef}>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Eye className="h-5 w-5" />
+                <CardTitle>
+                  Resultados das Medições
+                  {calculatedMeasurements.length === 0 && " (Salvos)"}
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <PostureMeasurements measurements={displayMeasurements as any} />
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

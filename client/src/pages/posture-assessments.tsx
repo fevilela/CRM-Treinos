@@ -12,6 +12,7 @@ import {
   Download,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 import { PostureAssessmentForm } from "@/components/posture-assessment-form";
 import { PostureAssessmentCreationForm } from "@/components/posture-assessment-creation-form";
 import {
@@ -74,6 +75,7 @@ export function PostureAssessments() {
   const [selectedAssessment, setSelectedAssessment] =
     useState<PostureAssessmentData | null>(null);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Fetch students
   const { data: students = [] } = useQuery<Student[]>({
@@ -387,7 +389,13 @@ export function PostureAssessments() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleEditAssessment(assessment)}
+                            onClick={() => {
+                              toast({
+                                title: "Funcionalidade em desenvolvimento",
+                                description:
+                                  "A edição de avaliações está sendo desenvolvida. Por enquanto, você pode criar uma nova avaliação ou visualizar as existentes.",
+                              });
+                            }}
                           >
                             <Edit className="w-4 h-4 mr-1" />
                             Editar

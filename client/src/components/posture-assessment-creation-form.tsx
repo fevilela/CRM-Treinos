@@ -4,11 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Plus, X, Save } from "lucide-react";
+import { Upload, X, Save } from "lucide-react";
 import type { PostureAssessment } from "@shared/schema";
 import { PhotoWithGrid, JointObservation } from "@/components/photo-with-grid";
 
@@ -60,7 +59,6 @@ export function PostureAssessmentCreationForm({
       observations: [],
     },
   });
-  const [activeTab, setActiveTab] = useState<string>("info");
   const { toast } = useToast();
 
   const createAssessmentMutation = useMutation({
@@ -69,7 +67,6 @@ export function PostureAssessmentCreationForm({
       notes: string;
       photoUploads: PhotoUpload[];
     }) => {
-      // Prepare observations for all photos
       const allObservations = data.photoUploads.flatMap((photo) =>
         photo.observations.map((obs) => ({
           ...obs,
@@ -77,7 +74,6 @@ export function PostureAssessmentCreationForm({
         }))
       );
 
-      // Prepare photos as base64 for initial creation
       const photoDataPromises = data.photoUploads.map(async (photoUpload) => {
         if (!photoUpload.file) return null;
 
@@ -90,7 +86,7 @@ export function PostureAssessmentCreationForm({
               base64,
             });
           };
-          reader.readAsDataURL(photoUpload.file!); // ✅ correção aqui
+          reader.readAsDataURL(photoUpload.file!);
         });
       });
 
@@ -99,7 +95,6 @@ export function PostureAssessmentCreationForm({
         (p): p is PostureImageData => p !== null
       );
 
-      // Create the assessment with photos and observations
       const response = await fetch("/api/posture-assessments", {
         method: "POST",
         headers: {
@@ -219,149 +214,109 @@ export function PostureAssessmentCreationForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="info" data-testid="tab-info">
-            Informações
-          </TabsTrigger>
-          {PHOTO_TYPES.map((type) => (
-            <TabsTrigger
-              key={type.value}
-              value={type.value}
-              data-testid={`tab-${type.value}`}
-            >
-              {type.label.split(" ")[1]}
-              {photos[type.value].file && " ✓"}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      {/* Informações básicas */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Informações da Avaliação</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="title" data-testid="label-title">
+              Título da Avaliação *
+            </Label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Ex: Avaliação Postural Inicial - Janeiro 2025"
+              data-testid="input-title"
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="notes" data-testid="label-notes">
+              Observações Gerais
+            </Label>
+            <Textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Adicione observações gerais sobre a avaliação..."
+              rows={4}
+              data-testid="textarea-notes"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Tab de informações básicas */}
-        <TabsContent value="info">
-          <Card>
+      {/* Fotos posturais */}
+      {PHOTO_TYPES.map((photoType) => {
+        const photo = photos[photoType.value];
+
+        return (
+          <Card key={photoType.value}>
             <CardHeader>
-              <CardTitle>Informações da Avaliação</CardTitle>
+              <CardTitle className="flex items-center justify-between">
+                <span>Foto {photoType.label}</span>
+                {photo.file && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRemovePhoto(photoType.value)}
+                    data-testid={`button-remove-${photoType.value}`}
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Remover Foto
+                  </Button>
+                )}
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="title" data-testid="label-title">
-                  Título da Avaliação *
-                </Label>
-                <Input
-                  id="title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Ex: Avaliação Postural Inicial - Janeiro 2025"
-                  data-testid="input-title"
-                  required
+            <CardContent>
+              {!photo.preview ? (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                  <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <Label
+                    htmlFor={`upload-${photoType.value}`}
+                    className="cursor-pointer"
+                  >
+                    <div className="text-sm text-muted-foreground mb-4">
+                      Clique para fazer upload da foto{" "}
+                      {photoType.label.toLowerCase()}
+                    </div>
+                    <Button type="button" variant="outline" asChild>
+                      <span>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Selecionar Foto
+                      </span>
+                    </Button>
+                  </Label>
+                  <Input
+                    id={`upload-${photoType.value}`}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handlePhotoSelect(photoType.value, file);
+                    }}
+                    data-testid={`input-upload-${photoType.value}`}
+                  />
+                </div>
+              ) : (
+                <PhotoWithGrid
+                  imageUrl={photo.preview}
+                  photoType={photoType.value}
+                  observations={photo.observations}
+                  onObservationsChange={(observations) =>
+                    handleObservationsChange(photoType.value, observations)
+                  }
                 />
-              </div>
-              <div>
-                <Label htmlFor="notes" data-testid="label-notes">
-                  Observações Gerais
-                </Label>
-                <Textarea
-                  id="notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Adicione observações gerais sobre a avaliação..."
-                  rows={4}
-                  data-testid="textarea-notes"
-                />
-              </div>
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-medium text-sm mb-2">💡 Como usar:</h4>
-                <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                  <li>Preencha o título e observações gerais aqui</li>
-                  <li>
-                    Vá para as abas de fotos (Frontal, Posterior, Laterais)
-                  </li>
-                  <li>Faça upload de cada foto nas respectivas abas</li>
-                  <li>
-                    Use a grade quadriculada para referência de alinhamento
-                  </li>
-                  <li>
-                    Clique em "Adicionar Observação" para marcar problemas
-                    posturais
-                  </li>
-                  <li>Salve a avaliação quando terminar</li>
-                </ol>
-              </div>
+              )}
             </CardContent>
           </Card>
-        </TabsContent>
-
-        {/* Tabs de fotos */}
-        {PHOTO_TYPES.map((photoType) => {
-          const photo = photos[photoType.value];
-
-          return (
-            <TabsContent key={photoType.value} value={photoType.value}>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span>Foto {photoType.label}</span>
-                    {photo.file && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRemovePhoto(photoType.value)}
-                        data-testid={`button-remove-${photoType.value}`}
-                      >
-                        <X className="h-4 w-4 mr-1" />
-                        Remover Foto
-                      </Button>
-                    )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {!photo.preview ? (
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                      <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <Label
-                        htmlFor={`upload-${photoType.value}`}
-                        className="cursor-pointer"
-                      >
-                        <div className="text-sm text-muted-foreground mb-4">
-                          Clique para fazer upload da foto{" "}
-                          {photoType.label.toLowerCase()}
-                        </div>
-                        <Button type="button" variant="outline" asChild>
-                          <span>
-                            <Upload className="h-4 w-4 mr-2" />
-                            Selecionar Foto
-                          </span>
-                        </Button>
-                      </Label>
-                      <Input
-                        id={`upload-${photoType.value}`}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handlePhotoSelect(photoType.value, file);
-                        }}
-                        data-testid={`input-upload-${photoType.value}`}
-                      />
-                    </div>
-                  ) : (
-                    <PhotoWithGrid
-                      imageUrl={photo.preview}
-                      photoType={photoType.value}
-                      observations={photo.observations}
-                      onObservationsChange={(observations) =>
-                        handleObservationsChange(photoType.value, observations)
-                      }
-                    />
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          );
-        })}
-      </Tabs>
+        );
+      })}
 
       {/* Resumo */}
       {Object.values(photos).some((p) => p.file) && (
