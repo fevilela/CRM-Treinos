@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { PostureAssessmentForm } from "@/components/posture-assessment-form";
 import { PostureAssessmentCreationForm } from "@/components/posture-assessment-creation-form";
+import { PostureAssessmentEditForm } from "@/components/posture-assessment-edit-form";
 import {
   Dialog,
   DialogContent,
@@ -58,6 +59,7 @@ interface PostureObservation {
   joint: string;
   observation: string;
   severity: "normal" | "mild" | "moderate" | "severe";
+  photoType: "front" | "back" | "side_left" | "side_right";
 }
 
 interface Student {
@@ -389,13 +391,7 @@ export function PostureAssessments() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                              toast({
-                                title: "Funcionalidade em desenvolvimento",
-                                description:
-                                  "A edição de avaliações está sendo desenvolvida. Por enquanto, você pode criar uma nova avaliação ou visualizar as existentes.",
-                              });
-                            }}
+                            onClick={() => handleEditAssessment(assessment)}
                           >
                             <Edit className="w-4 h-4 mr-1" />
                             Editar
@@ -443,30 +439,29 @@ export function PostureAssessments() {
       {/* Edit Assessment Dialog */}
       {editingAssessment && (
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 Editar Avaliação - {editingAssessment.title}
               </DialogTitle>
             </DialogHeader>
-            <PostureAssessmentForm
-              studentId={editingAssessment.studentId}
-              onSave={handleUpdateAssessment}
-              initialData={{
-                id: editingAssessment.id,
-                title: editingAssessment.title,
-                notes: editingAssessment.notes,
-                photos: editingPhotos.map((p) => ({
-                  type: p.photoType,
-                  url: p.photoUrl,
-                })),
-                observations: editingObservations.map((o) => ({
-                  joint: o.joint,
-                  observation: o.observation,
-                  severity: o.severity,
-                })),
+            <PostureAssessmentEditForm
+              assessmentId={editingAssessment.id}
+              initialTitle={editingAssessment.title}
+              initialNotes={editingAssessment.notes}
+              photos={editingPhotos}
+              observations={editingObservations}
+              onSave={() => {
+                queryClient.invalidateQueries({
+                  queryKey: ["posture-assessments"],
+                });
+                setIsEditDialogOpen(false);
+                setEditingAssessment(null);
+                toast({
+                  title: "Avaliação atualizada",
+                  description: "As alterações foram salvas com sucesso.",
+                });
               }}
-              mode="edit"
             />
           </DialogContent>
         </Dialog>
