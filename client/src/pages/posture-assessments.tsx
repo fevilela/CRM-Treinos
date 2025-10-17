@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { PostureAssessmentForm } from "@/components/posture-assessment-form";
 import { PostureAssessmentCreationForm } from "@/components/posture-assessment-creation-form";
 import { PostureAssessmentEditForm } from "@/components/posture-assessment-edit-form";
 import {
@@ -110,35 +109,6 @@ export function PostureAssessments() {
     enabled: !!selectedStudentId,
   });
 
-  // Create/Update assessment mutation
-  const saveAssessmentMutation = useMutation({
-    mutationFn: async (assessmentData: any) => {
-      const isEdit = assessmentData.id;
-      const url = isEdit
-        ? `/api/posture-assessments/${assessmentData.id}`
-        : "/api/posture-assessments";
-      const method = isEdit ? "PUT" : "POST";
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(assessmentData),
-      });
-      if (!response.ok)
-        throw new Error(`Failed to ${isEdit ? "update" : "create"} assessment`);
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["posture-assessments"] });
-      setIsCreateDialogOpen(false);
-      setIsEditDialogOpen(false);
-      setEditingAssessment(null);
-    },
-  });
-
   // Delete assessment mutation
   const deleteAssessmentMutation = useMutation({
     mutationFn: async (assessmentId: string) => {
@@ -153,8 +123,9 @@ export function PostureAssessments() {
     },
   });
 
-  const handleCreateAssessment = (assessmentData: any) => {
-    saveAssessmentMutation.mutate(assessmentData);
+  const handleCreateAssessment = () => {
+    queryClient.invalidateQueries({ queryKey: ["posture-assessments"] });
+    setIsCreateDialogOpen(false);
   };
 
   const handleEditAssessment = (assessment: PostureAssessmentData) => {
@@ -162,8 +133,10 @@ export function PostureAssessments() {
     setIsEditDialogOpen(true);
   };
 
-  const handleUpdateAssessment = (assessmentData: any) => {
-    saveAssessmentMutation.mutate(assessmentData);
+  const handleUpdateAssessment = () => {
+    queryClient.invalidateQueries({ queryKey: ["posture-assessments"] });
+    setIsEditDialogOpen(false);
+    setEditingAssessment(null);
   };
 
   const handleDeleteAssessment = (assessmentId: string) => {
@@ -451,17 +424,7 @@ export function PostureAssessments() {
               initialNotes={editingAssessment.notes}
               photos={editingPhotos}
               observations={editingObservations}
-              onSave={() => {
-                queryClient.invalidateQueries({
-                  queryKey: ["posture-assessments"],
-                });
-                setIsEditDialogOpen(false);
-                setEditingAssessment(null);
-                toast({
-                  title: "Avaliação atualizada",
-                  description: "As alterações foram salvas com sucesso.",
-                });
-              }}
+              onSave={handleUpdateAssessment}
             />
           </DialogContent>
         </Dialog>
@@ -610,19 +573,6 @@ export function PostureAssessments() {
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
-
-              {/* Medições Automáticas */}
-              {selectedPhotos.length > 0 && (
-                <div>
-                  <h3 className="font-medium mb-4">
-                    Medições Posturais Automáticas
-                  </h3>
-                  <PostureAssessmentForm
-                    assessmentId={selectedAssessment.id}
-                    photos={selectedPhotos}
-                  />
                 </div>
               )}
 

@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Save } from "lucide-react";
@@ -50,7 +49,6 @@ export function PostureAssessmentEditForm({
 }: PostureAssessmentEditFormProps) {
   const [title, setTitle] = useState(initialTitle);
   const [notes, setNotes] = useState(initialNotes);
-  const [activeTab, setActiveTab] = useState<string>("info");
 
   const [photoObservations, setPhotoObservations] = useState<
     Record<string, JointObservation[]>
@@ -152,85 +150,57 @@ export function PostureAssessmentEditForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList
-          className="grid w-full"
-          style={{ gridTemplateColumns: `repeat(${photos.length + 1}, 1fr)` }}
-        >
-          <TabsTrigger value="info" data-testid="tab-edit-info">
-            Informações
-          </TabsTrigger>
-          {photos.map((photo) => (
-            <TabsTrigger
-              key={photo.photoType}
-              value={photo.photoType}
-              data-testid={`tab-edit-${photo.photoType}`}
-            >
-              {PHOTO_TYPE_LABELS[photo.photoType]}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      <Card>
+        <CardHeader>
+          <CardTitle>Informações da Avaliação</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="edit-title" data-testid="label-edit-title">
+              Título da Avaliação *
+            </Label>
+            <Input
+              id="edit-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Ex: Avaliação Postural Inicial - Janeiro 2025"
+              data-testid="input-edit-title"
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="edit-notes" data-testid="label-edit-notes">
+              Observações Gerais
+            </Label>
+            <Textarea
+              id="edit-notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Adicione observações gerais sobre a avaliação..."
+              rows={4}
+              data-testid="textarea-edit-notes"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
-        <TabsContent value="info" className="space-y-4 mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Informações da Avaliação</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="edit-title" data-testid="label-edit-title">
-                  Título da Avaliação *
-                </Label>
-                <Input
-                  id="edit-title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Ex: Avaliação Postural Inicial - Janeiro 2025"
-                  data-testid="input-edit-title"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-notes" data-testid="label-edit-notes">
-                  Observações Gerais
-                </Label>
-                <Textarea
-                  id="edit-notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Adicione observações gerais sobre a avaliação..."
-                  rows={4}
-                  data-testid="textarea-edit-notes"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {photos.map((photo) => (
-          <TabsContent
-            key={photo.photoType}
-            value={photo.photoType}
-            className="mt-4"
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle>Foto {PHOTO_TYPE_LABELS[photo.photoType]}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <PhotoWithGrid
-                  imageUrl={photo.photoUrl}
-                  photoType={photo.photoType}
-                  observations={photoObservations[photo.photoType] || []}
-                  onObservationsChange={(observations) =>
-                    handleObservationsChange(photo.photoType, observations)
-                  }
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        ))}
-      </Tabs>
+      {photos.map((photo) => (
+        <Card key={photo.photoType}>
+          <CardHeader>
+            <CardTitle>Foto {PHOTO_TYPE_LABELS[photo.photoType]}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PhotoWithGrid
+              imageUrl={photo.photoUrl}
+              photoType={photo.photoType}
+              observations={photoObservations[photo.photoType] || []}
+              onObservationsChange={(observations) =>
+                handleObservationsChange(photo.photoType, observations)
+              }
+            />
+          </CardContent>
+        </Card>
+      ))}
 
       <div className="flex justify-end gap-2">
         <Button
