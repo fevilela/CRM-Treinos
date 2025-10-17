@@ -50,6 +50,7 @@ interface PhotoWithGridProps {
   photoType: string;
   observations: JointObservation[];
   onObservationsChange: (observations: JointObservation[]) => void;
+  readOnly?: boolean;
 }
 
 const JOINT_OPTIONS = [
@@ -80,6 +81,7 @@ export function PhotoWithGrid({
   photoType,
   observations,
   onObservationsChange,
+  readOnly = false,
 }: PhotoWithGridProps) {
   const [gridConfig, setGridConfig] = useState<GridConfig>({
     offsetX: 0,
@@ -102,7 +104,7 @@ export function PhotoWithGrid({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!imageRef.current || !isAddingObservation) return;
+    if (!imageRef.current || !isAddingObservation || readOnly) return;
 
     const rect = imageRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width;
@@ -243,25 +245,29 @@ export function PhotoWithGrid({
     <div className="space-y-4">
       {/* Controles */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button
-          variant={showGrid ? "default" : "outline"}
-          size="sm"
-          onClick={() => setShowGrid(!showGrid)}
-          data-testid="button-toggle-grid"
-        >
-          <Grid3x3 className="h-4 w-4 mr-2" />
-          {showGrid ? "Ocultar Grade" : "Mostrar Grade"}
-        </Button>
+        {!readOnly && (
+          <Button
+            variant={showGrid ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowGrid(!showGrid)}
+            data-testid="button-toggle-grid"
+          >
+            <Grid3x3 className="h-4 w-4 mr-2" />
+            {showGrid ? "Ocultar Grade" : "Mostrar Grade"}
+          </Button>
+        )}
 
-        <Button
-          variant={isAddingObservation ? "default" : "outline"}
-          size="sm"
-          onClick={() => setIsAddingObservation(!isAddingObservation)}
-          data-testid="button-add-observation"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          {isAddingObservation ? "Cancelar" : "Adicionar Observação"}
-        </Button>
+        {!readOnly && (
+          <Button
+            variant={isAddingObservation ? "default" : "outline"}
+            size="sm"
+            onClick={() => setIsAddingObservation(!isAddingObservation)}
+            data-testid="button-add-observation"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            {isAddingObservation ? "Cancelar" : "Adicionar Observação"}
+          </Button>
+        )}
 
         <div className="flex items-center gap-1 ml-auto">
           <Button
@@ -292,7 +298,7 @@ export function PhotoWithGrid({
       </div>
 
       {/* Controles da Grade */}
-      {showGrid && (
+      {!readOnly && showGrid && (
         <Card>
           <CardContent className="p-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -449,16 +455,18 @@ export function PhotoWithGrid({
                         }
                       </div>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveObservation(obs.id);
-                      }}
-                      className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                      data-testid={`button-remove-observation-${obs.id}`}
-                    >
-                      ×
-                    </button>
+                    {!readOnly && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveObservation(obs.id);
+                        }}
+                        className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                        data-testid={`button-remove-observation-${obs.id}`}
+                      >
+                        ×
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -499,14 +507,16 @@ export function PhotoWithGrid({
                       }
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemoveObservation(obs.id)}
-                    data-testid={`button-delete-observation-${obs.id}`}
-                  >
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </Button>
+                  {!readOnly && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveObservation(obs.id)}
+                      data-testid={`button-delete-observation-${obs.id}`}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>

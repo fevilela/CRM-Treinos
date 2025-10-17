@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { PostureAssessmentCreationForm } from "@/components/posture-assessment-creation-form";
 import { PostureAssessmentEditForm } from "@/components/posture-assessment-edit-form";
+import { PhotoWithGrid, JointObservation } from "@/components/photo-with-grid";
 import {
   Dialog,
   DialogContent,
@@ -59,6 +60,8 @@ interface PostureObservation {
   observation: string;
   severity: "normal" | "mild" | "moderate" | "severe";
   photoType: "front" | "back" | "side_left" | "side_right";
+  markerX?: number;
+  markerY?: number;
 }
 
 interface Student {
@@ -148,12 +151,26 @@ export function PostureAssessments() {
     queryKey: ["posture-photos", selectedAssessment?.id],
     queryFn: async () => {
       if (!selectedAssessment) return [];
+      console.log(
+        "[PHOTOS QUERY] Fetching photos for assessment:",
+        selectedAssessment.id
+      );
       const response = await fetch(
         `/api/posture-assessments/${selectedAssessment.id}/photos`,
         { credentials: "include" }
       );
-      if (!response.ok) return [];
-      return response.json();
+      console.log("[PHOTOS QUERY] Response status:", response.status);
+      if (!response.ok) {
+        console.error(
+          "[PHOTOS QUERY] Failed:",
+          response.status,
+          response.statusText
+        );
+        return [];
+      }
+      const data = await response.json();
+      console.log("[PHOTOS QUERY] Received photos:", data);
+      return data;
     },
     enabled: !!selectedAssessment,
   });
@@ -163,12 +180,26 @@ export function PostureAssessments() {
     queryKey: ["posture-observations", selectedAssessment?.id],
     queryFn: async () => {
       if (!selectedAssessment) return [];
+      console.log(
+        "[OBSERVATIONS QUERY] Fetching observations for assessment:",
+        selectedAssessment.id
+      );
       const response = await fetch(
         `/api/posture-assessments/${selectedAssessment.id}/observations`,
         { credentials: "include" }
       );
-      if (!response.ok) return [];
-      return response.json();
+      console.log("[OBSERVATIONS QUERY] Response status:", response.status);
+      if (!response.ok) {
+        console.error(
+          "[OBSERVATIONS QUERY] Failed:",
+          response.status,
+          response.statusText
+        );
+        return [];
+      }
+      const data = await response.json();
+      console.log("[OBSERVATIONS QUERY] Received observations:", data);
+      return data;
     },
     enabled: !!selectedAssessment,
   });
@@ -475,104 +506,49 @@ export function PostureAssessments() {
                 </div>
               )}
 
-              {/* Fotos Posturais */}
+              {/* Fotos Posturais com Observações */}
               {selectedPhotos.length > 0 && (
-                <div>
+                <div className="space-y-6">
                   <h3 className="font-medium mb-4">Fotos Posturais</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {selectedPhotos.map((photo) => (
-                      <div key={photo.id} className="space-y-2">
-                        <div className="relative">
-                          <img
-                            src={photo.photoUrl}
-                            alt={photo.photoType}
-                            className="w-full h-64 object-contain bg-gray-50 rounded-lg border-2 border-gray-300"
-                          />
-                          <svg
-                            className="absolute top-0 left-0 w-full h-full pointer-events-none rounded-lg"
-                            style={{ opacity: 0.5 }}
-                          >
-                            <defs>
-                              <pattern
-                                id={`grid-view-${photo.id}`}
-                                width="20"
-                                height="20"
-                                patternUnits="userSpaceOnUse"
-                              >
-                                <path
-                                  d="M 20 0 L 0 0 0 20"
-                                  fill="none"
-                                  stroke="#000000"
-                                  strokeWidth="2"
-                                />
-                              </pattern>
-                            </defs>
-                            <rect
-                              width="100%"
-                              height="100%"
-                              fill={`url(#grid-view-${photo.id})`}
-                            />
-                          </svg>
-                        </div>
-                        <p className="text-sm text-center font-medium">
-                          {photo.photoType === "front"
-                            ? "Frente"
-                            : photo.photoType === "back"
-                            ? "Costas"
-                            : photo.photoType === "side_left"
-                            ? "Lado Esquerdo"
-                            : "Lado Direito"}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                  {selectedPhotos.map((photo) => {
+                    const PHOTO_TYPE_LABELS: Record<string, string> = {
+                      front: "Frontal",
+                      back: "Posterior",
+                      side_left: "Lateral Esquerda",
+                      side_right: "Lateral Direita",
+                    };
 
-              {/* Observações por Articulação */}
-              {selectedObservations.length > 0 && (
-                <div>
-                  <h3 className="font-medium mb-4">
-                    Observações por Articulação
-                  </h3>
-                  <div className="space-y-3">
-                    {selectedObservations.map((obs) => (
-                      <div
-                        key={obs.id}
-                        className="flex items-start justify-between p-4 bg-gray-50 rounded-lg border"
-                      >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-semibold">
-                              {JOINT_LABELS[obs.joint] || obs.joint}
-                            </h4>
-                            <span
-                              className={`text-xs px-2 py-1 rounded ${
-                                obs.severity === "severe"
-                                  ? "bg-red-100 text-red-800"
-                                  : obs.severity === "moderate"
-                                  ? "bg-orange-100 text-orange-800"
-                                  : obs.severity === "mild"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-green-100 text-green-800"
-                              }`}
-                            >
-                              {obs.severity === "normal"
-                                ? "Normal"
-                                : obs.severity === "mild"
-                                ? "Leve"
-                                : obs.severity === "moderate"
-                                ? "Moderado"
-                                : "Severo"}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-700">
-                            {obs.observation}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                    const photoObservations: JointObservation[] =
+                      selectedObservations
+                        .filter((obs) => obs.photoType === photo.photoType)
+                        .map((obs) => ({
+                          id: obs.id,
+                          joint: obs.joint,
+                          observation: obs.observation,
+                          severity: obs.severity,
+                          x: obs.markerX || 0.5,
+                          y: obs.markerY || 0.5,
+                        }));
+
+                    return (
+                      <Card key={photo.id}>
+                        <CardHeader>
+                          <CardTitle>
+                            Foto {PHOTO_TYPE_LABELS[photo.photoType]}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <PhotoWithGrid
+                            imageUrl={photo.photoUrl}
+                            photoType={photo.photoType}
+                            observations={photoObservations}
+                            onObservationsChange={() => {}}
+                            readOnly={true}
+                          />
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
 
