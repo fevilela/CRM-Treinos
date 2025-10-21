@@ -153,6 +153,23 @@ export interface IStorage {
     progressTrend: "increasing" | "decreasing" | "stable";
   }>;
 
+  getExerciseProgressByWeek(studentId: string): Promise<
+    {
+      exerciseName: string;
+      exerciseId: string;
+      weeklyData: Array<{
+        week: string;
+        weekNumber: number;
+        year: number;
+        weight: number;
+        previousWeight: number | null;
+        changeType: string | null;
+        percentageChange: number | null;
+        date: Date;
+      }>;
+    }[]
+  >;
+
   // Body measurement operations
   getStudentMeasurements(studentId: string): Promise<BodyMeasurement[]>;
   createBodyMeasurement(
@@ -954,6 +971,134 @@ export class DatabaseStorage implements IStorage {
       latestWeight,
       progressTrend,
     };
+  }
+
+  async getExerciseProgressByWeek(studentId: string): Promise<
+    {
+      exerciseName: string;
+      exerciseId: string;
+      weeklyData: Array<{
+        week: string;
+        weekNumber: number;
+        year: number;
+        weight: number;
+        previousWeight: number | null;
+        changeType: string | null;
+        percentageChange: number | null;
+        date: Date;
+      }>;
+    }[]
+  > {
+    // Buscar todo o histórico de treino do aluno
+    const historyData = await db
+      .select()
+      .from(workoutHistory)
+      .where(eq(workoutHistory.studentId, studentId))
+      .orderBy(asc(workoutHistory.completedAt));
+
+    // Agrupar por exercício
+    const exerciseMap = new Map<
+      string,
+      {
+        exerciseName: string;
+        exerciseId: string;
+        records: Array<{
+          weight: number;
+          previousWeight: number | null;
+          changeType: string | null;
+          percentageChange: number | null;
+          completedAt: Date;
+        }>;
+      }
+    >();
+
+    historyData.forEach((record) => {
+      const weight = record.weight ? parseFloat(record.weight) : 0;
+      const previousWeight = record.previousWeight
+        ? parseFloat(record.previousWeight)
+        : null;
+      const percentageChange = record.percentageChange
+        ? parseFloat(record.percentageChange)
+        : null;
+
+      if (!exerciseMap.has(record.exerciseId)) {
+        exerciseMap.set(record.exerciseId, {
+          exerciseName: record.exerciseName,
+          exerciseId: record.exerciseId,
+          records: [],
+        });
+      }
+
+      exerciseMap.get(record.exerciseId)!.records.push({
+        weight,
+        previousWeight,
+        changeType: record.changeType,
+        percentageChange,
+        completedAt: record.completedAt || new Date(),
+      });
+    });
+
+    // Processar cada exercício e agrupar por semana
+    const result = Array.from(exerciseMap.values()).map((exercise) => {
+      // Agrupar registros por semana
+      const weekMap = new Map<
+        string,
+        {
+          week: string;
+          weekNumber: number;
+          year: number;
+          weight: number;
+          previousWeight: number | null;
+          changeType: string | null;
+          percentageChange: number | null;
+          date: Date;
+        }
+      >();
+
+      exercise.records.forEach((record) => {
+        const date = new Date(record.completedAt);
+
+        // Calcular o número da semana
+        const startOfYear = new Date(date.getFullYear(), 0, 1);
+        const daysSinceStart = Math.floor(
+          (date.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        const weekNumber = Math.ceil(
+          (daysSinceStart + startOfYear.getDay() + 1) / 7
+        );
+        const year = date.getFullYear();
+
+        const weekKey = `${year}-W${weekNumber.toString().padStart(2, "0")}`;
+
+        // Se já existe um registro para essa semana, usar o mais recente (maior carga)
+        if (
+          !weekMap.has(weekKey) ||
+          record.weight > (weekMap.get(weekKey)?.weight || 0)
+        ) {
+          weekMap.set(weekKey, {
+            week: weekKey,
+            weekNumber,
+            year,
+            weight: record.weight,
+            previousWeight: record.previousWeight,
+            changeType: record.changeType,
+            percentageChange: record.percentageChange,
+            date: date,
+          });
+        }
+      });
+
+      return {
+        exerciseName: exercise.exerciseName,
+        exerciseId: exercise.exerciseId,
+        weeklyData: Array.from(weekMap.values()).sort((a, b) => {
+          if (a.year !== b.year) return a.year - b.year;
+          return a.weekNumber - b.weekNumber;
+        }),
+      };
+    });
+
+    return result;
   }
 
   // Financial Account Operations

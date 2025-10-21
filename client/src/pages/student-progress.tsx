@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Dumbbell, TrendingUp, Trophy, Target } from "lucide-react";
 import type { Student } from "@shared/schema";
+import ProgressChart from "@/components/dashboard/progress-chart";
 
 interface StudentProgressProps {
   student: Student;
@@ -106,6 +107,9 @@ export function StudentProgress({ student }: StudentProgressProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Progress Chart */}
+      <ProgressChart studentId={student.id} />
 
       {/* Recent Activity */}
       <Card>

@@ -1093,6 +1093,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Rota para buscar progresso de carga por semana
+  app.get(
+    "/api/students/:studentId/progress-by-week",
+    isStudentOrTeacher,
+    async (req, res) => {
+      try {
+        const { studentId } = req.params;
+        const progressData = await storage.getExerciseProgressByWeek(studentId);
+        res.json(progressData);
+      } catch (error) {
+        console.error("Error fetching exercise progress by week:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch exercise progress by week" });
+      }
+    }
+  );
+
+  // Alias para o endpoint de progresso semanal (caminho padronizado)
+  app.get(
+    "/api/progress/exercise-weekly/:studentId",
+    isStudentOrTeacher,
+    async (req, res) => {
+      try {
+        const { studentId } = req.params;
+        const progressData = await storage.getExerciseProgressByWeek(studentId);
+        res.json(progressData);
+      } catch (error) {
+        console.error("Error fetching exercise progress by week:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch exercise progress by week" });
+      }
+    }
+  );
+
   app.post("/api/workout-history", isStudentOrTeacher, async (req, res) => {
     try {
       const validatedData = insertWorkoutHistorySchema.parse(req.body);

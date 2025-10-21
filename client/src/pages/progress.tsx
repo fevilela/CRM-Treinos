@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import Header from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import ProgressChart from "@/components/dashboard/progress-chart";
 import {
   Select,
   SelectContent,
@@ -13,7 +14,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { CalendarDays, ArrowUp, ArrowDown, Minus } from "lucide-react";
 
 // Dados mockados para exemplo
 const mockBodyMeasurements = [
@@ -195,9 +196,9 @@ export default function Progress() {
 
   const getTrend = (current: number, previous: number) => {
     if (current > previous)
-      return { icon: TrendingUp, color: "text-green-600", direction: "up" };
+      return { icon: ArrowUp, color: "text-green-600", direction: "up" };
     if (current < previous)
-      return { icon: TrendingDown, color: "text-red-600", direction: "down" };
+      return { icon: ArrowDown, color: "text-red-600", direction: "down" };
     return { icon: Minus, color: "text-gray-600", direction: "stable" };
   };
 
@@ -539,138 +540,154 @@ export default function Progress() {
                   treinos
                 </p>
               </div>
-            ) : Object.keys(groupedWorkoutProgress).length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-500">
-                  Nenhum dado de treino disponível ainda
-                </p>
-                <p className="text-sm text-gray-400 mt-2">
-                  Os gráficos aparecerão quando o aluno completar treinos
-                </p>
-              </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {Object.entries(groupedWorkoutProgress).map(
-                  ([exerciseName, data]: [string, any]) => {
-                    const exerciseData = data as Array<{
-                      date: string;
-                      weight: number;
-                      reps: number;
-                      sets: number;
-                    }>;
-                    const colors = [
-                      "#8B5CF6",
-                      "#10B981",
-                      "#EF4444",
-                      "#F59E0B",
-                      "#06B6D4",
-                      "#3B82F6",
-                    ];
-                    const colorIndex =
-                      Object.keys(groupedWorkoutProgress).indexOf(
-                        exerciseName
-                      ) % colors.length;
-                    const color = colors[colorIndex];
+              <>
+                {/* Gráfico de Evolução de Carga por Semana */}
+                <ProgressChart studentId={selectedStudent} />
 
-                    return (
-                      <Card key={exerciseName}>
-                        <CardHeader>
-                          <CardTitle className="text-lg">
-                            {exerciseName}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          {/* Carga (Peso) Chart */}
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium text-gray-700">
-                                Carga Média Semanal
-                              </span>
-                              <Badge variant="outline">kg</Badge>
-                            </div>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-xl font-bold">
-                                {exerciseData[
-                                  exerciseData.length - 1
-                                ]?.weight.toFixed(1)}
-                                kg
-                              </span>
-                              {(() => {
-                                if (exerciseData.length < 2) return null;
-                                const current =
-                                  exerciseData[exerciseData.length - 1]?.weight;
-                                const previous =
-                                  exerciseData[exerciseData.length - 2]?.weight;
-                                const trend = getTrend(current, previous);
-                                const TrendIcon = trend.icon;
-                                return (
-                                  <div
-                                    className={`flex items-center ${trend.color}`}
-                                  >
-                                    <TrendIcon className="h-4 w-4 mr-1" />
-                                    <span className="text-sm">
-                                      {Math.abs(current - previous).toFixed(1)}
-                                      kg
-                                    </span>
-                                  </div>
-                                );
-                              })()}
-                            </div>
-                            <LineChart
-                              data={exerciseData}
-                              dataKey="weight"
-                              title="Evolução Semanal - Carga"
-                              unit="kg"
-                              color={color}
-                            />
-                          </div>
+                {Object.keys(groupedWorkoutProgress).length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500">
+                      Nenhum dado de treino disponível ainda
+                    </p>
+                    <p className="text-sm text-gray-400 mt-2">
+                      Os gráficos aparecerão quando o aluno completar treinos
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {Object.entries(groupedWorkoutProgress).map(
+                      ([exerciseName, data]: [string, any]) => {
+                        const exerciseData = data as Array<{
+                          date: string;
+                          weight: number;
+                          reps: number;
+                          sets: number;
+                        }>;
+                        const colors = [
+                          "#8B5CF6",
+                          "#10B981",
+                          "#EF4444",
+                          "#F59E0B",
+                          "#06B6D4",
+                          "#3B82F6",
+                        ];
+                        const colorIndex =
+                          Object.keys(groupedWorkoutProgress).indexOf(
+                            exerciseName
+                          ) % colors.length;
+                        const color = colors[colorIndex];
 
-                          {/* Repetições Chart */}
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium text-gray-700">
-                                Repetições Médias Semanais
-                              </span>
-                              <Badge variant="outline">reps</Badge>
-                            </div>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-xl font-bold">
-                                {exerciseData[exerciseData.length - 1]?.reps}
-                              </span>
-                              {(() => {
-                                if (exerciseData.length < 2) return null;
-                                const current =
-                                  exerciseData[exerciseData.length - 1]?.reps;
-                                const previous =
-                                  exerciseData[exerciseData.length - 2]?.reps;
-                                const trend = getTrend(current, previous);
-                                const TrendIcon = trend.icon;
-                                return (
-                                  <div
-                                    className={`flex items-center ${trend.color}`}
-                                  >
-                                    <TrendIcon className="h-4 w-4 mr-1" />
-                                    <span className="text-sm">
-                                      {Math.abs(current - previous)}
-                                    </span>
-                                  </div>
-                                );
-                              })()}
-                            </div>
-                            <LineChart
-                              data={exerciseData}
-                              dataKey="reps"
-                              title="Evolução Semanal - Repetições"
-                              unit=" reps"
-                              color={color}
-                            />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  }
+                        return (
+                          <Card key={exerciseName}>
+                            <CardHeader>
+                              <CardTitle className="text-lg">
+                                {exerciseName}
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                              {/* Carga (Peso) Chart */}
+                              <div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm font-medium text-gray-700">
+                                    Carga Média Semanal
+                                  </span>
+                                  <Badge variant="outline">kg</Badge>
+                                </div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-xl font-bold">
+                                    {exerciseData[
+                                      exerciseData.length - 1
+                                    ]?.weight.toFixed(1)}
+                                    kg
+                                  </span>
+                                  {(() => {
+                                    if (exerciseData.length < 2) return null;
+                                    const current =
+                                      exerciseData[exerciseData.length - 1]
+                                        ?.weight;
+                                    const previous =
+                                      exerciseData[exerciseData.length - 2]
+                                        ?.weight;
+                                    const trend = getTrend(current, previous);
+                                    const TrendIcon = trend.icon;
+                                    return (
+                                      <div
+                                        className={`flex items-center ${trend.color}`}
+                                      >
+                                        <TrendIcon className="h-4 w-4 mr-1" />
+                                        <span className="text-sm">
+                                          {Math.abs(current - previous).toFixed(
+                                            1
+                                          )}
+                                          kg
+                                        </span>
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                                <LineChart
+                                  data={exerciseData}
+                                  dataKey="weight"
+                                  title="Evolução Semanal - Carga"
+                                  unit="kg"
+                                  color={color}
+                                />
+                              </div>
+
+                              {/* Repetições Chart */}
+                              <div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm font-medium text-gray-700">
+                                    Repetições Médias Semanais
+                                  </span>
+                                  <Badge variant="outline">reps</Badge>
+                                </div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-xl font-bold">
+                                    {
+                                      exerciseData[exerciseData.length - 1]
+                                        ?.reps
+                                    }
+                                  </span>
+                                  {(() => {
+                                    if (exerciseData.length < 2) return null;
+                                    const current =
+                                      exerciseData[exerciseData.length - 1]
+                                        ?.reps;
+                                    const previous =
+                                      exerciseData[exerciseData.length - 2]
+                                        ?.reps;
+                                    const trend = getTrend(current, previous);
+                                    const TrendIcon = trend.icon;
+                                    return (
+                                      <div
+                                        className={`flex items-center ${trend.color}`}
+                                      >
+                                        <TrendIcon className="h-4 w-4 mr-1" />
+                                        <span className="text-sm">
+                                          {Math.abs(current - previous)}
+                                        </span>
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                                <LineChart
+                                  data={exerciseData}
+                                  dataKey="reps"
+                                  title="Evolução Semanal - Repetições"
+                                  unit=" reps"
+                                  color={color}
+                                />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      }
+                    )}
+                  </div>
                 )}
-              </div>
+              </>
             )}
           </TabsContent>
 
