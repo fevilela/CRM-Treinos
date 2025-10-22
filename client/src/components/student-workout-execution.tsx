@@ -254,7 +254,9 @@ export function StudentWorkoutExecution({
 
   // Mutation para salvar sessão de treino
   const saveWorkoutSessionMutation = useMutation({
-    mutationFn: async (sessionData: any) => {
+    mutationFn: async (data: { sessionData: any; historyData: any[] }) => {
+      const { sessionData, historyData } = data;
+
       const response = await fetch("/api/workout-sessions", {
         method: "POST",
         headers: {
@@ -268,7 +270,30 @@ export function StudentWorkoutExecution({
         throw new Error("Erro ao salvar sessão do treino");
       }
 
-      return response.json();
+      const session = await response.json();
+
+      for (const history of historyData) {
+        const historyResponse = await fetch("/api/exercise-weight-change", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...history,
+            workoutSessionId: session.id,
+          }),
+          credentials: "include",
+        });
+
+        if (!historyResponse.ok) {
+          console.error(
+            "Erro ao salvar histórico de exercício:",
+            history.exerciseName
+          );
+        }
+      }
+
+      return session;
     },
     onSuccess: () => {
       toast({
@@ -452,7 +477,31 @@ export function StudentWorkoutExecution({
         }),
     };
 
-    saveWorkoutSessionMutation.mutate(sessionData);
+    // Preparar dados do histórico de cada exercício
+    const historyData = Object.values(exerciseProgress)
+      .filter((progress) => progress.completed)
+      .map((progress) => {
+        const exercise = exercises.find((ex) => ex.id === progress.exerciseId);
+        const completedSets = progress.sets.filter((set) => set.completed);
+        const maxWeight =
+          completedSets.length > 0
+            ? completedSets
+                .map((set) => parseFloat(set.weight) || 0)
+                .reduce((max, weight) => Math.max(max, weight), 0)
+            : 0;
+
+        return {
+          studentId: student.id,
+          exerciseId: progress.exerciseId,
+          exerciseName: exercise?.name || "Exercício",
+          sets: completedSets.length,
+          reps: completedSets.map((set) => set.reps).join(","),
+          currentWeight: maxWeight.toString(),
+          comments: null,
+        };
+      });
+
+    saveWorkoutSessionMutation.mutate({ sessionData, historyData });
   };
 
   const openVideo = (videoUrl: string, exerciseName: string) => {
