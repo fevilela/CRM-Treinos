@@ -272,8 +272,9 @@ export function StudentWorkoutExecution({
 
       const session = await response.json();
 
+      // Salvar histórico de cada exercício usando o endpoint correto
       for (const history of historyData) {
-        const historyResponse = await fetch("/api/exercise-weight-change", {
+        const historyResponse = await fetch("/api/workout-history", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -496,7 +497,10 @@ export function StudentWorkoutExecution({
           exerciseName: exercise?.name || "Exercício",
           sets: completedSets.length,
           reps: completedSets.map((set) => set.reps).join(","),
-          currentWeight: maxWeight.toString(),
+          weight: maxWeight.toString(),
+          previousWeight: null,
+          changeType: null,
+          percentageChange: null,
           comments: null,
         };
       });
