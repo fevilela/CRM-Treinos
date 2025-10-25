@@ -67,6 +67,7 @@ const JOINT_OPTIONS = [
   { value: "knee_right", label: "Joelho Direito" },
   { value: "ankle_left", label: "Tornozelo Esquerdo" },
   { value: "ankle_right", label: "Tornozelo Direito" },
+  { value: "custom", label: "Outro (personalizar)" },
 ];
 
 const SEVERITY_OPTIONS = [
@@ -83,14 +84,15 @@ export function PhotoWithGrid({
   onObservationsChange,
   readOnly = false,
 }: PhotoWithGridProps) {
+  // Grade preta automática
   const [gridConfig, setGridConfig] = useState<GridConfig>({
     offsetX: 0,
     offsetY: 0,
     cellSize: 50,
     opacity: 0.5,
-    color: "#3b82f6",
+    color: "#000000", // Grade preta por padrão
   });
-  const [showGrid, setShowGrid] = useState(true);
+  const [showGrid, setShowGrid] = useState(true); // Grade visível por padrão
   const [isDraggingGrid, setIsDraggingGrid] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -99,6 +101,8 @@ export function PhotoWithGrid({
     Partial<JointObservation>
   >({});
   const [showObservationDialog, setShowObservationDialog] = useState(false);
+  const [customJoint, setCustomJoint] = useState("");
+  const [isCustomJoint, setIsCustomJoint] = useState(false);
 
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -142,9 +146,22 @@ export function PhotoWithGrid({
     setIsDraggingGrid(false);
   };
 
+  const handleJointChange = (value: string) => {
+    if (value === "custom") {
+      setIsCustomJoint(true);
+      setNewObservation({ ...newObservation, joint: "" });
+    } else {
+      setIsCustomJoint(false);
+      setCustomJoint("");
+      setNewObservation({ ...newObservation, joint: value });
+    }
+  };
+
   const handleSaveObservation = () => {
+    const finalJoint = isCustomJoint ? customJoint : newObservation.joint;
+
     if (
-      !newObservation.joint ||
+      !finalJoint ||
       !newObservation.observation ||
       !newObservation.severity
     ) {
@@ -153,7 +170,7 @@ export function PhotoWithGrid({
 
     const observation: JointObservation = {
       id: Math.random().toString(36).substr(2, 9),
-      joint: newObservation.joint,
+      joint: finalJoint,
       observation: newObservation.observation,
       severity: newObservation.severity as
         | "normal"
@@ -167,6 +184,8 @@ export function PhotoWithGrid({
     onObservationsChange([...observations, observation]);
     setShowObservationDialog(false);
     setNewObservation({});
+    setCustomJoint("");
+    setIsCustomJoint(false);
   };
 
   const handleRemoveObservation = (id: string) => {
@@ -241,6 +260,11 @@ export function PhotoWithGrid({
     return option?.color || "bg-gray-500";
   };
 
+  const getJointLabel = (jointValue: string) => {
+    const option = JOINT_OPTIONS.find((j) => j.value === jointValue);
+    return option?.label || jointValue;
+  };
+
   return (
     <div className="space-y-4">
       {/* Controles */}
@@ -297,7 +321,7 @@ export function PhotoWithGrid({
         </div>
       </div>
 
-      {/* Controles da Grade */}
+      {/* Controles da Grade - Simplificados */}
       {!readOnly && showGrid && (
         <Card>
           <CardContent className="p-4">
@@ -344,32 +368,19 @@ export function PhotoWithGrid({
                 />
               </div>
               <div>
-                <Label htmlFor="gridColor" className="text-sm">
-                  Cor da Grade
-                </Label>
-                <div className="flex gap-2 mt-1">
-                  <Input
-                    id="gridColor"
-                    type="color"
-                    value={gridConfig.color}
-                    onChange={(e) =>
-                      setGridConfig({ ...gridConfig, color: e.target.value })
-                    }
-                    className="w-20 h-9"
-                    data-testid="input-grid-color"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setGridConfig({ ...gridConfig, offsetX: 0, offsetY: 0 })
-                    }
-                    data-testid="button-reset-grid"
-                  >
-                    <Move className="h-4 w-4 mr-1" />
-                    Resetar Posição
-                  </Button>
-                </div>
+                <Label className="text-sm block mb-2">Mover Grade</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setGridConfig({ ...gridConfig, offsetX: 0, offsetY: 0 })
+                  }
+                  data-testid="button-reset-grid"
+                  className="w-full"
+                >
+                  <Move className="h-4 w-4 mr-1" />
+                  Resetar Posição
+                </Button>
               </div>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
@@ -439,10 +450,7 @@ export function PhotoWithGrid({
                     </div>
                     <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-black/90 text-white text-xs px-3 py-2 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 min-w-[200px]">
                       <div className="font-bold">
-                        {
-                          JOINT_OPTIONS.find((j) => j.value === obs.joint)
-                            ?.label
-                        }
+                        {getJointLabel(obs.joint)}
                       </div>
                       <div className="text-gray-300 mt-1">
                         {obs.observation}
@@ -494,7 +502,7 @@ export function PhotoWithGrid({
                   />
                   <div className="flex-1">
                     <div className="font-medium text-sm">
-                      {JOINT_OPTIONS.find((j) => j.value === obs.joint)?.label}
+                      {getJointLabel(obs.joint)}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       {obs.observation}
@@ -537,10 +545,8 @@ export function PhotoWithGrid({
             <div>
               <Label htmlFor="joint">Articulação / Região</Label>
               <Select
-                value={newObservation.joint}
-                onValueChange={(value) =>
-                  setNewObservation({ ...newObservation, joint: value })
-                }
+                value={isCustomJoint ? "custom" : newObservation.joint}
+                onValueChange={handleJointChange}
               >
                 <SelectTrigger id="joint" data-testid="select-joint">
                   <SelectValue placeholder="Selecione a articulação" />
@@ -554,6 +560,21 @@ export function PhotoWithGrid({
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Campo personalizado para articulação */}
+            {isCustomJoint && (
+              <div>
+                <Label htmlFor="custom-joint">Nome da Articulação/Região</Label>
+                <Input
+                  id="custom-joint"
+                  placeholder="Ex: Pé direito, Punho esquerdo..."
+                  value={customJoint}
+                  onChange={(e) => setCustomJoint(e.target.value)}
+                  data-testid="input-custom-joint"
+                />
+              </div>
+            )}
+
             <div>
               <Label htmlFor="observation">Observação / Problema</Label>
               <Textarea
@@ -567,7 +588,11 @@ export function PhotoWithGrid({
                   })
                 }
                 data-testid="textarea-observation"
+                rows={3}
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Descreva o problema ou desvio postural observado
+              </p>
             </div>
             <div>
               <Label htmlFor="severity">Severidade</Label>
@@ -605,7 +630,11 @@ export function PhotoWithGrid({
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setShowObservationDialog(false)}
+              onClick={() => {
+                setShowObservationDialog(false);
+                setCustomJoint("");
+                setIsCustomJoint(false);
+              }}
               data-testid="button-cancel-observation"
             >
               Cancelar
@@ -613,7 +642,7 @@ export function PhotoWithGrid({
             <Button
               onClick={handleSaveObservation}
               disabled={
-                !newObservation.joint ||
+                !(isCustomJoint ? customJoint : newObservation.joint) ||
                 !newObservation.observation ||
                 !newObservation.severity
               }

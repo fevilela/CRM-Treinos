@@ -4,9 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, X, Save } from "lucide-react";
+import { Upload, X, Save, Image as ImageIcon } from "lucide-react";
 import type { PostureAssessment } from "@shared/schema";
 import { PhotoWithGrid, JointObservation } from "@/components/photo-with-grid";
 
@@ -23,9 +30,10 @@ interface PostureAssessmentCreationFormProps {
 type PhotoType = "front" | "back" | "side_left" | "side_right";
 
 interface PhotoUpload {
+  id: string;
   type: PhotoType;
-  file: File | null;
-  preview: string | null;
+  file: File;
+  preview: string;
   observations: JointObservation[];
 }
 
@@ -42,32 +50,9 @@ export function PostureAssessmentCreationForm({
 }: PostureAssessmentCreationFormProps) {
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
-  const [photos, setPhotos] = useState<Record<PhotoType, PhotoUpload>>({
-    front: {
-      type: "front",
-      file: null,
-      preview: null,
-      observations: [],
-    },
-    back: {
-      type: "back",
-      file: null,
-      preview: null,
-      observations: [],
-    },
-    side_left: {
-      type: "side_left",
-      file: null,
-      preview: null,
-      observations: [],
-    },
-    side_right: {
-      type: "side_right",
-      file: null,
-      preview: null,
-      observations: [],
-    },
-  });
+  const [photos, setPhotos] = useState<PhotoUpload[]>([]);
+  const [selectedPhotoType, setSelectedPhotoType] =
+    useState<PhotoType>("front");
   const { toast } = useToast();
 
   const createAssessmentMutation = useMutation({
@@ -84,8 +69,6 @@ export function PostureAssessmentCreationForm({
       );
 
       const photoDataPromises = data.photoUploads.map(async (photoUpload) => {
-        if (!photoUpload.file) return null;
-
         return new Promise<PostureImageData>((resolve) => {
           const reader = new FileReader();
           reader.onloadend = () => {
@@ -95,7 +78,7 @@ export function PostureAssessmentCreationForm({
               base64,
             });
           };
-          reader.readAsDataURL(photoUpload.file!);
+          reader.readAsDataURL(photoUpload.file);
         });
       });
 
@@ -143,52 +126,34 @@ export function PostureAssessmentCreationForm({
     },
   });
 
-  const handlePhotoSelect = (type: PhotoType, file: File | null) => {
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotos((prev) => ({
-          ...prev,
-          [type]: {
-            type,
-            file,
-            preview: reader.result as string,
-            observations: prev[type].observations,
-          },
-        }));
+  const handlePhotoSelect = (file: File) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const newPhoto: PhotoUpload = {
+        id: Math.random().toString(36).substr(2, 9),
+        type: selectedPhotoType,
+        file,
+        preview: reader.result as string,
+        observations: [],
       };
-      reader.readAsDataURL(file);
-    } else {
-      setPhotos((prev) => ({
-        ...prev,
-        [type]: {
-          type,
-          file: null,
-          preview: null,
-          observations: [],
-        },
-      }));
-    }
+      setPhotos((prev) => [...prev, newPhoto]);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleObservationsChange = (
-    type: PhotoType,
+    photoId: string,
     observations: JointObservation[]
   ) => {
-    setPhotos((prev) => ({
-      ...prev,
-      [type]: {
-        ...prev[type],
-        observations,
-      },
-    }));
+    setPhotos((prev) =>
+      prev.map((photo) =>
+        photo.id === photoId ? { ...photo, observations } : photo
+      )
+    );
   };
 
-  const handleRemovePhoto = (type: PhotoType) => {
-    setPhotos((prev) => ({
-      ...prev,
-      [type]: { type, file: null, preview: null, observations: [] },
-    }));
+  const handleRemovePhoto = (photoId: string) => {
+    setPhotos((prev) => prev.filter((photo) => photo.id !== photoId));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -203,9 +168,7 @@ export function PostureAssessmentCreationForm({
       return;
     }
 
-    const uploadedPhotos = Object.values(photos).filter((p) => p.file !== null);
-
-    if (uploadedPhotos.length === 0) {
+    if (photos.length === 0) {
       toast({
         title: "Fotos obrigatórias",
         description: "Por favor, adicione pelo menos uma foto postural.",
@@ -217,18 +180,18 @@ export function PostureAssessmentCreationForm({
     createAssessmentMutation.mutate({
       title,
       notes,
-      photoUploads: uploadedPhotos,
+      photoUploads: photos,
     });
   };
 
-  const totalObservations = Object.values(photos).reduce(
+  const totalObservations = photos.reduce(
     (acc, p) => acc + p.observations.length,
     0
   );
 
-  const uploadedPhotosCount = Object.values(photos).filter(
-    (p) => p.file
-  ).length;
+  const getPhotoTypeLabel = (type: PhotoType) => {
+    return PHOTO_TYPES.find((pt) => pt.value === type)?.label || type;
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -266,73 +229,111 @@ export function PostureAssessmentCreationForm({
         </CardContent>
       </Card>
 
-      {PHOTO_TYPES.map((photoType) => {
-        const photo = photos[photoType.value];
+      {/* Upload único com seletor de tipo */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Adicionar Fotos Posturais</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="photo-type">Tipo de Foto</Label>
+              <Select
+                value={selectedPhotoType}
+                onValueChange={(value) =>
+                  setSelectedPhotoType(value as PhotoType)
+                }
+              >
+                <SelectTrigger id="photo-type" data-testid="select-photo-type">
+                  <SelectValue placeholder="Selecione o tipo de foto" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PHOTO_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="upload-photo" className="block mb-2">
+                Selecionar Foto
+              </Label>
+              <Label htmlFor="upload-photo" className="cursor-pointer">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+                  <Upload className="h-10 w-10 text-gray-400 mx-auto mb-2" />
+                  <div className="text-sm text-muted-foreground">
+                    Clique para selecionar a foto{" "}
+                    {getPhotoTypeLabel(selectedPhotoType).toLowerCase()}
+                  </div>
+                </div>
+              </Label>
+              <Input
+                id="upload-photo"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    handlePhotoSelect(file);
+                    e.target.value = "";
+                  }
+                }}
+                data-testid="input-upload-photo"
+              />
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            💡 Dica: Selecione o tipo de foto e clique para fazer upload. Você
+            pode adicionar múltiplas fotos de diferentes ângulos.
+          </p>
+        </CardContent>
+      </Card>
 
-        return (
-          <Card key={photoType.value}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Foto {photoType.label}</CardTitle>
-                {photo.file && (
+      {/* Fotos adicionadas aparecem abaixo */}
+      {photos.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">
+            Fotos Adicionadas ({photos.length})
+          </h3>
+          {photos.map((photo) => (
+            <Card key={photo.id}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ImageIcon className="h-5 w-5" />
+                    <CardTitle className="text-base">
+                      Foto {getPhotoTypeLabel(photo.type)}
+                    </CardTitle>
+                  </div>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => handleRemovePhoto(photoType.value)}
-                    data-testid={`button-remove-${photoType.value}`}
+                    onClick={() => handleRemovePhoto(photo.id)}
+                    data-testid={`button-remove-${photo.id}`}
                   >
                     <X className="h-4 w-4 mr-1" />
                     Remover
                   </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {!photo.preview ? (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
-                  <Upload className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <Label
-                    htmlFor={`upload-${photoType.value}`}
-                    className="cursor-pointer"
-                  >
-                    <div className="text-sm text-muted-foreground mb-4">
-                      Clique para fazer upload da foto{" "}
-                      {photoType.label.toLowerCase()}
-                    </div>
-                    <Button type="button" variant="outline" asChild>
-                      <span>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Selecionar Foto
-                      </span>
-                    </Button>
-                  </Label>
-                  <Input
-                    id={`upload-${photoType.value}`}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handlePhotoSelect(photoType.value, file);
-                    }}
-                    data-testid={`input-upload-${photoType.value}`}
-                  />
                 </div>
-              ) : (
+              </CardHeader>
+              <CardContent>
                 <PhotoWithGrid
                   imageUrl={photo.preview}
-                  photoType={photoType.value}
+                  photoType={photo.type}
                   observations={photo.observations}
                   onObservationsChange={(observations) =>
-                    handleObservationsChange(photoType.value, observations)
+                    handleObservationsChange(photo.id, observations)
                   }
                 />
-              )}
-            </CardContent>
-          </Card>
-        );
-      })}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -345,7 +346,7 @@ export function PostureAssessmentCreationForm({
                 Fotos
               </div>
               <div className="text-3xl font-bold text-blue-700 dark:text-blue-300">
-                {uploadedPhotosCount}
+                {photos.length}
               </div>
             </div>
             <div className="text-center p-4 bg-orange-50 dark:bg-orange-950 rounded-lg">
