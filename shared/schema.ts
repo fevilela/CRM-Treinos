@@ -869,10 +869,10 @@ export const insertWorkoutHistorySchema = createInsertSchema(workoutHistory)
     completedAt: true,
   })
   .extend({
-    weight: z.string().optional(),
-    previousWeight: z.string().optional(),
-    changeType: z.enum(["increase", "decrease", "maintain"]).optional(),
-    percentageChange: z.string().optional(),
+    weight: z.string().default("0"),
+    previousWeight: z.string().nullish(),
+    changeType: z.enum(["increase", "decrease", "maintain"]).nullish(),
+    percentageChange: z.string().nullish(),
   });
 
 export const insertWorkoutCommentSchema = createInsertSchema(
