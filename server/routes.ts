@@ -1131,12 +1131,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/workout-history", isStudentOrTeacher, async (req, res) => {
     try {
+      console.log(
+        "Received workout history data:",
+        JSON.stringify(req.body, null, 2)
+      );
       const validatedData = insertWorkoutHistorySchema.parse(req.body);
+      console.log("Validated data:", JSON.stringify(validatedData, null, 2));
       const history = await storage.createWorkoutHistory(validatedData);
       res.json(history);
     } catch (error) {
       console.error("Error creating workout history:", error);
-      res.status(500).json({ message: "Failed to create workout history" });
+      // Return detailed error in development for debugging
+      if (process.env.NODE_ENV === "development") {
+        res.status(500).json({
+          message: "Failed to create workout history",
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        });
+      } else {
+        res.status(500).json({ message: "Failed to create workout history" });
+      }
     }
   });
 

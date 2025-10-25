@@ -861,8 +861,14 @@ export class DatabaseStorage implements IStorage {
   async createWorkoutHistory(
     history: InsertWorkoutHistory
   ): Promise<WorkoutHistory> {
+    console.log(
+      "createWorkoutHistory - Input:",
+      JSON.stringify(history, null, 2)
+    );
+
     // Server-side validation
     if (!history.studentId || !history.exerciseId) {
+      console.error("Validation error: Missing studentId or exerciseId");
       throw new Error("studentId and exerciseId are required");
     }
 
@@ -870,6 +876,7 @@ export class DatabaseStorage implements IStorage {
       history.sets != null &&
       (history.sets <= 0 || !Number.isInteger(history.sets))
     ) {
+      console.error("Validation error: Invalid sets value:", history.sets);
       throw new Error("Sets must be a positive integer");
     }
 
@@ -877,6 +884,7 @@ export class DatabaseStorage implements IStorage {
       history.weight != null &&
       (!Number.isFinite(Number(history.weight)) || Number(history.weight) < 0)
     ) {
+      console.error("Validation error: Invalid weight value:", history.weight);
       throw new Error("Weight must be a non-negative finite number");
     }
 
@@ -885,6 +893,10 @@ export class DatabaseStorage implements IStorage {
       (!Number.isFinite(Number(history.previousWeight)) ||
         Number(history.previousWeight) < 0)
     ) {
+      console.error(
+        "Validation error: Invalid previousWeight value:",
+        history.previousWeight
+      );
       throw new Error("Previous weight must be a non-negative finite number");
     }
 
@@ -892,6 +904,10 @@ export class DatabaseStorage implements IStorage {
       history.percentageChange != null &&
       !Number.isFinite(Number(history.percentageChange))
     ) {
+      console.error(
+        "Validation error: Invalid percentageChange value:",
+        history.percentageChange
+      );
       throw new Error("Percentage change must be a finite number");
     }
 
@@ -911,13 +927,24 @@ export class DatabaseStorage implements IStorage {
       completedAt: new Date(), // Set server-side timestamp
     };
 
-    const [newHistory] = await db
-      .insert(workoutHistory)
-      .values(historyData)
-      .returning();
+    console.log(
+      "createWorkoutHistory - Prepared data for insert:",
+      JSON.stringify(historyData, null, 2)
+    );
 
-    // Return the inserted record as-is
-    return newHistory as WorkoutHistory;
+    try {
+      const [newHistory] = await db
+        .insert(workoutHistory)
+        .values(historyData)
+        .returning();
+
+      console.log("createWorkoutHistory - Success! Inserted:", newHistory.id);
+      // Return the inserted record as-is
+      return newHistory as WorkoutHistory;
+    } catch (dbError) {
+      console.error("Database insert error:", dbError);
+      throw dbError;
+    }
   }
 
   async getExerciseProgress(

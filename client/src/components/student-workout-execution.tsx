@@ -252,6 +252,12 @@ export function StudentWorkoutExecution({
     enabled: !!workoutId,
   });
 
+  // Buscar histórico de treino do aluno para obter as últimas cargas usadas
+  const { data: workoutHistory = [] } = useQuery<any[]>({
+    queryKey: ["/api/workout-history", student.id],
+    enabled: !!student.id,
+  });
+
   // Mutation para salvar sessão de treino
   const saveWorkoutSessionMutation = useMutation({
     mutationFn: async (data: { sessionData: any; historyData: any[] }) => {
@@ -301,25 +307,52 @@ export function StudentWorkoutExecution({
         title: "Treino finalizado!",
         description: "Seus resultados foram salvos com sucesso.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/workout-history"] });
+      // Invalidar query específica do histórico do aluno para atualizar cache
+      queryClient.invalidateQueries({
+        queryKey: ["/api/workout-history", student.id],
+      });
       queryClient.invalidateQueries({
         queryKey: [`/api/workout-sessions/student/${student.id}`],
+      });
+      // Invalidar query de progresso semanal para atualizar gráficos
+      queryClient.invalidateQueries({
+        queryKey: ["/api/progress/exercise-weekly", student.id],
       });
       setWorkoutCompleted(true);
     },
   });
 
-  // Inicializar progresso dos exercícios
+  // Inicializar progresso dos exercícios com as últimas cargas usadas
   useEffect(() => {
-    if (exercises.length > 0) {
+    // Não reinicializar se o treino já foi iniciado (evita sobrescrever dados em edição)
+    if (exercises.length > 0 && !workoutStarted) {
       const initialProgress: Record<string, ExerciseProgress> = {};
+
       exercises.forEach((exercise) => {
+        // Buscar a última carga usada para este exercício no histórico
+        const lastExerciseHistory = workoutHistory
+          .filter((h) => h.exerciseId === exercise.id)
+          .sort(
+            (a, b) =>
+              new Date(b.completedAt).getTime() -
+              new Date(a.completedAt).getTime()
+          )[0];
+
+        // Usar a última carga registrada ou a carga padrão do exercício
+        const lastWeight = lastExerciseHistory?.weight
+          ? parseFloat(lastExerciseHistory.weight).toString()
+          : exercise.weight?.toString() || "";
+
+        const lastReps = lastExerciseHistory?.reps
+          ? lastExerciseHistory.reps.split(",")[0] // Pegar as primeiras reps da série
+          : exercise.reps || "";
+
         initialProgress[exercise.id] = {
           exerciseId: exercise.id,
           sets: Array.from({ length: exercise.sets || 3 }, (_, index) => ({
             setNumber: index + 1,
-            weight: exercise.weight?.toString() || "",
-            reps: exercise.reps || "",
+            weight: lastWeight,
+            reps: lastReps,
             completed: false,
           })),
           currentSet: 0,
@@ -329,7 +362,7 @@ export function StudentWorkoutExecution({
       });
       setExerciseProgress(initialProgress);
     }
-  }, [exercises]);
+  }, [exercises, workoutHistory, workoutStarted]);
 
   const handleStartWorkout = () => {
     setWorkoutStarted(true);
