@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -84,15 +84,15 @@ export function PhotoWithGrid({
   onObservationsChange,
   readOnly = false,
 }: PhotoWithGridProps) {
-  // Grade preta automática
+  // Grade preta automática e fixa
   const [gridConfig, setGridConfig] = useState<GridConfig>({
     offsetX: 0,
     offsetY: 0,
-    cellSize: 50,
-    opacity: 0.5,
-    color: "#000000", // Grade preta por padrão
+    cellSize: 25, // Grade menor
+    opacity: 0.8, // Bem destacada
+    color: "#000000", // Grade preta fixa
   });
-  const [showGrid, setShowGrid] = useState(true); // Grade visível por padrão
+  const [showGrid] = useState(true); // Grade sempre visível
   const [isDraggingGrid, setIsDraggingGrid] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -103,9 +103,19 @@ export function PhotoWithGrid({
   const [showObservationDialog, setShowObservationDialog] = useState(false);
   const [customJoint, setCustomJoint] = useState("");
   const [isCustomJoint, setIsCustomJoint] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Força re-render quando a imagem carregar para mostrar a grade
+  useEffect(() => {
+    setImageLoaded(false);
+  }, [imageUrl]);
+
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+  };
 
   const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!imageRef.current || !isAddingObservation || readOnly) return;
@@ -197,7 +207,7 @@ export function PhotoWithGrid({
   const handleResetZoom = () => setZoom(1);
 
   const renderGrid = () => {
-    if (!imageRef.current || !showGrid) return null;
+    if (!imageRef.current || !showGrid || !imageLoaded) return null;
 
     const imgWidth = imageRef.current.offsetWidth * zoom;
     const imgHeight = imageRef.current.offsetHeight * zoom;
@@ -217,7 +227,7 @@ export function PhotoWithGrid({
           x2={x}
           y2={imgHeight}
           stroke={gridConfig.color}
-          strokeWidth={1}
+          strokeWidth={2}
           opacity={gridConfig.opacity}
         />
       );
@@ -237,7 +247,7 @@ export function PhotoWithGrid({
           x2={imgWidth}
           y2={y}
           stroke={gridConfig.color}
-          strokeWidth={1}
+          strokeWidth={2}
           opacity={gridConfig.opacity}
         />
       );
@@ -269,18 +279,6 @@ export function PhotoWithGrid({
     <div className="space-y-4">
       {/* Controles */}
       <div className="flex flex-wrap items-center gap-2">
-        {!readOnly && (
-          <Button
-            variant={showGrid ? "default" : "outline"}
-            size="sm"
-            onClick={() => setShowGrid(!showGrid)}
-            data-testid="button-toggle-grid"
-          >
-            <Grid3x3 className="h-4 w-4 mr-2" />
-            {showGrid ? "Ocultar Grade" : "Mostrar Grade"}
-          </Button>
-        )}
-
         {!readOnly && (
           <Button
             variant={isAddingObservation ? "default" : "outline"}
@@ -321,74 +319,14 @@ export function PhotoWithGrid({
         </div>
       </div>
 
-      {/* Controles da Grade - Simplificados */}
-      {!readOnly && showGrid && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="cellSize" className="text-sm">
-                  Tamanho da Célula: {gridConfig.cellSize}px
-                </Label>
-                <Input
-                  id="cellSize"
-                  type="range"
-                  min="10"
-                  max="100"
-                  value={gridConfig.cellSize}
-                  onChange={(e) =>
-                    setGridConfig({
-                      ...gridConfig,
-                      cellSize: Number(e.target.value),
-                    })
-                  }
-                  className="mt-1"
-                  data-testid="input-cell-size"
-                />
-              </div>
-              <div>
-                <Label htmlFor="opacity" className="text-sm">
-                  Opacidade: {Math.round(gridConfig.opacity * 100)}%
-                </Label>
-                <Input
-                  id="opacity"
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.1"
-                  value={gridConfig.opacity}
-                  onChange={(e) =>
-                    setGridConfig({
-                      ...gridConfig,
-                      opacity: Number(e.target.value),
-                    })
-                  }
-                  className="mt-1"
-                  data-testid="input-opacity"
-                />
-              </div>
-              <div>
-                <Label className="text-sm block mb-2">Mover Grade</Label>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setGridConfig({ ...gridConfig, offsetX: 0, offsetY: 0 })
-                  }
-                  data-testid="button-reset-grid"
-                  className="w-full"
-                >
-                  <Move className="h-4 w-4 mr-1" />
-                  Resetar Posição
-                </Button>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              💡 Dica: Segure Alt + clique e arraste para mover a grade, ou use
-              o botão do meio do mouse
-            </p>
-          </CardContent>
-        </Card>
+      {/* Dica de uso */}
+      {!readOnly && (
+        <div className="bg-muted/50 border rounded-lg p-3">
+          <p className="text-xs text-muted-foreground">
+            💡 <strong>Dica:</strong> Segure Alt + clique e arraste sobre a
+            imagem para mover a grade, ou use o botão do meio do mouse
+          </p>
+        </div>
       )}
 
       {/* Imagem com grade e observações */}
@@ -421,6 +359,7 @@ export function PhotoWithGrid({
                 transformOrigin: "top left",
               }}
               draggable={false}
+              onLoad={handleImageLoad}
               data-testid="img-posture-photo"
             />
             {renderGrid()}
