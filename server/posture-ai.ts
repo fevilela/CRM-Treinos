@@ -35,6 +35,13 @@ export async function analyzePostureImages(
     );
   }
 
+  // Validate that images array exists and has content
+  if (!images || !Array.isArray(images) || images.length === 0) {
+    throw new Error(
+      "É necessário fornecer pelo menos uma imagem para análise postural."
+    );
+  }
+
   try {
     const imageContents = images.map((img) => ({
       type: "image_url" as const,

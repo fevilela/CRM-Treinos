@@ -1636,7 +1636,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/posture-assessments", isTeacher, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const { images, observations, ...assessmentData } = req.body;
+      // Accept either 'images' or 'photos' from the frontend
+      const {
+        images: imagesFromBody,
+        photos: photosFromBody,
+        observations,
+        ...assessmentData
+      } = req.body;
+      const images = imagesFromBody || photosFromBody;
+
+      // Validate that images are provided
+      if (!images || !Array.isArray(images) || images.length === 0) {
+        return res.status(400).json({
+          message:
+            "É necessário fornecer pelo menos uma imagem para criar uma avaliação postural.",
+        });
+      }
 
       // Validate required data
       const validatedData = insertPostureAssessmentSchema.parse({
@@ -1703,7 +1718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await Promise.all(observationPromises);
       }
 
-      // Perform AI analysis
+      // Perform AI analysis (images are guaranteed to exist at this point)
       try {
         const aiResult = await analyzePostureImages(images, observations);
 
@@ -1725,12 +1740,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           correctedPostureImageUrl: visualization.imageUrl,
           deviations: aiResult.deviations,
         });
-      } catch (aiError) {
+      } catch (aiError: any) {
         console.error("AI analysis failed:", aiError);
+
         // Return assessment without AI analysis
+        // This is OK - user can save assessments even without AI
         res.status(201).json({
           ...assessment,
           aiAnalysisError:
+            aiError?.message ||
             "AI analysis failed, but assessment was saved successfully",
         });
       }
