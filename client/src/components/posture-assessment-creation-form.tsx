@@ -106,16 +106,14 @@ export function PostureAssessmentCreationForm({
         throw new Error("Failed to create assessment");
       }
 
-      const assessment = (await response.json()) as PostureAssessment;
+      const assessment = (await response.json()) as PostureAssessment & {
+        aiAnalysisError?: string;
+        aiAnalysisErrorType?: string;
+        message?: string;
+      };
       return assessment;
     },
-    onSuccess: (assessment) => {
-      toast({
-        title: "Avaliação criada",
-        description: "A avaliação postural foi criada com sucesso.",
-      });
-      onSave(assessment);
-    },
+
     onError: (error) => {
       toast({
         title: "Erro ao criar avaliação",

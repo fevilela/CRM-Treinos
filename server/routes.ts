@@ -43,10 +43,6 @@ import {
   getUpcomingEventsForNotification,
 } from "./notification-service";
 import { getSchedulerStatus } from "./notification-scheduler";
-import {
-  analyzePostureImages,
-  generateCorrectedPostureVisualization,
-} from "./posture-ai";
 
 // Interface for image data in posture assessment
 interface PostureImageData {
@@ -1716,41 +1712,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         await Promise.all(observationPromises);
-      }
-
-      // Perform AI analysis (images are guaranteed to exist at this point)
-      try {
-        const aiResult = await analyzePostureImages(images, observations);
-
-        // Update assessment with AI analysis
-        await storage.updatePostureAssessment(assessment.id, {
-          aiAnalysis: aiResult.analysis,
-          aiRecommendations: aiResult.recommendations,
-        });
-
-        // Generate corrected posture visualization
-        const visualization = await generateCorrectedPostureVisualization(
-          aiResult
-        );
-
-        res.status(201).json({
-          ...assessment,
-          aiAnalysis: aiResult.analysis,
-          aiRecommendations: aiResult.recommendations,
-          correctedPostureImageUrl: visualization.imageUrl,
-          deviations: aiResult.deviations,
-        });
-      } catch (aiError: any) {
-        console.error("AI analysis failed:", aiError);
-
-        // Return assessment without AI analysis
-        // This is OK - user can save assessments even without AI
-        res.status(201).json({
-          ...assessment,
-          aiAnalysisError:
-            aiError?.message ||
-            "AI analysis failed, but assessment was saved successfully",
-        });
       }
     } catch (error) {
       console.error("Error creating posture assessment:", error);
