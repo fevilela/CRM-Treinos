@@ -112,6 +112,7 @@ export const students = pgTable("students", {
   verificationCode: varchar("verification_code"), // Código de verificação de 6 dígitos
   verificationCodeExpiry: timestamp("verification_code_expiry"), // Quando o código expira
   phone: varchar("phone"),
+  cpf: varchar("cpf", { length: 14 }), // CPF com máscara: 000.000.000-00
   dateOfBirth: timestamp("date_of_birth"),
   gender: genderEnum("gender").notNull(),
   profession: varchar("profession"),

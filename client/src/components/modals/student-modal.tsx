@@ -47,6 +47,7 @@ const studentFormSchema = insertStudentSchema
     gender: z.enum(["male", "female"], {
       required_error: "Gênero é obrigatório",
     }),
+    cpf: z.string().optional(),
   });
 
 type StudentFormData = z.infer<typeof studentFormSchema>;
@@ -63,6 +64,7 @@ export default function StudentModal({
   student,
 }: StudentModalProps) {
   const { toast } = useToast();
+  const [cpfLoading, setCpfLoading] = useState(false);
 
   const form = useForm<StudentFormData>({
     resolver: zodResolver(studentFormSchema),
@@ -70,6 +72,7 @@ export default function StudentModal({
       name: "",
       email: "",
       phone: "",
+      cpf: "",
       gender: "male",
       weight: undefined,
       height: undefined,
@@ -85,6 +88,7 @@ export default function StudentModal({
         name: student.name,
         email: student.email || "",
         phone: student.phone || "",
+        cpf: student.cpf || "",
         gender: student.gender,
         weight: typeof student.weight === "number" ? student.weight : undefined,
         height: typeof student.height === "number" ? student.height : undefined,
@@ -97,18 +101,7 @@ export default function StudentModal({
         name: "",
         email: "",
         phone: "",
-        gender: "male",
-        weight: undefined,
-        height: undefined,
-        goal: "",
-        medicalConditions: "",
-        status: "active",
-      });
-    } else if (isOpen) {
-      form.reset({
-        name: "",
-        email: "",
-        phone: "",
+        cpf: "",
         gender: "male",
         weight: undefined,
         height: undefined,
@@ -171,6 +164,60 @@ export default function StudentModal({
       description: `Erro ao ${action} aluno`,
       variant: "destructive",
     });
+  };
+
+  const handleCPFLookup = async (cpf: string) => {
+    const cleanCPF = cpf.replace(/\D/g, "");
+    if (cleanCPF.length !== 11) {
+      return;
+    }
+
+    setCpfLoading(true);
+    try {
+      const response = await apiRequest("POST", "/api/cpf/validate", { cpf });
+      const data = await response.json();
+
+      if (data.valid) {
+        toast({
+          title: "CPF válido",
+          description:
+            "CPF encontrado na Receita Federal. Para buscar dados completos (nome e data de nascimento), é necessário integrar com API paga (SERPRO).",
+        });
+
+        if (data.name) {
+          form.setValue("name", data.name);
+        }
+        if (data.dateOfBirth) {
+          form.setValue("dateOfBirth", new Date(data.dateOfBirth));
+        }
+      } else {
+        toast({
+          title: "CPF inválido ou não encontrado",
+          description: data.error || "CPF não encontrado na Receita Federal",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao consultar CPF:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível consultar o CPF. Verifique sua conexão.",
+        variant: "destructive",
+      });
+    } finally {
+      setCpfLoading(false);
+    }
+  };
+
+  const formatCPF = (value: string) => {
+    const cleanValue = value.replace(/\D/g, "");
+    if (cleanValue.length <= 11) {
+      return cleanValue
+        .replace(/(\d{3})(\d)/, "$1.$2")
+        .replace(/(\d{3})(\d)/, "$1.$2")
+        .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+    }
+    return value;
   };
 
   const onSubmit = (data: StudentFormData) => {
@@ -249,6 +296,45 @@ export default function StudentModal({
                         value={field.value ?? ""}
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* CPF */}
+              <FormField
+                control={form.control}
+                name="cpf"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>CPF (opcional)</FormLabel>
+                    <FormControl>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="000.000.000-00"
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => {
+                            const formatted = formatCPF(e.target.value);
+                            field.onChange(formatted);
+                          }}
+                          onBlur={() => {
+                            if (
+                              field.value &&
+                              field.value.replace(/\D/g, "").length === 11
+                            ) {
+                              handleCPFLookup(field.value);
+                            }
+                          }}
+                          maxLength={14}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormDescription>
+                      {cpfLoading
+                        ? "Consultando CPF..."
+                        : "Preencha para buscar dados automaticamente"}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

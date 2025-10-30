@@ -179,6 +179,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // CPF validation and lookup endpoint
+  app.post("/api/cpf/validate", isTeacher, async (req: any, res) => {
+    try {
+      const { cpf } = req.body;
+
+      if (!cpf) {
+        return res.status(400).json({ message: "CPF é obrigatório" });
+      }
+
+      const { consultarCPF } = await import("./cpf-service");
+      const result = await consultarCPF(cpf);
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error validating CPF:", error);
+      res.status(500).json({ message: "Erro ao validar CPF" });
+    }
+  });
+
   app.post("/api/students", isTeacher, async (req: any, res) => {
     try {
       const userId = req.user.id;
