@@ -15,6 +15,7 @@ import Progress from "@/pages/progress";
 import Finances from "@/pages/finances";
 import Anamneses from "@/pages/anamneses";
 import TeacherProfile from "@/pages/teacher-profile";
+import TeacherBodyEvolution from "@/pages/teacher-body-evolution";
 import StudentProfile from "@/pages/student-profile";
 import { StudentDashboard } from "@/pages/student-dashboard";
 import StudentSetupPassword from "@/pages/student-setup-password";
@@ -154,6 +155,13 @@ function Router() {
         {() => (
           <TeacherLayout>
             <TeacherProfile />
+          </TeacherLayout>
+        )}
+      </Route>
+      <Route path="/teacher-area/body-evolution">
+        {() => (
+          <TeacherLayout>
+            <TeacherBodyEvolution />
           </TeacherLayout>
         )}
       </Route>
