@@ -301,13 +301,96 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
     outlook: { connected: false, loading: false },
   });
 
-  // Verificar status das conexões ao carregar
-  useEffect(() => {
-    checkCalendarStatus();
-  }, []);
+  // Sincronizar calendários externos
+  const handleSyncCalendars = useCallback(
+    async (silent: boolean = false) => {
+      setIsLoading(true);
+      try {
+        const response = await fetch("/api/calendar/sync", {
+          method: "POST",
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+
+          // Adicionar eventos sincronizados aos eventos locais
+          const syncedEvents: CalendarEvent[] = [];
+
+          if (data.results.google?.events) {
+            const googleEvents = data.results.google.events.map(
+              (event: any) => ({
+                id: `google_${event.id}`,
+                title: event.summary || "Evento Google",
+                start: new Date(event.start.dateTime || event.start.date),
+                end: new Date(event.end.dateTime || event.end.date),
+                description: event.description,
+                type: "synced" as const,
+                source: "google" as const,
+              })
+            );
+            syncedEvents.push(...googleEvents);
+          }
+
+          if (data.results.outlook?.events) {
+            const outlookEvents = data.results.outlook.events.map(
+              (event: any) => ({
+                id: `outlook_${event.id}`,
+                title: event.subject || "Evento Outlook",
+                start: new Date(event.start.dateTime),
+                end: new Date(event.end.dateTime),
+                description: event.body?.content,
+                type: "synced" as const,
+                source: "outlook" as const,
+              })
+            );
+            syncedEvents.push(...outlookEvents);
+          }
+
+          // Mesclar eventos externos com eventos locais
+          setEvents((currentEvents) => {
+            const localEvents = currentEvents.filter(
+              (e) => e.source === "manual"
+            );
+            return [...localEvents, ...syncedEvents];
+          });
+          setLastSyncTime(new Date());
+
+          if (!silent) {
+            let message = "Calendários sincronizados com sucesso!";
+            if (data.results.google) {
+              message += ` Google: ${data.results.google.count} eventos.`;
+            }
+            if (data.results.outlook) {
+              message += ` Outlook: ${data.results.outlook.count} eventos.`;
+            }
+
+            toast({
+              title: "Sucesso",
+              description: message,
+            });
+          }
+        } else {
+          throw new Error("Falha na sincronização");
+        }
+      } catch (error) {
+        console.error("Erro ao sincronizar calendários:", error);
+        if (!silent) {
+          toast({
+            title: "Erro",
+            description: "Falha ao sincronizar calendários externos",
+            variant: "destructive",
+          });
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [toast]
+  );
 
   // Verificar status das conexões de calendários
-  const checkCalendarStatus = async () => {
+  const checkCalendarStatus = useCallback(async () => {
     try {
       const response = await fetch("/api/calendar/status", {
         credentials: "include",
@@ -325,36 +408,37 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
             loading: false,
           },
         });
-
-        // Auto-sincronizar se houver calendários conectados e auto-sync estiver habilitado
-        if (
-          autoSyncEnabled &&
-          (data.connections.google.connected ||
-            data.connections.outlook.connected)
-        ) {
-          handleSyncCalendars(true); // true = silencioso (sem toast)
-        }
       }
     } catch (error) {
       console.error("Erro ao verificar status dos calendários:", error);
     }
-  };
+  }, []);
+
+  // Verificar status das conexões ao carregar
+  useEffect(() => {
+    checkCalendarStatus();
+  }, [checkCalendarStatus]);
 
   // Auto-sincronização periódica (a cada 5 minutos)
   useEffect(() => {
     if (!autoSyncEnabled) return;
+    if (
+      !calendarConnections.google.connected &&
+      !calendarConnections.outlook.connected
+    )
+      return;
 
     const syncInterval = setInterval(() => {
-      if (
-        calendarConnections.google.connected ||
-        calendarConnections.outlook.connected
-      ) {
-        handleSyncCalendars(true); // Sincronização silenciosa
-      }
+      handleSyncCalendars(true); // Sincronização silenciosa
     }, 5 * 60 * 1000); // 5 minutos
 
     return () => clearInterval(syncInterval);
-  }, [autoSyncEnabled, calendarConnections]);
+  }, [
+    autoSyncEnabled,
+    calendarConnections.google.connected,
+    calendarConnections.outlook.connected,
+    handleSyncCalendars,
+  ]);
 
   // Conectar com Google Calendar
   const handleConnectGoogle = async () => {
@@ -501,85 +585,6 @@ export default function TeacherCalendar({ className }: TeacherCalendarProps) {
         description: "Falha ao conectar com Outlook Calendar",
         variant: "destructive",
       });
-    }
-  };
-
-  // Sincronizar calendários externos
-  const handleSyncCalendars = async (silent: boolean = false) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/calendar/sync", {
-        method: "POST",
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-
-        // Adicionar eventos sincronizados aos eventos locais
-        const syncedEvents: CalendarEvent[] = [];
-
-        if (data.results.google?.events) {
-          const googleEvents = data.results.google.events.map((event: any) => ({
-            id: `google_${event.id}`,
-            title: event.summary || "Evento Google",
-            start: new Date(event.start.dateTime || event.start.date),
-            end: new Date(event.end.dateTime || event.end.date),
-            description: event.description,
-            type: "synced" as const,
-            source: "google" as const,
-          }));
-          syncedEvents.push(...googleEvents);
-        }
-
-        if (data.results.outlook?.events) {
-          const outlookEvents = data.results.outlook.events.map(
-            (event: any) => ({
-              id: `outlook_${event.id}`,
-              title: event.subject || "Evento Outlook",
-              start: new Date(event.start.dateTime),
-              end: new Date(event.end.dateTime),
-              description: event.body?.content,
-              type: "synced" as const,
-              source: "outlook" as const,
-            })
-          );
-          syncedEvents.push(...outlookEvents);
-        }
-
-        // Mesclar eventos externos com eventos locais
-        const localEvents = events.filter((e) => e.source === "manual");
-        setEvents([...localEvents, ...syncedEvents]);
-        setLastSyncTime(new Date());
-
-        if (!silent) {
-          let message = "Calendários sincronizados com sucesso!";
-          if (data.results.google) {
-            message += ` Google: ${data.results.google.count} eventos.`;
-          }
-          if (data.results.outlook) {
-            message += ` Outlook: ${data.results.outlook.count} eventos.`;
-          }
-
-          toast({
-            title: "Sucesso",
-            description: message,
-          });
-        }
-      } else {
-        throw new Error("Falha na sincronização");
-      }
-    } catch (error) {
-      console.error("Erro ao sincronizar calendários:", error);
-      if (!silent) {
-        toast({
-          title: "Erro",
-          description: "Falha ao sincronizar calendários externos",
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setIsLoading(false);
     }
   };
 

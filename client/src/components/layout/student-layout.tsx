@@ -24,30 +24,24 @@ export function StudentLayout({ student, onLogout }: StudentLayoutProps) {
         <div className="p-6">
           <Switch>
             <Route
-              path="/student-area"
-              component={() => (
-                <StudentDashboard student={student} onLogout={onLogout} />
-              )}
+              path="/student-area/physical-assessments"
+              component={() => <StudentPhysicalAssessments student={student} />}
             />
             <Route
-              path="/student-area/events"
-              component={() => <StudentEvents student={student} />}
+              path="/student-area/body-evolution"
+              component={() => <StudentBodyEvolution student={student} />}
             />
             <Route
               path="/student-area/workouts"
               component={() => <StudentWorkouts student={student} />}
             />
             <Route
-              path="/student-area/physical-assessments"
-              component={() => <StudentPhysicalAssessments student={student} />}
-            />
-            <Route
               path="/student-area/progress"
               component={() => <StudentProgress student={student} />}
             />
             <Route
-              path="/student-area/body-evolution"
-              component={() => <StudentBodyEvolution student={student} />}
+              path="/student-area/events"
+              component={() => <StudentEvents student={student} />}
             />
             <Route
               path="/student-area/debts"
@@ -56,6 +50,12 @@ export function StudentLayout({ student, onLogout }: StudentLayoutProps) {
             <Route
               path="/student-area/profile"
               component={() => <StudentProfile />}
+            />
+            <Route
+              path="/student-area"
+              component={() => (
+                <StudentDashboard student={student} onLogout={onLogout} />
+              )}
             />
             <Route>
               <div className="text-center py-12">

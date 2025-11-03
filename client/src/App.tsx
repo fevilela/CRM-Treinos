@@ -93,11 +93,18 @@ function Router() {
       <Route path="/student/setup-password" component={StudentSetupPassword} />
       <Route path="/student-area/:rest?">{() => <StudentApp />}</Route>
 
-      {/* Rotas do professor - usando rotas absolutas ao invés de aninhadas */}
-      <Route path="/teacher-area">
+      {/* Rotas do professor - rotas específicas ANTES da genérica */}
+      <Route path="/teacher-area/physical-assessments">
         {() => (
           <TeacherLayout>
-            <Dashboard />
+            <PhysicalAssessments />
+          </TeacherLayout>
+        )}
+      </Route>
+      <Route path="/teacher-area/posture-assessments">
+        {() => (
+          <TeacherLayout>
+            <PostureAssessments />
           </TeacherLayout>
         )}
       </Route>
@@ -115,28 +122,14 @@ function Router() {
           </TeacherLayout>
         )}
       </Route>
-      <Route path="/teacher-area/physical-assessments">
-        {() => (
-          <TeacherLayout>
-            <PhysicalAssessments />
-          </TeacherLayout>
-        )}
-      </Route>
-      <Route path="/teacher-area/posture-assessments">
-        {() => (
-          <TeacherLayout>
-            <PostureAssessments />
-          </TeacherLayout>
-        )}
-      </Route>
-      <Route path="/teacher-area/progress">
+      <Route path="/teacher-area/assessments">
         {() => (
           <TeacherLayout>
             <Progress />
           </TeacherLayout>
         )}
       </Route>
-      <Route path="/teacher-area/assessments">
+      <Route path="/teacher-area/progress">
         {() => (
           <TeacherLayout>
             <Progress />
@@ -161,6 +154,13 @@ function Router() {
         {() => (
           <TeacherLayout>
             <TeacherProfile />
+          </TeacherLayout>
+        )}
+      </Route>
+      <Route path="/teacher-area">
+        {() => (
+          <TeacherLayout>
+            <Dashboard />
           </TeacherLayout>
         )}
       </Route>
