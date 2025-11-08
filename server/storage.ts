@@ -1510,12 +1510,112 @@ export class DatabaseStorage implements IStorage {
     };
   }
   async getStudentMeasurements(studentId: string): Promise<BodyMeasurement[]> {
-    return [];
+    const measurements = await db
+      .select()
+      .from(bodyMeasurements)
+      .where(eq(bodyMeasurements.studentId, studentId))
+      .orderBy(desc(bodyMeasurements.measuredAt));
+
+    return measurements.map((m) => ({
+      ...m,
+      weight:
+        m.weight !== undefined && m.weight !== null ? String(m.weight) : null,
+      bodyFat:
+        m.bodyFat !== undefined && m.bodyFat !== null
+          ? String(m.bodyFat)
+          : null,
+      muscleMass:
+        m.muscleMass !== undefined && m.muscleMass !== null
+          ? String(m.muscleMass)
+          : null,
+      chest: m.chest !== undefined && m.chest !== null ? String(m.chest) : null,
+      waist: m.waist !== undefined && m.waist !== null ? String(m.waist) : null,
+      hips: m.hips !== undefined && m.hips !== null ? String(m.hips) : null,
+      arms: m.arms !== undefined && m.arms !== null ? String(m.arms) : null,
+      thighs:
+        m.thighs !== undefined && m.thighs !== null ? String(m.thighs) : null,
+    }));
   }
   async createBodyMeasurement(
     measurement: InsertBodyMeasurement
   ): Promise<BodyMeasurement> {
-    return {} as BodyMeasurement;
+    const measurementData = {
+      ...measurement,
+      weight:
+        measurement.weight !== undefined && measurement.weight !== null
+          ? measurement.weight.toString()
+          : null,
+      bodyFat:
+        measurement.bodyFat !== undefined && measurement.bodyFat !== null
+          ? measurement.bodyFat.toString()
+          : null,
+      muscleMass:
+        measurement.muscleMass !== undefined && measurement.muscleMass !== null
+          ? measurement.muscleMass.toString()
+          : null,
+      chest:
+        measurement.chest !== undefined && measurement.chest !== null
+          ? measurement.chest.toString()
+          : null,
+      waist:
+        measurement.waist !== undefined && measurement.waist !== null
+          ? measurement.waist.toString()
+          : null,
+      hips:
+        measurement.hips !== undefined && measurement.hips !== null
+          ? measurement.hips.toString()
+          : null,
+      arms:
+        measurement.arms !== undefined && measurement.arms !== null
+          ? measurement.arms.toString()
+          : null,
+      thighs:
+        measurement.thighs !== undefined && measurement.thighs !== null
+          ? measurement.thighs.toString()
+          : null,
+    };
+
+    const [newMeasurement] = await db
+      .insert(bodyMeasurements)
+      .values(measurementData)
+      .returning();
+
+    return {
+      ...newMeasurement,
+      weight:
+        newMeasurement.weight !== undefined && newMeasurement.weight !== null
+          ? newMeasurement.weight.toString()
+          : null,
+      bodyFat:
+        newMeasurement.bodyFat !== undefined && newMeasurement.bodyFat !== null
+          ? newMeasurement.bodyFat.toString()
+          : null,
+      muscleMass:
+        newMeasurement.muscleMass !== undefined &&
+        newMeasurement.muscleMass !== null
+          ? newMeasurement.muscleMass.toString()
+          : null,
+      chest:
+        newMeasurement.chest !== undefined && newMeasurement.chest !== null
+          ? newMeasurement.chest.toString()
+          : null,
+      waist:
+        newMeasurement.waist !== undefined && newMeasurement.waist !== null
+          ? newMeasurement.waist.toString()
+          : null,
+      hips:
+        newMeasurement.hips !== undefined && newMeasurement.hips !== null
+          ? newMeasurement.hips.toString()
+          : null,
+      arms:
+        newMeasurement.arms !== undefined && newMeasurement.arms !== null
+          ? newMeasurement.arms.toString()
+          : null,
+      thighs:
+        newMeasurement.thighs !== undefined && newMeasurement.thighs !== null
+          ? newMeasurement.thighs.toString()
+          : null,
+    };
   }
   async getDashboardStats(personalTrainerId: string): Promise<any> {
     return {

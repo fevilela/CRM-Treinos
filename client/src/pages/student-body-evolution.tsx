@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   Card,
@@ -20,6 +20,7 @@ import {
 import type { Student } from "@shared/schema";
 import BodyMeasurementsForm from "@/components/body-measurements-form";
 import BodyAvatarComparison from "@/components/body-avatar-comparison";
+import { useToast } from "@/hooks/use-toast";
 
 interface StudentBodyEvolutionProps {
   student: Student;
@@ -27,15 +28,76 @@ interface StudentBodyEvolutionProps {
 
 export function StudentBodyEvolution({ student }: StudentBodyEvolutionProps) {
   const [selectedTab, setSelectedTab] = useState("overview");
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: bodyMeasurements, isLoading: measurementsLoading } = useQuery({
-    queryKey: ["/api/body-measurements/student", student.id],
+    queryKey: ["/api/body-measurements", student.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/body-measurements/${student.id}`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch body measurements");
+      }
+      return response.json();
+    },
     enabled: !!student.id,
   });
 
   const { data: evolutionPhotos, isLoading: photosLoading } = useQuery({
     queryKey: ["/api/evolution-photos/student", student.id],
     enabled: !!student.id,
+  });
+
+  const saveMeasurementsMutation = useMutation({
+    mutationFn: async (measurements: any) => {
+      const response = await fetch("/api/body-measurements", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          studentId: student.id,
+          weight: measurements.weight,
+          chest: measurements.chest,
+          waist: measurements.waist,
+          hips: measurements.hips,
+          arms: measurements.arms,
+          thighs: measurements.thighs,
+          bodyFat: measurements.bodyFat,
+          muscleMass: measurements.muscleMass,
+          measuredAt: new Date(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Falha ao salvar medidas");
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/body-measurements", student.id],
+      });
+      toast({
+        title: "Medidas salvas com sucesso!",
+        description: "As medidas corporais foram registradas.",
+      });
+      setSelectedTab("overview");
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao salvar medidas",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Ocorreu um erro ao salvar as medidas",
+        variant: "destructive",
+      });
+    },
   });
 
   const mockBeforeMeasurements = {
@@ -63,7 +125,7 @@ export function StudentBodyEvolution({ student }: StudentBodyEvolutionProps) {
   };
 
   const handleSaveMeasurements = (measurements: any) => {
-    console.log("Salvar medidas:", measurements);
+    saveMeasurementsMutation.mutate(measurements);
   };
 
   return (

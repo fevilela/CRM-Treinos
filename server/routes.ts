@@ -756,8 +756,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     isAuthenticated,
     async (req, res) => {
       try {
-        // Retorna array vazio por enquanto - pode ser implementado depois
-        res.json([]);
+        const { studentId } = req.params;
+        const measurements = await storage.getStudentMeasurements(studentId);
+        res.json(measurements);
       } catch (error) {
         console.error("Error fetching body measurements:", error);
         res.status(500).json({ message: "Failed to fetch body measurements" });
